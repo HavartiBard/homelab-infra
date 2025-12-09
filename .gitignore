@@ -1,0 +1,19 @@
+# Environment files
+.env
+.env.*
+
+# Python/Node junk (if needed later)
+__pycache__/
+*.pyc
+node_modules/
+
+# Docker Desktop/Portainer artifacts
+*.log
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example

@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  netbox-postgres:
+    image: postgres:15-alpine
+    container_name: netbox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: netbox
+      POSTGRES_USER: netbox
+      POSTGRES_PASSWORD: change_me
+    volumes:
+      - netbox-postgres-data:/var/lib/postgresql/data
+
+  netbox-redis:
+    image: redis:7-alpine
+    container_name: netbox-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - netbox-redis-data:/data
+
+  netbox:
+    image: netboxcommunity/netbox:v4.1.11
+    container_name: netbox
+    restart: unless-stopped
+    depends_on:
+      - netbox-postgres
+      - netbox-redis
+    ports:
+      - "8001:8080"  # Host port 8001 -> NetBox 8080
+    env_file:
+      - ./netbox-unraid.env
+    volumes:
+      - netbox-media:/opt/netbox/netbox/media
+      - netbox-reports:/opt/netbox/netbox/reports
+      - netbox-scripts:/opt/netbox/netbox/scripts
+
+volumes:
+  netbox-postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/netbox/postgres
+
+  netbox-redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/netbox/redis
+
+  netbox-media:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/netbox/media
+
+  netbox-reports:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/netbox/reports
+
+  netbox-scripts:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/netbox/scripts
