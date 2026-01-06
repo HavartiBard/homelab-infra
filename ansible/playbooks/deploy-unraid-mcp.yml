@@ -1,0 +1,29 @@
+---
+# Deploy Unraid MCP Server to Unraid
+#
+# Usage:
+#   export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge>'
+#   ansible-playbook playbooks/deploy-unraid-mcp.yml
+
+- name: Deploy Unraid MCP to Unraid
+  hosts: unraid
+  gather_facts: false
+
+  vars:
+    unraid_api_key: "{{ lookup('env', 'UNRAID_API_KEY') }}"
+
+  pre_tasks:
+    - name: Verify UNRAID_API_KEY is set
+      ansible.builtin.fail:
+        msg: "UNRAID_API_KEY environment variable must be set"
+      when: unraid_api_key | length == 0
+
+  roles:
+    - role: unraid-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Unraid MCP deployed successfully!
+          Endpoint: http://{{ ansible_host }}:{{ unraid_mcp_port }}/mcp

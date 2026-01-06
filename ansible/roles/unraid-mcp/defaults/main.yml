@@ -1,0 +1,23 @@
+---
+# Unraid MCP Server defaults
+
+# Container settings
+unraid_mcp_image: "ghcr.io/havartibard/unraid-mcp:latest"
+unraid_mcp_container_name: "unraid-mcp"
+unraid_mcp_port: 6970
+
+# MCP settings
+unraid_mcp_host: "0.0.0.0"
+unraid_mcp_transport: "streamable-http"
+
+# Unraid GraphQL API settings
+unraid_api_url: "https://localhost/graphql"
+unraid_api_key: ""
+unraid_verify_ssl: false
+unraid_auto_start_subscriptions: true
+
+# Logging
+unraid_mcp_log_level: "INFO"
+
+# Timezone
+timezone: "America/Chicago"

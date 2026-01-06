@@ -1,0 +1,6 @@
+---
+# Handlers for unraid-mcp role
+
+- name: Restart unraid-mcp container
+  ansible.builtin.raw: |
+    docker restart {{ unraid_mcp_container_name }}

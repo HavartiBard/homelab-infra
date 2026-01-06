@@ -1,0 +1,6 @@
+---
+# Handlers for onepassword-mcp role
+
+- name: Restart onepassword-mcp container
+  ansible.builtin.raw: |
+    docker restart {{ onepassword_mcp_container_name }}

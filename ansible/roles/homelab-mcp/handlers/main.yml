@@ -1,0 +1,4 @@
+---
+- name: Restart homelab-mcp container
+  ansible.builtin.raw: docker restart {{ homelab_mcp_container_name }}
+  changed_when: true

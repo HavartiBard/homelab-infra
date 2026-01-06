@@ -1,0 +1,58 @@
+---
+# Deploy 1Password MCP Server container
+# Uses raw commands since Unraid lacks Python
+
+- name: Pull container image
+  ansible.builtin.raw: |
+    docker pull {{ onepassword_mcp_image }}
+  changed_when: pull_result.stdout is search('Downloaded newer image') or pull_result.stdout is search('Pulling from')
+  register: pull_result
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ onepassword_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ onepassword_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy onepassword-mcp container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ onepassword_mcp_container_name }} \
+      --restart unless-stopped \
+      -p {{ onepassword_mcp_port }}:{{ onepassword_mcp_port }} \
+      -e OP_SERVICE_ACCOUNT_TOKEN='{{ op_service_account_token }}' \
+      -e OP_VAULT='{{ op_vault }}' \
+      -e MCP_TRANSPORT='{{ onepassword_mcp_transport }}' \
+      -e MCP_HOST='{{ onepassword_mcp_host }}' \
+      -e MCP_PORT='{{ onepassword_mcp_port }}' \
+      -e MCP_PATH='{{ onepassword_mcp_path }}' \
+      -e TZ='{{ timezone }}' \
+      {{ onepassword_mcp_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 3
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ onepassword_mcp_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: |
+    docker logs --tail 10 {{ onepassword_mcp_container_name }} 2>&1
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"

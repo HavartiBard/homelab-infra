@@ -1,0 +1,16 @@
+server:
+  host: "{{ homelab_mcp_host }}"
+  port: {{ homelab_mcp_port }}
+  transport: "{{ homelab_mcp_transport }}"
+
+services:
+  orbi:
+    enabled: {{ orbi_enabled | lower }}
+    host: "{{ orbi_host }}"
+    username: "{{ orbi_username }}"
+    password: "{{ orbi_password }}"
+    port: {{ orbi_port }}
+    ssl: {{ orbi_ssl | lower }}
+
+logging:
+  level: "{{ log_level }}"

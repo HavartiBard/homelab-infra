@@ -1,0 +1,78 @@
+---
+# Using raw/shell commands since Unraid lacks Python
+
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ homelab_mcp_appdata_dir }}
+  changed_when: false
+
+- name: Generate config.yaml content
+  ansible.builtin.set_fact:
+    config_content: |
+      server:
+        host: "{{ homelab_mcp_host }}"
+        port: {{ homelab_mcp_port }}
+        transport: "{{ homelab_mcp_transport }}"
+
+      services:
+        orbi:
+          enabled: {{ orbi_enabled | lower }}
+          host: "{{ orbi_host }}"
+          username: "{{ orbi_username }}"
+          password: "{{ orbi_password }}"
+          port: {{ orbi_port }}
+          ssl: {{ orbi_ssl | lower }}
+
+      logging:
+        level: "{{ log_level }}"
+
+- name: Write config.yaml
+  ansible.builtin.raw: |
+    cat > {{ homelab_mcp_config_file }} << 'EOFCONFIG'
+    {{ config_content }}
+    EOFCONFIG
+  changed_when: true
+  notify: Restart homelab-mcp container
+
+- name: Pull container image
+  ansible.builtin.raw: docker pull {{ homelab_mcp_image }}
+  register: pull_result
+  changed_when: "'Downloaded newer image' in pull_result.stdout or 'Pull complete' in pull_result.stdout"
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: docker stop {{ homelab_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: docker rm {{ homelab_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy homelab-mcp container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ homelab_mcp_container_name }} \
+      --restart unless-stopped \
+      -p {{ homelab_mcp_port }}:{{ homelab_mcp_port }} \
+      -v {{ homelab_mcp_config_file }}:/app/config.yaml:ro \
+      -e TZ={{ timezone }} \
+      {{ homelab_mcp_image }}
+  register: deploy_result
+  changed_when: true
+
+- name: Wait for container to start
+  ansible.builtin.raw: sleep 5
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: docker ps --filter "name={{ homelab_mcp_container_name }}" --filter "status=running" -q
+  register: container_check
+  failed_when: container_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: docker logs --tail 10 {{ homelab_mcp_container_name }}
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"

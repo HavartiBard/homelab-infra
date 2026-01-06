@@ -1,0 +1,19 @@
+---
+# 1Password MCP Server defaults
+
+# Container settings
+onepassword_mcp_image: "ghcr.io/havartibard/onepassword-mcp-server:latest"
+onepassword_mcp_container_name: "onepassword-mcp"
+onepassword_mcp_port: 6975
+
+# MCP settings
+onepassword_mcp_host: "0.0.0.0"
+onepassword_mcp_transport: "streamable-http"
+onepassword_mcp_path: "/mcp"
+
+# 1Password settings (override via environment variable or vault)
+op_vault: "AI Wedge"
+op_service_account_token: ""
+
+# Timezone
+timezone: "America/Chicago"

@@ -1,0 +1,29 @@
+---
+# Homelab MCP default variables
+
+# Container settings
+homelab_mcp_image: "ghcr.io/havartibard/homelab-mcp:latest"
+homelab_mcp_container_name: "homelab-mcp"
+homelab_mcp_port: 6971
+
+# Paths
+homelab_mcp_appdata_dir: "/mnt/user/appdata/homelab-mcp"
+homelab_mcp_config_file: "{{ homelab_mcp_appdata_dir }}/config.yaml"
+
+# Server settings
+homelab_mcp_host: "0.0.0.0"
+homelab_mcp_transport: "streamable-http"
+
+# Orbi settings (override in playbook or vars file)
+orbi_enabled: true
+orbi_host: "192.168.1.1"
+orbi_username: "admin"
+orbi_password: ""
+orbi_port: 80
+orbi_ssl: false
+
+# Timezone
+timezone: "America/Chicago"
+
+# Logging
+log_level: "INFO"

@@ -1,0 +1,18 @@
+---
+- name: Deploy Homelab MCP to Unraid
+  hosts: unraid
+  gather_facts: no
+
+  vars:
+    # Orbi credentials - loaded from vault or environment
+    orbi_password: "{{ lookup('env', 'ORBI_PASSWORD') }}"
+
+  roles:
+    - homelab-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Homelab MCP deployed successfully!
+          Endpoint: http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
