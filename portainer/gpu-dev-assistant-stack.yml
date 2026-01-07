@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - gpu-dev-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=your-secret-key-here-change-this
+    volumes:
+      - open_webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    networks:
+      - gpu-dev-network
+
+  tabby:
+    image: tabbyml/tabby:latest
+    container_name: tabby
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      - TABBY_DEVICE=cuda
+    volumes:
+      - tabby_data:/data
+    command: ["serve", "--model", "TabbyML/StarCoder-1B", "--chat-model", "TabbyML/Qwen2-1.5B-Instruct", "--device", "cuda"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - gpu-dev-network
+
+volumes:
+  ollama_data:
+    driver: local
+  open_webui_data:
+    driver: local
+  tabby_data:
+    driver: local
+
+networks:
+  gpu-dev-network:
+    driver: bridge
