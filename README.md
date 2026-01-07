@@ -32,18 +32,22 @@ homelab-infra/
 │   ├── platform/              # Core infra: Portainer, NPM, DNS, Kuma
 │   ├── gpu-worker/            # AI/ML: Ollama, Open WebUI
 │   └── monitoring/            # Observability: Prometheus, Grafana
-├── docker/                    # Legacy/additional stacks
+├── ansible/                   # Ansible automation
+│   ├── playbooks/             # Deployment playbooks
+│   └── roles/                 # MCP server roles (unraid, proxmox, notion, etc.)
+├── docker/                    # Standalone compose files and Dockerfiles
+├── configs/                   # IDE/tool configuration files
+├── portainer/                 # Portainer stack templates
 ├── scripts/                   # Helper scripts
 │   ├── install-portainer-agent.sh
 │   ├── install-edge-agent.sh
 │   ├── gaming-toggle.sh
 │   └── backup-volumes.sh
-├── docs/                      # Documentation
-│   ├── runbook.md             # Step-by-step deployment guide
-│   ├── plan.md                # Architecture and design
-│   └── network-ports.md       # Port reference
-├── terraform/                 # Infrastructure as Code (Proxmox)
-└── k8s/                       # Future Kubernetes configs
+└── docs/                      # Documentation
+    ├── runbook.md             # Step-by-step deployment guide
+    ├── plan.md                # Architecture and design
+    ├── network-ports.md       # Port reference
+    └── checklist.md           # Deployment verification checklist
 ```
 
 ## Stacks
@@ -53,6 +57,16 @@ homelab-infra/
 | **platform** | Portainer, NPM, Technitium DNS, Uptime Kuma | Platform VM |
 | **gpu-worker** | Ollama, Open WebUI | WSL2 GPU workers |
 | **monitoring** | Prometheus, Grafana, Node Exporter | Platform VM |
+
+## Ansible Roles
+
+| Role | Purpose |
+|------|---------|  
+| **unraid-mcp** | Deploy Unraid MCP server container |
+| **proxmox-mcp** | Deploy Proxmox MCP server container |
+| **notion-mcp** | Deploy Notion MCP server container |
+| **onepassword-mcp** | Deploy 1Password MCP server container |
+| **homelab-mcp** | Deploy Homelab MCP aggregator container |
 
 ## Key Principles
 
@@ -66,6 +80,7 @@ homelab-infra/
 - [**Runbook**](docs/runbook.md) - Complete deployment guide from zero to working
 - [**Plan**](docs/plan.md) - Architecture decisions and design
 - [**Network Ports**](docs/network-ports.md) - Port reference and firewall rules
+- [**Checklist**](docs/checklist.md) - Deployment verification and smoke tests
 
 ## Deploy a Stack
 
