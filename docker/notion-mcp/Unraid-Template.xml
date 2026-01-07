@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>notion-mcp</Name>
+  <Repository>makenotion/notion-mcp-server:latest</Repository>
+  <Registry>https://hub.docker.com/r/makenotion/notion-mcp-server</Registry>
+  <Network>mcp-network</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/makenotion/notion-mcp-server</Support>
+  <Project>https://developers.notion.com/docs/mcp</Project>
+  <Overview>Official Notion MCP Server - Connect Notion to your favorite AI tools. This server uses OAuth for authentication, no API key required.</Overview>
+  <Category>Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:3000]</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/makenotion/notion-mcp-server/main/assets/notion-icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1704614400</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Port" Target="3000" Default="3000" Mode="tcp" Description="Container Port: 3000" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/Chicago" Mode="" Description="Container Variable: TZ" Type="Variable" Display="advanced" Required="false" Mask="false">America/Chicago</Config>
+</Container>

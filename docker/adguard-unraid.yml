@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: adguard
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"      # DNS (TCP)
+      - "53:53/udp"      # DNS (UDP)
+      - "3080:3000/tcp"  # Initial setup UI (change to 80 after setup)
+      - "8053:80/tcp"    # Web UI (HTTP) after setup
+      - "8853:443/tcp"   # DNS-over-HTTPS
+      - "853:853/tcp"    # DNS-over-TLS
+      - "5443:5443/tcp"  # DNSCrypt (optional)
+      - "5443:5443/udp"  # DNSCrypt (optional)
+    volumes:
+      - adguard-work:/opt/adguardhome/work
+      - adguard-conf:/opt/adguardhome/conf
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - TZ=${TZ:-America/New_York}
+
+volumes:
+  adguard-work:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/adguard/work
+
+  adguard-conf:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/adguard/conf

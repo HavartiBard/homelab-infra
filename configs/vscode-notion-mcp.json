@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "Notion": {
+      "url": "http://192.168.20.14:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer notion-mcp-secret-2024"
+      }
+    }
+  }
+}

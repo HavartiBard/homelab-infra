@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  notion-mcp:
+    image: makenotion/notion-mcp-server:latest
+    container_name: notion-mcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - TZ=America/Chicago
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
