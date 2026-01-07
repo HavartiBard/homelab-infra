@@ -1,0 +1,85 @@
+---
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ proxmox_mcp_appdata_dir }}
+  changed_when: false
+
+- name: Generate .env file content
+  ansible.builtin.set_fact:
+    proxmox_env_content: |
+      PROXMOX_HOST={{ proxmox_host_fact }}
+      PROXMOX_PORT={{ proxmox_port_fact }}
+      PROXMOX_USER={{ proxmox_user_fact }}
+      PROXMOX_TOKEN_NAME={{ proxmox_token_name_fact }}
+      PROXMOX_TOKEN_VALUE={{ proxmox_token_value_fact }}
+      PROXMOX_ALLOW_ELEVATED={{ proxmox_allow_elevated_fact }}
+
+- name: Write .env file
+  ansible.builtin.raw: |
+    cat > {{ proxmox_mcp_env_file }} << 'EOFENV'
+    {{ proxmox_env_content }}
+    EOFENV
+  changed_when: true
+
+- name: Check Docker daemon and network connectivity
+  ansible.builtin.raw: |
+    docker --version
+    echo "Testing connectivity to GHCR..."
+    timeout 10 curl -I https://ghcr.io 2>/dev/null | head -1 || echo "Cannot reach GHCR"
+  register: connectivity_check
+  changed_when: false
+
+- name: Display connectivity check
+  ansible.builtin.debug:
+    msg: "{{ connectivity_check.stdout_lines }}"
+
+- name: Pull container image
+  ansible.builtin.raw: |
+    timeout 300 docker pull {{ proxmox_mcp_image }}
+  register: pull_result
+  retries: 3
+  delay: 5
+  until: pull_result.rc == 0
+  changed_when: pull_result.stdout is search('Downloaded newer image') or pull_result.stdout is search('Pulling from') or pull_result.stdout is search('Image is up to date')
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ proxmox_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ proxmox_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy proxmox-mcp container
+  ansible.builtin.raw: |
+    docker run -d -i \
+      --name {{ proxmox_mcp_container_name }} \
+      --restart unless-stopped \
+      --env-file {{ proxmox_mcp_env_file }} \
+      -v {{ proxmox_mcp_env_file }}:/.env:ro \
+      {{ proxmox_mcp_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 3
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ proxmox_mcp_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: |
+    docker logs --tail 10 {{ proxmox_mcp_container_name }} 2>&1
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"

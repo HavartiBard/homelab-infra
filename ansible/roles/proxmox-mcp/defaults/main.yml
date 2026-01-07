@@ -1,0 +1,13 @@
+---
+proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:feat-containerize"
+proxmox_mcp_container_name: "mcp-proxmox"
+
+proxmox_mcp_appdata_dir: "/mnt/user/appdata/mcp-proxmox"
+proxmox_mcp_env_file: "{{ proxmox_mcp_appdata_dir }}/.env"
+
+proxmox_host: ""
+proxmox_port: "8006"
+proxmox_user: ""
+proxmox_token_name: ""
+proxmox_token_value: ""
+proxmox_allow_elevated: "false"

@@ -1,0 +1,35 @@
+---
+- name: Deploy Proxmox MCP to Unraid
+  hosts: unraid
+  gather_facts: false
+  vars_files:
+    - ../group_vars/unraid/vault.yml
+
+  vars:
+    proxmox_host: "{{ proxmox_mcp_secrets.host }}"
+    proxmox_port: "{{ proxmox_mcp_secrets.port }}"
+    proxmox_user: "{{ proxmox_mcp_secrets.user }}"
+    proxmox_token_name: "{{ proxmox_mcp_secrets.token_name }}"
+    proxmox_token_value: "{{ proxmox_mcp_secrets.token_value }}"
+    proxmox_allow_elevated: "{{ proxmox_mcp_secrets.allow_elevated }}"
+
+  pre_tasks:
+    - name: Set facts for role variables
+      ansible.builtin.set_fact:
+        proxmox_host_fact: "{{ proxmox_host }}"
+        proxmox_port_fact: "{{ proxmox_port }}"
+        proxmox_user_fact: "{{ proxmox_user }}"
+        proxmox_token_name_fact: "{{ proxmox_token_name }}"
+        proxmox_token_value_fact: "{{ proxmox_token_value }}"
+        proxmox_allow_elevated_fact: "{{ proxmox_allow_elevated }}"
+
+  roles:
+    - role: proxmox-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Proxmox MCP deployed successfully!
+          Container: {{ proxmox_mcp_container_name }}
+          Logs: docker logs {{ proxmox_mcp_container_name }}

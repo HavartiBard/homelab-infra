@@ -1,0 +1,45 @@
+---
+# Deploy Notion MCP Server to Unraid
+#
+# Usage:
+#   export NOTION_TOKEN='ntn_your_token_here'
+#   ansible-playbook playbooks/deploy-notion-mcp-public.yml
+
+- name: Deploy Notion MCP to Unraid
+  hosts: unraid
+  gather_facts: false
+
+  vars:
+    notion_token: "{{ lookup('env', 'NOTION_TOKEN') }}"
+
+  pre_tasks:
+    - name: Verify NOTION_TOKEN is set
+      ansible.builtin.fail:
+        msg: "NOTION_TOKEN environment variable must be set. Create an integration at https://www.notion.so/profile/integrations"
+      when: notion_token | length == 0
+
+  roles:
+    - role: notion-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Notion MCP deployed successfully!
+          Endpoint: http://{{ ansible_host }}:{{ notion_mcp_port }}/mcp
+          
+          Auth Token: {{ auth_token }}
+          
+          VSCode MCP Configuration:
+          {
+            "mcpServers": {
+              "Notion": {
+                "url": "http://{{ ansible_host }}:{{ notion_mcp_port }}/mcp",
+                "headers": {
+                  "Authorization": "Bearer {{ auth_token }}"
+                }
+              }
+            }
+          }
+          
+          Note: Make sure your integration has access to the pages/databases you want to use.

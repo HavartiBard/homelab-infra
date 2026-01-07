@@ -1,0 +1,75 @@
+---
+# Deploy Notion MCP Server container
+# Uses raw commands since Unraid lacks Python
+
+- name: Build custom Notion MCP Docker image
+  ansible.builtin.raw: |
+    cd /tmp && \
+    cat > Dockerfile << 'EOF'
+    FROM node:18-alpine
+    
+    WORKDIR /app
+    
+    # Install the Notion MCP server
+    RUN npm install -g @notionhq/notion-mcp-server
+    
+    # Create non-root user
+    RUN addgroup -g 1001 -S nodejs
+    RUN adduser -S notion -u 1001
+    
+    # Expose port
+    EXPOSE 3000
+    
+    # Switch to non-root user
+    USER notion
+    
+    # Run the MCP server with HTTP transport
+    CMD ["npx", "@notionhq/notion-mcp-server", "--transport", "http", "--port", "3000", "--auth-token", "{{ auth_token }}"]
+    EOF
+    docker build -t {{ notion_mcp_image }} .
+  register: build_result
+  changed_when: "'Successfully built' in build_result.stdout"
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ notion_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ notion_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy notion-mcp container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ notion_mcp_container_name }} \
+      --restart unless-stopped \
+      -p {{ notion_mcp_port }}:3000 \
+      -e NOTION_TOKEN='{{ notion_token }}' \
+      -e TZ='{{ timezone }}' \
+      {{ notion_mcp_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 5
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ notion_mcp_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: |
+    docker logs --tail 20 {{ notion_mcp_container_name }} 2>&1
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"
