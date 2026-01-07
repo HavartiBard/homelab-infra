@@ -1,0 +1,98 @@
+# Prometheus Configuration
+# Scrape configuration for homelab infrastructure
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'homelab'
+
+# Alerting configuration (optional - add Alertmanager if needed)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files (optional)
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+scrape_configs:
+  # =============================================================================
+  # Prometheus Self-Monitoring
+  # =============================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          instance: 'platform-vm'
+
+  # =============================================================================
+  # Node Exporter - Host Metrics
+  # Add targets for each host running node_exporter
+  # =============================================================================
+  - job_name: 'node'
+    static_configs:
+      # Platform VM (local)
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'platform-vm'
+          environment: 'production'
+      
+      # Unraid - uncomment and set IP after installing node_exporter
+      # - targets: ['192.168.x.x:9100']
+      #   labels:
+      #     instance: 'unraid'
+      #     environment: 'production'
+      
+      # Proxmox host - uncomment and set IP
+      # - targets: ['192.168.x.x:9100']
+      #   labels:
+      #     instance: 'proxmox'
+      #     environment: 'production'
+
+  # =============================================================================
+  # cAdvisor - Container Metrics
+  # =============================================================================
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance: 'platform-vm'
+          environment: 'production'
+
+  # =============================================================================
+  # Docker Daemon Metrics (if enabled)
+  # Enable in /etc/docker/daemon.json: {"metrics-addr": "0.0.0.0:9323"}
+  # =============================================================================
+  # - job_name: 'docker'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:9323']
+
+  # =============================================================================
+  # Portainer Metrics
+  # =============================================================================
+  # - job_name: 'portainer'
+  #   static_configs:
+  #     - targets: ['portainer:9000']
+  #   metrics_path: /api/metrics
+
+  # =============================================================================
+  # GPU Worker Metrics (Ollama)
+  # Add WSL2 worker IPs after deployment
+  # =============================================================================
+  # - job_name: 'ollama'
+  #   static_configs:
+  #     - targets: ['192.168.x.x:11434']
+  #       labels:
+  #         instance: 'gpu-worker-1'
+  #   metrics_path: /metrics
+
+  # =============================================================================
+  # Uptime Kuma (if metrics endpoint enabled)
+  # =============================================================================
+  # - job_name: 'uptime-kuma'
+  #   static_configs:
+  #     - targets: ['uptime-kuma:3001']
+  #   metrics_path: /metrics

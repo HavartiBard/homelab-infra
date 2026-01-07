@@ -1,0 +1,170 @@
+# Platform Stack - Core Infrastructure Services
+# Deploy to: Platform VM (Proxmox) or Unraid
+# Includes: Portainer, Nginx Proxy Manager, Technitium DNS, Uptime Kuma
+#
+# Prerequisites:
+#   - Copy .env.example to .env and fill in values
+#   - Create required directories (see docs/runbook.md)
+#   - Ports 80, 443, 9443 must be available
+
+services:
+  # =============================================================================
+  # Portainer - Container Management
+  # =============================================================================
+  portainer:
+    image: portainer/portainer-ce:2.21.4
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_HTTPS_PORT:-9443}:9443"  # HTTPS UI
+      - "${PORTAINER_HTTP_PORT:-9000}:9000"   # HTTP UI (optional, disable in prod)
+      - "${PORTAINER_EDGE_PORT:-8000}:8000"   # Edge Agent tunnel
+    volumes:
+      - portainer-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-America/New_York}
+    networks:
+      - platform-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # =============================================================================
+  # Nginx Proxy Manager - Reverse Proxy with Let's Encrypt
+  # =============================================================================
+  npm:
+    image: jc21/nginx-proxy-manager:2.12.1
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    depends_on:
+      npm-db:
+        condition: service_healthy
+    ports:
+      - "${NPM_HTTP_PORT:-80}:80"
+      - "${NPM_HTTPS_PORT:-443}:443"
+      - "${NPM_ADMIN_PORT:-81}:81"  # Admin UI
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - DB_MYSQL_HOST=npm-db
+      - DB_MYSQL_PORT=3306
+      - DB_MYSQL_USER=${NPM_DB_USER:-npm}
+      - DB_MYSQL_PASSWORD=${NPM_DB_PASSWORD:?NPM_DB_PASSWORD required}
+      - DB_MYSQL_NAME=${NPM_DB_NAME:-npm}
+      - DISABLE_IPV6=${NPM_DISABLE_IPV6:-true}
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - platform-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:81/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  npm-db:
+    image: mariadb:10.11
+    container_name: npm-db
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - MYSQL_ROOT_PASSWORD=${NPM_DB_ROOT_PASSWORD:?NPM_DB_ROOT_PASSWORD required}
+      - MYSQL_DATABASE=${NPM_DB_NAME:-npm}
+      - MYSQL_USER=${NPM_DB_USER:-npm}
+      - MYSQL_PASSWORD=${NPM_DB_PASSWORD:?NPM_DB_PASSWORD required}
+    volumes:
+      - npm-db-data:/var/lib/mysql
+    networks:
+      - platform-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # =============================================================================
+  # Technitium DNS Server
+  # WARNING: Port 53 conflicts with systemd-resolved on Ubuntu.
+  #          Run: sudo systemctl disable --now systemd-resolved
+  #          Or configure resolved to use a different port.
+  # =============================================================================
+  technitium:
+    image: technitium/dns-server:13.2.0
+    container_name: technitium-dns
+    restart: unless-stopped
+    ports:
+      # DNS ports
+      - "${TECHNITIUM_DNS_PORT:-53}:53/udp"
+      - "${TECHNITIUM_DNS_PORT:-53}:53/tcp"
+      # Admin web UI
+      - "${TECHNITIUM_ADMIN_PORT:-5380}:5380"
+      # DNS-over-HTTPS (optional)
+      - "${TECHNITIUM_DOH_PORT:-443}:443/udp"   # HTTP/3 (QUIC)
+      # - "853:853/tcp"   # DNS-over-TLS (uncomment if needed)
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - DNS_SERVER_DOMAIN=${TECHNITIUM_DOMAIN:-dns.local}
+      - DNS_SERVER_ADMIN_PASSWORD=${TECHNITIUM_ADMIN_PASSWORD:?TECHNITIUM_ADMIN_PASSWORD required}
+    volumes:
+      - technitium-data:/etc/dns
+    networks:
+      - platform-net
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5380/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # =============================================================================
+  # Uptime Kuma - Status Monitoring
+  # =============================================================================
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.15
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "${KUMA_PORT:-3001}:3001"
+    volumes:
+      - kuma-data:/app/data
+    environment:
+      - TZ=${TZ:-America/New_York}
+    networks:
+      - platform-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/info', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  platform-net:
+    driver: bridge
+    name: platform-net
+
+# =============================================================================
+# Volumes - Named volumes with optional bind mount overrides
+# For Unraid: Override in .env or use docker-compose.override.yml
+# =============================================================================
+volumes:
+  portainer-data:
+    name: portainer-data
+  npm-data:
+    name: npm-data
+  npm-letsencrypt:
+    name: npm-letsencrypt
+  npm-db-data:
+    name: npm-db-data
+  technitium-data:
+    name: technitium-data
+  kuma-data:
+    name: kuma-data

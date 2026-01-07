@@ -1,0 +1,5 @@
+# Placeholder for Grafana dashboard JSON files
+# Download dashboards from grafana.com and place here
+# Recommended:
+#   - Node Exporter Full: https://grafana.com/grafana/dashboards/1860
+#   - Docker/cAdvisor: https://grafana.com/grafana/dashboards/893

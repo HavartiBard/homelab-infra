@@ -1,0 +1,89 @@
+# GPU Worker Stack - AI/ML Workloads
+# Deploy to: WSL2 on Windows gaming PCs (NVIDIA GPU) or Linux GPU hosts
+# Includes: Ollama (LLM inference), Open WebUI (chat interface)
+#
+# Prerequisites:
+#   - NVIDIA GPU with drivers installed
+#   - nvidia-container-toolkit installed and configured
+#   - Docker configured to use nvidia runtime
+#   - Copy .env.example to .env and fill in values
+#
+# For CPU-only fallback: Remove 'deploy.resources.reservations' sections
+
+services:
+  # =============================================================================
+  # Ollama - Local LLM Inference Server
+  # =============================================================================
+  ollama:
+    image: ollama/ollama:0.4.7
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-*}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-1}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}
+    networks:
+      - gpu-worker-net
+    # GPU Configuration - Comment out this section for CPU-only mode
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # =============================================================================
+  # Open WebUI - Chat Interface for Ollama
+  # =============================================================================
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:0.4.8
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "${WEBUI_PORT:-8080}:8080"
+    volumes:
+      - webui-data:/app/backend/data
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-}
+      - WEBUI_AUTH=${WEBUI_AUTH:-true}
+      - ENABLE_SIGNUP=${WEBUI_ENABLE_SIGNUP:-false}
+      - DEFAULT_USER_ROLE=${WEBUI_DEFAULT_USER_ROLE:-pending}
+      - ENABLE_COMMUNITY_SHARING=${WEBUI_ENABLE_COMMUNITY_SHARING:-false}
+    networks:
+      - gpu-worker-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  gpu-worker-net:
+    driver: bridge
+    name: gpu-worker-net
+
+volumes:
+  ollama-data:
+    name: ollama-data
+  webui-data:
+    name: webui-data

@@ -1,0 +1,12 @@
+# GPU Worker Stack - CPU-Only Override
+# Use this file when no GPU is available
+# Deploy with: docker compose -f compose.yml -f compose.cpu.yml up -d
+#
+# This override removes GPU reservations for CPU-only operation
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices: []
