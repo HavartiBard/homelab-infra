@@ -1,0 +1,61 @@
+---
+# =============================================================================
+# Deploy Ollama on Windows Docker Desktop
+# =============================================================================
+- name: Deploy Ollama LLM Provider on Windows
+  hosts: windows-gpu
+  vars:
+    ollama_dir: "C:\\ollama"
+    compose_file: "{{ ollama_dir }}\\docker-compose.yml"
+    env_file: "{{ ollama_dir }}\\.env"
+    
+  tasks:
+    - name: Create Ollama directory
+      win_file:
+        path: "{{ ollama_dir }}"
+        state: directory
+    
+    - name: Copy docker-compose.yml
+      win_copy:
+        src: ../../docker/ollama-windows/docker-compose.yml
+        dest: "{{ compose_file }}"
+    
+    - name: Copy .env.example if .env doesn't exist
+      win_stat:
+        path: "{{ env_file }}"
+      register: env_stat
+    
+    - name: Copy .env.example
+      win_copy:
+        src: ../../docker/ollama-windows/.env.example
+        dest: "{{ env_file }}"
+      when: not env_stat.stat.exists
+    
+    - name: Deploy Ollama stack using Docker Compose
+      win_shell: |
+        cd "{{ ollama_dir }}"
+        docker-compose up -d
+    
+    - name: Wait for Ollama to be healthy
+      win_uri:
+        url: "http://localhost:11434/api/tags"
+        method: GET
+        timeout: 60
+      register: result
+      until: result.status_code == 200
+      retries: 10
+      delay: 10
+    
+    - name: Pull recommended models
+      win_shell: |
+        docker exec ollama-windows ollama pull llama3.2:3b
+        docker exec ollama-windows ollama pull qwen2.5-coder:7b
+      ignore_errors: true  # Models can be pulled later
+    
+    - name: Display deployment info
+      debug:
+        msg: |
+          Ollama deployed successfully!
+          API: http://{{ ansible_host }}:11434
+          Health: http://{{ ansible_host }}:11434/api/tags
+          To pull models: docker exec ollama-windows ollama pull <model>

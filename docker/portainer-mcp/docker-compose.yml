@@ -1,0 +1,37 @@
+# Portainer MCP Server
+# Exposes Portainer management via MCP protocol for AI assistants
+version: '3.8'
+
+services:
+  portainer-mcp:
+    build:
+      context: .
+      args:
+        VERSION: "0.6.0"
+        ARCH: "amd64"
+    image: ghcr.io/havartibard/portainer-mcp:latest
+    container_name: portainer-mcp
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_MCP_PORT:-6972}:6972"
+    command:
+      - "-server"
+      - "${PORTAINER_SERVER:-192.168.20.14:9000}"
+      - "-token"
+      - "${PORTAINER_TOKEN}"
+      - "-transport"
+      - "streamable-http"
+      - "-port"
+      - "6972"
+      - "-disable-version-check"
+    environment:
+      - TZ=${TZ:-America/New_York}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6972/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "service=portainer-mcp"
+      - "role=mcp-server"

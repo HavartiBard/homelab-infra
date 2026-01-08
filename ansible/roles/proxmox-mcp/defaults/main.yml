@@ -1,5 +1,5 @@
 ---
-proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:feat-containerize"
+proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:latest"
 proxmox_mcp_container_name: "mcp-proxmox"
 
 proxmox_mcp_appdata_dir: "/mnt/user/appdata/mcp-proxmox"

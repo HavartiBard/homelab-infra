@@ -1,0 +1,41 @@
+# Portainer MCP Server Stack
+# Deploy to Unraid for multi-environment access
+version: '3.8'
+
+services:
+  portainer-mcp:
+    image: alpine:3.20
+    container_name: portainer-mcp
+    restart: unless-stopped
+    ports:
+      - "6972:6972"
+    volumes:
+      - portainer-mcp-bin:/app
+    environment:
+      - TZ=America/New_York
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl ca-certificates
+        cd /app
+        if [ ! -f portainer-mcp ]; then
+          curl -Lo portainer-mcp.tar.gz https://github.com/portainer/portainer-mcp/releases/download/v0.6.0/portainer-mcp-v0.6.0-linux-amd64.tar.gz
+          tar -xzf portainer-mcp.tar.gz
+          chmod +x portainer-mcp
+          rm portainer-mcp.tar.gz
+        fi
+        exec /app/portainer-mcp \
+          -server "192.168.20.14:9000" \
+          -token "ptr_3FyXM8o1r8wUvv5iWORUikjSHFC6rjFQqvarpDxullg=" \
+          -transport "streamable-http" \
+          -port 6972 \
+          -disable-version-check
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6972/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  portainer-mcp-bin:

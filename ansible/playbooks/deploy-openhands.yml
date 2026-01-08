@@ -1,0 +1,73 @@
+---
+# =============================================================================
+# Deploy OpenHands on Unraid
+# =============================================================================
+- name: Deploy OpenHands Control Plane on Unraid
+  hosts: unraid
+  become: true
+  vars:
+    openhands_dir: "/mnt/user/appdata/openhands"
+    compose_file: "{{ openhands_dir }}/docker-compose.yml"
+    env_file: "{{ openhands_dir }}/.env"
+    
+  tasks:
+    - name: Create OpenHands directory
+      file:
+        path: "{{ openhands_dir }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../../docker/openhands-unraid/docker-compose.yml
+        dest: "{{ compose_file }}"
+        mode: '0644'
+    
+    - name: Copy config.toml
+      copy:
+        src: ../../docker/openhands-unraid/config/config.toml
+        dest: "{{ openhands_dir }}/config/config.toml"
+        mode: '0644'
+    
+    - name: Check if .env exists
+      stat:
+        path: "{{ env_file }}"
+      register: env_stat
+    
+    - name: Copy .env.example if .env doesn't exist
+      copy:
+        src: ../../docker/openhands-unraid/.env.example
+        dest: "{{ env_file }}"
+        mode: '0600'
+      when: not env_stat.stat.exists
+    
+    - name: Verify .env configuration
+      fail:
+        msg: "Please configure OPENHANDS_SECRET_KEY and OLLAMA_HOST_IP in {{ env_file }}"
+      when: env_stat.stat.exists
+      failed_when: >
+        lookup('envfile', env_file).OPENHANDS_SECRET_KEY == 'your-secret-key-here-32-bytes-hex' or
+        lookup('envfile', env_file).OLLAMA_HOST_IP == '192.168.1.XXX'
+    
+    - name: Deploy OpenHands stack
+      docker_compose:
+        project_src: "{{ openhands_dir }}"
+        state: present
+    
+    - name: Wait for OpenHands to be healthy
+      uri:
+        url: "http://{{ ansible_host }}:3000/health"
+        method: GET
+        timeout: 60
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 10
+    
+    - name: Display deployment info
+      debug:
+        msg: |
+          OpenHands deployed successfully!
+          Web UI: http://{{ ansible_host }}:3000
+          Health: http://{{ ansible_host }}:3000/health
+          Config: {{ openhands_dir }}/config/config.toml

@@ -1,0 +1,49 @@
+# Ollama on Windows - Portainer Stack
+# Import this into Portainer on your Windows Docker Desktop
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:0.4.7
+    container_name: ollama-windows
+    restart: unless-stopped
+    ports:
+      # Bind to all interfaces for LAN access
+      - "11434:11434"
+    volumes:
+      - ollama-windows-data:/root/.ollama
+    environment:
+      - TZ=America/New_York
+      # Critical: Bind to all interfaces
+      - OLLAMA_HOST=0.0.0.0
+      # Allow connections from OpenHands on Unraid
+      - OLLAMA_ORIGINS=*
+      # Performance tuning for long-running tasks
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=1
+      # Keep models loaded for overnight runs
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_MAX_QUEUE=512
+    # GPU Configuration - NVIDIA RTX 4080
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=false"
+      - "service=ollama"
+      - "role=llm-provider"
+
+volumes:
+  ollama-windows-data:
+    name: ollama-windows-data
+    driver: local

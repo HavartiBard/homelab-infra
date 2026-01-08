@@ -1,0 +1,4 @@
+---
+- name: Restart portainer-mcp container
+  ansible.builtin.raw: docker restart {{ portainer_mcp_container_name }}
+  listen: "Restart portainer-mcp container"

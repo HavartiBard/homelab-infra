@@ -1,0 +1,66 @@
+# Ollama on Windows Docker Desktop - GPU LLM Provider
+# Architecture: Exposes Ollama to LAN for OpenHands on Unraid
+# - Binds to 0.0.0.0:11434 for LAN access
+# - GPU passthrough for NVIDIA cards
+# - Optimized for overnight/long-running inference
+#
+# Prerequisites:
+#   - Windows with Docker Desktop
+#   - NVIDIA GPU with latest drivers
+#   - WSL2 with GPU support enabled
+#   - Copy .env.example to .env and configure
+#
+# Deployment:
+#   docker-compose up -d
+
+services:
+  # =============================================================================
+  # Ollama - LLM Inference Server for LAN Clients
+  # =============================================================================
+  ollama:
+    image: ollama/ollama:0.4.7
+    container_name: ollama-windows
+    restart: unless-stopped
+    ports:
+      # Bind to all interfaces for LAN access
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - TZ=${TZ:-America/New_York}
+      # Critical: Bind to all interfaces
+      - OLLAMA_HOST=0.0.0.0
+      # Allow connections from OpenHands on Unraid
+      - OLLAMA_ORIGINS=*
+      # Performance tuning for long-running tasks
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}
+      # Keep models loaded for overnight runs
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-24h}
+      # GPU memory management
+      - OLLAMA_MAX_QUEUE=${OLLAMA_MAX_QUEUE:-512}
+    # GPU Configuration - NVIDIA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Optional: Add labels for identification
+    labels:
+      - "traefik.enable=false"
+      - "service=ollama"
+      - "role=llm-provider"
+
+volumes:
+  ollama-data:
+    name: ollama-windows-data
+    # Use Docker Desktop's default volume driver
+    driver: local

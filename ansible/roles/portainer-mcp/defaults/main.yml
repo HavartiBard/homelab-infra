@@ -1,0 +1,21 @@
+---
+# Portainer MCP default variables
+
+# Container settings
+portainer_mcp_image: "ghcr.io/havartibard/portainer-mcp:latest"
+portainer_mcp_container_name: "portainer-mcp"
+portainer_mcp_port: 6972
+
+# Paths
+portainer_mcp_appdata_dir: "/mnt/user/appdata/portainer-mcp"
+
+# Server settings
+portainer_mcp_host: "0.0.0.0"
+portainer_mcp_transport: "streamable-http"
+
+# Portainer connection (override in playbook or vars file)
+portainer_server: "192.168.20.14:9000"
+portainer_token: ""
+
+# Timezone
+timezone: "America/New_York"

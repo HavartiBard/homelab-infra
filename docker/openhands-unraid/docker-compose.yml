@@ -1,0 +1,59 @@
+# OpenHands on Unraid - Control Plane
+# Architecture: LAN-reachable with deterministic networking
+# - OpenHands server: port 3000 on LAN
+# - Agent containers: use oh-net bridge network
+# - LLM provider: Ollama on Windows GPU host via LAN IP
+#
+# Prerequisites:
+#   - Copy .env.example to .env and configure
+#   - Ensure config/config.toml is present
+#   - Docker socket mounted for agent spawning
+
+services:
+  # =============================================================================
+  # OpenHands - AI Agent Control Plane
+  # =============================================================================
+  openhands:
+    image: ghcr.io/all-hands-ai/openhands:0.28.1
+    container_name: openhands
+    restart: unless-stopped
+    ports:
+      - "${OPENHANDS_PORT:-3000}:3000"
+    volumes:
+      # Persistent OpenHands workspace
+      - openhands-data:/openhands
+      # Docker socket for spawning agent containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Configuration (read-only as required)
+      - ./config/config.toml:/openhands/config/config.toml:ro
+    environment:
+      - TZ=${TZ:-America/New_York}
+      # Security
+      - OH_SECRET_KEY=${OPENHANDS_SECRET_KEY}
+      # Runtime configuration
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=${SANDBOX_RUNTIME_CONTAINER_IMAGE:-ghcr.io/all-hands-ai/runtime:0.28.1}
+      # Disable default MCP that uses host.docker.internal
+      - DISABLE_DEFAULT_MCP=true
+    networks:
+      - oh-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  # Dedicated bridge network for OpenHands and its agents
+  oh-net:
+    driver: bridge
+    name: oh-net
+    ipam:
+      config:
+        # Reserve a small subnet for OpenHands containers
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+volumes:
+  openhands-data:
+    name: openhands-data

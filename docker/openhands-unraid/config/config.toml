@@ -1,0 +1,104 @@
+# =============================================================================
+# OpenHands Configuration - Unraid Deployment
+# =============================================================================
+# This file contains ALL non-secret OpenHands configuration
+# Mounted read-only at /openhands/config/config.toml
+# No host.docker.internal references - LAN IPs only
+
+[core]
+# OpenHands server configuration
+server_host = "0.0.0.0"
+server_port = 3000
+
+# =============================================================================
+# LLM Configuration - Ollama on Windows GPU Host
+# =============================================================================
+[llm]
+# LLM provider: ollama
+provider = "ollama"
+model = "${OLLAMA_MODEL:-llama3.2:3b}"
+
+# Ollama server URL - Windows GPU host on LAN
+# IMPORTANT: Use actual LAN IP, not Docker hostnames
+base_url = "${OLLAMA_HOST_IP:-http://192.168.1.100}:11434/v1"
+
+# LLM parameters optimized for autonomous work
+temperature = 0.1
+max_tokens = 8192
+timeout = 300  # 5 minutes - increased for long-running tasks
+
+# =============================================================================
+# Sandbox / Runtime Configuration
+# =============================================================================
+[sandbox]
+# Runtime container image (matches docker-compose env)
+runtime_image = "${SANDBOX_RUNTIME_CONTAINER_IMAGE:-ghcr.io/all-hands-ai/runtime:0.28.1}"
+
+# Sandbox limits for long-running stability
+max_iterations = 100
+timeout_seconds = 3600  # 1 hour per action
+
+# Security settings
+enable_security = true
+allow_file_access = true
+working_dir = "/openhands/workspace"
+
+# =============================================================================
+# Agent Configuration
+# =============================================================================
+[agent]
+# Default agent settings
+default_agent = "CodeActAgent"
+max_consecutive_auto_reply = 50
+
+# =============================================================================
+# MCP Configuration - DISABLED
+# =============================================================================
+# MCP is disabled to prevent host.docker.internal usage
+# Enable manually if you have LAN-reachable MCP servers
+[mcp]
+enabled = false
+# servers = [
+#   { name = "my-mcp", url = "http://192.168.1.XXX:8080" }
+# ]
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+[logging]
+level = "INFO"
+enable_file_logging = true
+log_file = "/openhands/logs/openhands.log"
+max_log_size = "100MB"
+max_log_files = 5
+
+# =============================================================================
+# Memory and Performance
+# =============================================================================
+[memory]
+max_memory_mb = 4096
+conversation_history_limit = 100
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+[network]
+# OpenHands will spawn agents on the oh-net bridge network
+# Agents will use this network to communicate back to OpenHands
+agent_network = "oh-net"
+openhands_address = "http://172.20.0.2:3000"  # Expected IP on oh-net
+
+# =============================================================================
+# Stability and Reliability
+# =============================================================================
+[reliability]
+# Retry configuration
+max_retries = 3
+retry_delay = 5
+
+# Health check settings
+health_check_interval = 30
+health_check_timeout = 10
+
+# Graceful shutdown
+shutdown_timeout = 60

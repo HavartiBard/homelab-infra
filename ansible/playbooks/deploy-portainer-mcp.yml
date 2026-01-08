@@ -1,0 +1,30 @@
+---
+# Deploy Portainer MCP Server to Unraid
+- name: Deploy Portainer MCP
+  hosts: unraid
+  gather_facts: false
+
+  vars:
+    portainer_server: "192.168.20.14:9000"
+    portainer_token: "{{ lookup('env', 'PORTAINER_TOKEN') }}"
+    timezone: "America/Phoenix"
+
+  roles:
+    - portainer-mcp
+
+  post_tasks:
+    - name: Display access information
+      ansible.builtin.debug:
+        msg: |
+          Portainer MCP deployed successfully!
+          MCP URL: http://{{ ansible_host }}:6972
+          Transport: streamable-http
+          
+          Configure your IDE with:
+          {
+            "mcpServers": {
+              "portainer": {
+                "url": "http://{{ ansible_host }}:6972/mcp"
+              }
+            }
+          }
