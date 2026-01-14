@@ -4,6 +4,9 @@ proxmox_mcp_container_name: "mcp-proxmox"
 
 proxmox_mcp_appdata_dir: "/mnt/user/appdata/mcp-proxmox"
 proxmox_mcp_env_file: "{{ proxmox_mcp_appdata_dir }}/.env"
+# Host port for the MCP service (container listens on proxmox_mcp_container_port)
+proxmox_mcp_port: "6974"
+proxmox_mcp_container_port: "6971"
 
 proxmox_host: ""
 proxmox_port: "8006"

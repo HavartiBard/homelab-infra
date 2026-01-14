@@ -1,0 +1,16 @@
+[Unit]
+Description=VS Code Remote Tunnel (dev-vm)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+Environment=VSCODE_AGENT_FOLDER=%h/.vscode-tunnel
+ExecStart=%h/.local/share/vscode-cli/bin/code tunnel --accept-server-license-terms --name dev-vm --disable-telemetry
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -48,8 +48,9 @@
     
     - name: Pull recommended models
       win_shell: |
-        docker exec ollama-windows ollama pull llama3.2:3b
-        docker exec ollama-windows ollama pull qwen2.5-coder:7b
+        docker exec ollama-windows ollama pull llama3.3:70b
+        docker exec ollama-windows ollama pull qwen2.5-coder:32b
+        docker exec ollama-windows ollama pull deepseek-coder-v2:16b
       ignore_errors: true  # Models can be pulled later
     
     - name: Display deployment info
