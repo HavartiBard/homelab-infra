@@ -1,0 +1,73 @@
+---
+- name: Provision DNS/DHCP LXCs on Proxmox
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - ../group_vars/all/dns_dhcp.yml
+
+  pre_tasks:
+    - name: Assert Proxmox API token secret is provided
+      ansible.builtin.assert:
+        that:
+          - dns_dhcp_proxmox.api_token_secret | length > 0
+        fail_msg: "Set PROXMOX_API_TOKEN_SECRET from 1Password before running."
+
+  tasks:
+    - name: Ensure DNS/DHCP LXCs exist (pct create) and configured
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if ! pct status {{ item.vmid }} >/dev/null 2>&1; then
+          pct create {{ item.vmid }} {{ dns_dhcp_lxc_templates[item.node] }} \
+            --hostname {{ item.name }} \
+            --cores {{ item.cores | default(dns_dhcp_vm_defaults.cores) }} \
+            --memory {{ item.memory | default(dns_dhcp_vm_defaults.memory) }} \
+            --swap {{ dns_dhcp_vm_defaults.swap | default(512) }} \
+            --unprivileged 0 \
+            --features nesting=1,keyctl=1 \
+            --rootfs {{ dns_dhcp_vm_defaults.storage }}:{{ dns_dhcp_vm_defaults.disk_gb | default(8) }} \
+            --storage {{ dns_dhcp_vm_defaults.storage }} \
+            --net0 name=eth0,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=1,ip={{ item.ips.vlan1 }} \
+            --net1 name=eth1,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=20,ip={{ item.ips.vlan20 }},gw={{ dns_dhcp_gateways.vlan20 }} \
+            --net2 name=eth2,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=30,ip={{ item.ips.vlan30 }} \
+            {{ ('--net3 name=eth3,bridge=' + dns_dhcp_vm_defaults.bridge + ',tag=40,ip=' + item.ips.vlan40) if (dns_dhcp_vm_defaults.vlan40_for_adguard and item.ips.vlan40 is defined) else '' }} \
+            --nameserver {{ dns_dhcp_vm_defaults.nameserver_bootstrap }} \
+            --onboot 1 --startup order=20
+        else
+          pct set {{ item.vmid }} \
+            --cores {{ item.cores | default(dns_dhcp_vm_defaults.cores) }} \
+            --memory {{ item.memory | default(dns_dhcp_vm_defaults.memory) }} \
+            --swap {{ dns_dhcp_vm_defaults.swap | default(512) }} \
+            --net0 name=eth0,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=1,ip={{ item.ips.vlan1 }} \
+            --net1 name=eth1,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=20,ip={{ item.ips.vlan20 }},gw={{ dns_dhcp_gateways.vlan20 }} \
+            --net2 name=eth2,bridge={{ dns_dhcp_vm_defaults.bridge }},tag=30,ip={{ item.ips.vlan30 }} \
+            {{ ('--net3 name=eth3,bridge=' + dns_dhcp_vm_defaults.bridge + ',tag=40,ip=' + item.ips.vlan40) if (dns_dhcp_vm_defaults.vlan40_for_adguard and item.ips.vlan40 is defined) else '' }} \
+            --nameserver {{ dns_dhcp_vm_defaults.nameserver_bootstrap }} \
+            --onboot 1 --startup order=20
+        fi
+        pct start {{ item.vmid }} || true
+        if [ -n "{{ item.tags | default('') }}" ]; then
+          pct set {{ item.vmid }} --tags "{{ item.tags }}"
+        fi
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Ensure LXCs run unconfined AppArmor profile for Docker
+      ansible.builtin.shell: |
+        set -euo pipefail
+        conf="/etc/pve/lxc/{{ item.vmid }}.conf"
+        if ! grep -q '^lxc.apparmor.profile: unconfined$' "$conf"; then
+          echo 'lxc.apparmor.profile: unconfined' >> "$conf"
+          pct restart {{ item.vmid }} || true
+        fi
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }}"

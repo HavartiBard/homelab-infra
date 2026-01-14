@@ -1,0 +1,35 @@
+# adguardhome-sync configuration
+# Syncs from origin (agh1) to replicas (agh2)
+
+cron: "*/5 * * * *"
+runOnStart: true
+continueOnError: false
+
+origin:
+  url: "http://{{ adguard_sync_origin }}:{{ adguard_http_port }}"
+  username: "{{ adguard_admin_user }}"
+  password: "{{ adguard_admin_password }}"
+  insecureSkipVerify: true
+
+replicas:
+{% for replica in adguard_sync_replicas %}
+  - url: "http://{{ replica }}:{{ adguard_http_port }}"
+    username: "{{ adguard_admin_user }}"
+    password: "{{ adguard_admin_password }}"
+    insecureSkipVerify: true
+{% endfor %}
+
+features:
+  dns:
+    accessLists: true
+    serverConfig: true
+    rewrites: true
+  dhcp:
+    serverConfig: false
+    staticLeases: false
+  generalSettings: true
+  queryLogConfig: true
+  statsConfig: true
+  clientSettings: true
+  services: true
+  filters: true

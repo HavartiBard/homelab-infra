@@ -1,0 +1,47 @@
+---
+- name: "Ensure Technitium data directory exists"
+  ansible.builtin.file:
+    path: "{{ technitium_data_dest }}"
+    state: directory
+    owner: "{{ technitium_owner }}"
+    group: "{{ technitium_group }}"
+    mode: "0755"
+
+- name: "Check Technitium data source path is set and exists"
+  ansible.builtin.stat:
+    path: "{{ technitium_data_src | default('') }}"
+  register: technitium_src_stat
+  failed_when: technitium_data_src is not defined or technitium_data_src is none or not technitium_src_stat.stat.exists
+  delegate_to: localhost
+  run_once: true
+  become: false
+  when: technitium_data_src is not none
+
+- name: "Sync Technitium data from control to target (rsync)"
+  ansible.builtin.synchronize:
+    src: "{{ technitium_data_src }}/"
+    dest: "{{ technitium_data_dest }}/"
+    archive: true
+    rsync_opts: >-
+      {{
+        ['--prune-empty-dirs']
+        + (technitium_rsync_include | default([]) | map('regex_replace','^(.*)$','--include=\\1') | list)
+        + (technitium_rsync_exclude | default([]) | map('regex_replace','^(.*)$','--exclude=\\1') | list)
+        + ['--exclude=*']
+        + (technitium_rsync_delete | bool | ternary(['--delete','--delete-excluded'], []))
+      }}
+  when: technitium_data_src is not none
+
+- name: "Ensure ownership on synced files"
+  ansible.builtin.file:
+    path: "{{ technitium_data_dest }}"
+    owner: "{{ technitium_owner }}"
+    group: "{{ technitium_group }}"
+    recurse: true
+  when: technitium_data_src is not none
+
+- name: "Restart Technitium container"
+  ansible.builtin.shell: "{{ technitium_restart_cmd }}"
+  args:
+    executable: /bin/bash
+  when: technitium_restart | bool

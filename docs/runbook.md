@@ -761,6 +761,56 @@ curl -v https://<platform-vm-ip>:8000
 
 ---
 
+## Homelab Tests
+
+### DHCP VLAN smoke test (non-disruptive, netns)
+Quick DHCP validation across VLANs using a temporary network namespace on a trunked Proxmox host. Does not touch host routes or DNS.
+
+**Prereqs:** Run on a trunk port (enp1s0 here) that carries VLANs 1/20/30 tagged. Requires `dhclient` on the host.
+
+```bash
+sudo ip netns add dhcp-test
+for vid in 1 20 30; do
+  sudo ip link add link enp1s0 name enp1s0.${vid}-test type vlan id ${vid}
+  sudo ip link set enp1s0.${vid}-test netns dhcp-test
+  sudo ip netns exec dhcp-test ip link set lo up
+  sudo ip netns exec dhcp-test ip link set enp1s0.${vid}-test up
+  echo "Testing VLAN ${vid}"
+  sudo ip netns exec dhcp-test timeout 15 dhclient -v -1 -sf /bin/true enp1s0.${vid}-test
+  sudo ip netns exec dhcp-test ip addr show enp1s0.${vid}-test
+  sudo ip netns exec dhcp-test dhclient -r enp1s0.${vid}-test || true
+  sudo ip netns exec dhcp-test ip link set enp1s0.${vid}-test down
+  sudo ip link delete enp1s0.${vid}-test
+done
+sudo ip netns del dhcp-test
+```
+
+**Success criteria:** Each VLAN shows a DHCPOFFER/ACK and a lease (e.g., from 192.168.X.1). The `execve (/bin/true)` warning is harmless.
+
+**Adjustments:** Swap `enp1s0` for your trunk NIC; add/remove VLAN IDs in the loop as needed (e.g., include 40).
+
+---
+
+### Technitium DNS config checklist (tt1 primary, tt2 secondary)
+Primary: tt1 (192.168.1.2/20.2/30.2) = `dns1`. Secondary: tt2 (192.168.1.3/20.3/30.3) = `dns2`.
+
+- Zones (on tt1 as primary): keep apex `klsll.com` for vanity/external; add internal subdomains per VLAN: `lan.klsll.com` (VLAN1), `lab.klsll.com` (VLAN20), `iot.klsll.com` (VLAN30). Reverse zones: `1.168.192.in-addr.arpa`, `20.168.192.in-addr.arpa`, `30.168.192.in-addr.arpa` (add 40 if used). SOA MNAME `dns1.klsll.com`, RNAME admin email. NS: `dns1.klsll.com`, `dns2.klsll.com`.
+- Replication: generate TSIG on tt1, allow AXFR/IXFR + NOTIFY to tt2 using that TSIG. On tt2 add secondary zones pointing to tt1 with the same TSIG; allow NOTIFY from tt1.
+- DHCP (authoritative on tt1 only to avoid split-brain):
+  - VLAN1 192.168.1.0/24 → `lan.klsll.com`: pool 192.168.1.100–199, lease 24h, router 192.168.1.1, DNS 192.168.1.2,192.168.1.3, set Option 15 to `lan.klsll.com`.
+  - VLAN20 192.168.20.0/24 → `lab.klsll.com`: pool 192.168.20.100–199, lease 24h, router 192.168.20.1, DNS 192.168.1.2,192.168.1.3 (or 20.2/20.3), Option 15 `lab.klsll.com`.
+  - VLAN30 192.168.30.0/24 → `iot.klsll.com`: pool 192.168.30.100–199, lease 24h, router 192.168.30.1, DNS 192.168.1.2,192.168.1.3 (or 30.2/30.3), Option 15 `iot.klsll.com`.
+  - VLAN40 (guest, if used): pool 192.168.40.50–150, lease 8h, router 192.168.40.1, DNS 192.168.1.2,192.168.1.3 (or external 1.1.1.1 if isolating guest).
+  - Enable DHCP → “Update DNS records” and “Use client supplied hostname”; enable PTRs; allow IP-based names if hostname missing. Reservations outside pools (e.g., .10–.49) for core infra (Unraid 192.168.20.14, Proxmox nodes, switches/APs, printers).
+- Records: create `dns1.klsll.com` → tt1 IPs; `dns2.klsll.com` → tt2 IPs; add A/AAAA/CNAME for infra/services within the appropriate subdomains; PTRs in reverse zones. Enable recursion for LAN only; set upstreams (e.g., Cloudflare/Quad9); enable DNSSEC; restrict admin UI to mgmt/VPN; restrict AXFR to tt2 via TSIG.
+- Validation: `dig @192.168.1.2 lan.klsll.com SOA`; `dig @192.168.1.3 lan.klsll.com SOA` (serial should match tt1); DHCP netns test (above) should get offers from tt1 with names under the subdomains once DHCP is enabled.
+
+**Ansible role for Technitium (file-based sync)**
+- Role: `ansible/roles/technitium` (syncs exported data dir to `/opt/dns/data/technitium`, optional restart).
+- Export tt1 data to a local path and set `technitium_data_src` explicitly (default is null to avoid accidental bulk copies). Keep secrets in vault/1Password, then run role against tt1/tt2. See `roles/technitium/README.md` for usage and defaults.
+
+---
+
 ## Maintenance Tasks
 
 ### Weekly
