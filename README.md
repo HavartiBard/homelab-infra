@@ -6,14 +6,25 @@ Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs,
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           LAN / VPN Only                             │
+│                           LAN / VPN Only                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│   Platform VM (Proxmox)          Endpoints                           │
+│   Platform VM (Proxmox)          Endpoints                          │
 │   ├── Portainer Server ◄──────── Unraid (Agent)                     │
 │   ├── Nginx Proxy Manager        Proxmox VMs (Agent)                │
-│   ├── Technitium DNS             WSL2 Workers (Edge Agent)          │
-│   └── Uptime Kuma                                                    │
+│   └── Uptime Kuma                WSL2 Workers (Edge Agent)          │
+│                                                                     │
+│   DNS Infrastructure (LXCs)      Query Flow                         │
+│   ├── agh1/agh2 (AdGuard)  ←──── Clients (DHCP-assigned DNS)        │
+│   │   └── .4/.5 per VLAN         ├── local → Technitium             │
+│   └── tt1/tt2 (Technitium)       └── external → DoH (CF/Quad9)      │
+│       └── .2/.3 per VLAN                                            │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+### DNS Query Flow
+```
+Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3)
+                          └─ external queries ──→ DoH (Cloudflare/Quad9)
 ```
 
 ## Quick Start
@@ -29,44 +40,49 @@ Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs,
 ```
 homelab-infra/
 ├── stacks/                    # Docker Compose stacks (source of truth)
-│   ├── platform/              # Core infra: Portainer, NPM, DNS, Kuma
+│   ├── platform/              # Core infra: Portainer, NPM, Kuma
 │   ├── gpu-worker/            # AI/ML: Ollama, Open WebUI
 │   └── monitoring/            # Observability: Prometheus, Grafana
 ├── ansible/                   # Ansible automation
 │   ├── playbooks/             # Deployment playbooks
-│   └── roles/                 # MCP server roles (unraid, proxmox, notion, etc.)
+│   ├── roles/                 # Service roles (adguard, technitium, MCP servers)
+│   ├── inventory/             # Host inventory (hosts.yml)
+│   └── group_vars/            # Host group variables
 ├── docker/                    # Standalone compose files and Dockerfiles
-├── configs/                   # IDE/tool configuration files
-├── portainer/                 # Portainer stack templates
 ├── scripts/                   # Helper scripts
-│   ├── install-portainer-agent.sh
-│   ├── install-edge-agent.sh
-│   ├── gaming-toggle.sh
-│   └── backup-volumes.sh
 └── docs/                      # Documentation
     ├── runbook.md             # Step-by-step deployment guide
-    ├── plan.md                # Architecture and design
-    ├── network-ports.md       # Port reference
-    └── checklist.md           # Deployment verification checklist
+    └── agents/                # Agent-specific runbooks
 ```
 
 ## Stacks
 
 | Stack | Purpose | Deploy To |
 |-------|---------|-----------|
-| **platform** | Portainer, NPM, Technitium DNS, Uptime Kuma | Platform VM |
+| **platform** | Portainer, NPM, Uptime Kuma | Platform VM |
 | **gpu-worker** | Ollama, Open WebUI | WSL2 GPU workers |
 | **monitoring** | Prometheus, Grafana, Node Exporter | Platform VM |
 
 ## Ansible Roles
 
 | Role | Purpose |
-|------|---------|  
+|------|---------|
+| **adguard** | Configure AdGuard Home (DNS filtering, upstreams) |
+| **technitium** | Configure Technitium DNS (zones, DHCP) |
 | **unraid-mcp** | Deploy Unraid MCP server container |
 | **proxmox-mcp** | Deploy Proxmox MCP server container |
 | **notion-mcp** | Deploy Notion MCP server container |
 | **onepassword-mcp** | Deploy 1Password MCP server container |
 | **homelab-mcp** | Deploy Homelab MCP aggregator container |
+
+## Ansible Playbooks
+
+| Playbook | Purpose |
+|----------|---------|
+| **provision-dns-dhcp.yml** | Create DNS/DHCP LXCs on Proxmox (tt1/tt2/agh1/agh2) |
+| **provision-dns-dhcp-services.yml** | Deploy Docker + Technitium/AdGuard in LXCs |
+| **deploy-adguard-config.yml** | Configure AdGuard upstreams and filters |
+| **deploy-*-mcp.yml** | Deploy MCP server containers to Unraid |
 
 ## Key Principles
 
@@ -109,10 +125,6 @@ docker compose up -d
 
 # Install Edge Agent for WSL2/remote workers
 ./scripts/install-edge-agent.sh <EDGE_ID> <EDGE_KEY>
-
-# Toggle GPU workloads for gaming
-./scripts/gaming-toggle.sh stop   # Before gaming
-./scripts/gaming-toggle.sh start  # After gaming
 
 # Backup Docker volumes
 ./scripts/backup-volumes.sh

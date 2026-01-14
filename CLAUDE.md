@@ -8,10 +8,22 @@ This is a Portainer-managed Docker infrastructure for a hybrid homelab spanning 
 
 ## Architecture
 
-- **Platform VM** (Proxmox): Portainer Server, Nginx Proxy Manager, Technitium DNS, Uptime Kuma
+- **Platform VM** (Proxmox): Portainer Server, Nginx Proxy Manager, Uptime Kuma
 - **Unraid**: Long-running services, MCP servers, Portainer Agent
 - **WSL2 GPU Workers**: Ollama, Open WebUI via Edge Agent
-- **Proxmox DNS VMs**: tt1/tt2 (Technitium primary/secondary), agh1/agh2 (AdGuard)
+- **DNS LXCs** (Proxmox): tt1/tt2 (Technitium), agh1/agh2 (AdGuard Home)
+
+### DNS Infrastructure
+
+IP plan: `192.168.{1,20,30}.{2,3}` for Technitium, `.{4,5}` for AdGuard (per-VLAN addresses).
+
+```
+Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3)
+                          └─ external queries ──→ DoH (Cloudflare/Quad9)
+```
+
+- **AdGuard Home** (agh1/agh2): Client-facing DNS with filtering, hands off local zones to Technitium
+- **Technitium** (tt1/tt2): Authoritative for `klsll.com` subdomains, DHCP server (primary on tt1)
 
 ## Key Commands
 
@@ -32,11 +44,17 @@ ansible-playbook playbooks/<playbook>.yml --check --diff --limit <host>
 ```
 
 Common playbooks and their required env vars:
+
+**DNS Infrastructure:**
+- `provision-dns-dhcp.yml` → `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET`
+- `provision-dns-dhcp-services.yml` → Same Proxmox vars + optional `TECHNITIUM_ADMIN_PASSWORD`
+- `deploy-adguard-config.yml` → `ADGUARD_ADMIN_PASSWORD` (or via `op read`)
+
+**MCP Servers:**
 - `deploy-unraid-mcp.yml` → `UNRAID_API_KEY`
 - `deploy-homelab-mcp.yml` → `ORBI_PASSWORD`
 - `deploy-onepassword-mcp.yml` → `OP_SERVICE_ACCOUNT_TOKEN`
 - `deploy-proxmox-mcp.yml` → Uses `group_vars/unraid/vault.yml`
-- `provision-dns-dhcp.yml` → `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET`
 
 ### Docker Compose Stacks
 
