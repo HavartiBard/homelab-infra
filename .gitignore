@@ -5,6 +5,14 @@
 !.env.example
 !**/.env.example
 
+# Virtual environments
+.venv*/
+
+# IDE/editor configs
+.vscode/
+.idea/
+ide_configs/
+
 # Config files with credentials
 docker/*-unraid.env
 
