@@ -17,17 +17,17 @@
     
     - name: Copy docker-compose.yml
       win_copy:
-        src: ../../docker/ollama-windows/docker-compose.yml
+        src: ../files/ollama/docker-compose.yml
         dest: "{{ compose_file }}"
-    
+
     - name: Copy .env.example if .env doesn't exist
       win_stat:
         path: "{{ env_file }}"
       register: env_stat
-    
+
     - name: Copy .env.example
       win_copy:
-        src: ../../docker/ollama-windows/.env.example
+        src: ../files/ollama/.env.example
         dest: "{{ env_file }}"
       when: not env_stat.stat.exists
     

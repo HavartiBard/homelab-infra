@@ -19,24 +19,24 @@
     
     - name: Copy docker-compose.yml
       copy:
-        src: ../../docker/openhands-unraid/docker-compose.yml
+        src: ../files/openhands/docker-compose.yml
         dest: "{{ compose_file }}"
         mode: '0644'
-    
+
     - name: Copy config.toml
       copy:
-        src: ../../docker/openhands-unraid/config/config.toml
+        src: ../files/openhands/config/config.toml
         dest: "{{ openhands_dir }}/config/config.toml"
         mode: '0644'
-    
+
     - name: Check if .env exists
       stat:
         path: "{{ env_file }}"
       register: env_stat
-    
+
     - name: Copy .env.example if .env doesn't exist
       copy:
-        src: ../../docker/openhands-unraid/.env.example
+        src: ../files/openhands/.env.example
         dest: "{{ env_file }}"
         mode: '0600'
       when: not env_stat.stat.exists
@@ -50,9 +50,7 @@
         lookup('envfile', env_file).OLLAMA_HOST_IP == '192.168.1.XXX'
     
     - name: Deploy OpenHands stack
-      docker_compose:
-        project_src: "{{ openhands_dir }}"
-        state: present
+      raw: "cd {{ openhands_dir }} && docker compose up -d"
     
     - name: Wait for OpenHands to be healthy
       uri:

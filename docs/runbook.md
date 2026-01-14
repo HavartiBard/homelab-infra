@@ -79,16 +79,16 @@ docker compose version
 docker run hello-world
 ```
 
-### 1.4 Disable systemd-resolved (Required for Technitium DNS)
+### 1.4 Configure DNS Resolution
 
 ```bash
-# Stop and disable systemd-resolved
-sudo systemctl disable --now systemd-resolved
-
-# Remove the symlink and create static resolv.conf
+# Point to your DNS servers (Technitium LXCs or fallback)
+# Note: Technitium/AdGuard are deployed to dedicated LXCs via Ansible,
+# not on Platform VM. See: ansible/playbooks/provision-dns-dhcp-services.yml
 sudo rm /etc/resolv.conf
-echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
-echo "nameserver 8.8.8.8" | sudo tee -a /etc/resolv.conf
+echo "nameserver 192.168.20.2" | sudo tee /etc/resolv.conf    # tt1
+echo "nameserver 192.168.20.3" | sudo tee -a /etc/resolv.conf # tt2
+echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf      # fallback
 
 # Prevent NetworkManager from overwriting
 sudo chattr +i /etc/resolv.conf
@@ -114,12 +114,6 @@ sudo ufw allow 443/tcp
 
 # NPM Admin (LAN only)
 sudo ufw allow from 192.168.0.0/16 to any port 81 proto tcp
-
-# DNS (LAN only)
-sudo ufw allow from 192.168.0.0/16 to any port 53
-
-# Technitium Admin (LAN only)
-sudo ufw allow from 192.168.0.0/16 to any port 5380 proto tcp
 
 # Monitoring UIs (LAN only)
 sudo ufw allow from 192.168.0.0/16 to any port 3000 proto tcp
@@ -154,7 +148,6 @@ nano .env
 **Required .env values to set:**
 - `NPM_DB_ROOT_PASSWORD` - MariaDB root password
 - `NPM_DB_PASSWORD` - NPM database user password
-- `TECHNITIUM_ADMIN_PASSWORD` - DNS admin password
 
 ```bash
 # Validate compose file
@@ -182,14 +175,15 @@ docker compose ps
 |---------|-----|---------------------|
 | Portainer | https://platform-vm-ip:9443 | Create admin on first login |
 | NPM | http://platform-vm-ip:81 | admin@example.com / changeme |
-| Technitium | http://platform-vm-ip:5380 | admin / (set in .env) |
 | Uptime Kuma | http://platform-vm-ip:3001 | Create admin on first login |
+
+**Note:** DNS (Technitium/AdGuard) runs on dedicated LXCs (tt1/tt2, agh1/agh2), not Platform VM.
+See Phase 6 or `ansible/playbooks/provision-dns-dhcp-services.yml` for DNS deployment.
 
 **First-time setup tasks:**
 1. **Portainer:** Create admin account, save password in 1Password
 2. **NPM:** Change default admin email/password immediately
-3. **Technitium:** Verify DNS is responding: `dig @<platform-vm-ip> google.com`
-4. **Uptime Kuma:** Create admin account
+3. **Uptime Kuma:** Create admin account
 
 ---
 
@@ -582,7 +576,8 @@ curl -X POST http://localhost:9090/-/reload
 2. Add monitors for:
    - Portainer: `https://localhost:9443`
    - NPM: `http://localhost:81`
-   - Technitium: `http://localhost:5380`
+   - Technitium (tt1): `http://192.168.20.2:5380`
+   - AdGuard (agh1): `http://192.168.20.4:3000`
    - Each agent endpoint
    - External services you care about
 
@@ -590,24 +585,52 @@ curl -X POST http://localhost:9090/-/reload
 
 ## Phase 6: DNS and Reverse Proxy Configuration
 
-### 6.1 Configure Technitium as LAN DNS
+### 6.1 Deploy DNS Infrastructure via Ansible
 
-1. Access Technitium at `http://platform-vm-ip:5380`
+DNS (Technitium/AdGuard) is provisioned to dedicated LXCs via Ansible, not Platform VM.
+
+```bash
+cd ansible
+
+# Required environment variables
+export PROXMOX_API_HOST="192.168.20.100"
+export PROXMOX_API_USER="root@pam"
+export PROXMOX_API_TOKEN_ID="root@pam!ansible"
+export PROXMOX_API_TOKEN_SECRET="<your-token-secret>"
+export TECHNITIUM_ADMIN_PASSWORD="<strong-password>"
+export LAB_ROOT_PASSWORD="<strong-password>"
+
+# Deploy DNS/DHCP LXCs + services
+ansible-playbook playbooks/provision-dns-dhcp.yml --check --diff
+ansible-playbook playbooks/provision-dns-dhcp.yml --diff
+
+# Deploy DNS service configs
+ansible-playbook playbooks/provision-dns-dhcp-services.yml --check --diff
+ansible-playbook playbooks/provision-dns-dhcp-services.yml --diff
+```
+
+See `ansible/playbooks/provision-dns-dhcp-services.yml` and `ansible/files/dns/` for compose templates.
+
+### 6.2 Configure Technitium as Authoritative DNS
+
+1. Access Technitium at `http://192.168.20.2:5380` (tt1) or `http://192.168.20.3:5380` (tt2)
 2. Go to **Zones** → **Add Zone**
-3. Create zone for your domain (e.g., `home.local`)
-4. Add A records for your services:
-   - `portainer.home.local` → Platform VM IP
-   - `npm.home.local` → Platform VM IP
-   - `grafana.home.local` → Platform VM IP
+3. Create zone for your domain (e.g., `klsll.com`)
+4. Add A records for your services across VLANs:
+   - `portainer.lab.klsll.com` → Platform VM IP
+   - `npm.lab.klsll.com` → Platform VM IP
    - etc.
 
-### 6.2 Configure Router DHCP
+See **Homelab Tests > Technitium DNS config checklist** (below) for detailed setup.
 
-Update your router's DHCP settings to use Platform VM as DNS:
-- Primary DNS: `<platform-vm-ip>`
-- Secondary DNS: `1.1.1.1` (fallback)
+### 6.3 Configure Router DHCP
 
-### 6.3 Configure NPM Proxy Hosts
+Update your router's DHCP settings to use Technitium/AdGuard as DNS:
+- Primary DNS: `192.168.20.2` (tt1 Technitium)
+- Secondary DNS: `192.168.20.3` (tt2 Technitium)
+- Fallback: `1.1.1.1` (external)
+
+### 6.4 Configure NPM Proxy Hosts
 
 1. Access NPM at `http://platform-vm-ip:81`
 2. Add Proxy Hosts for each service:
@@ -628,9 +651,12 @@ Update your router's DHCP settings to use Platform VM as DNS:
 - [ ] Docker running: `docker ps`
 - [ ] Portainer accessible: `https://platform-vm-ip:9443`
 - [ ] NPM accessible: `http://platform-vm-ip:81`
-- [ ] Technitium DNS responding: `dig @platform-vm-ip google.com`
 - [ ] Uptime Kuma accessible: `http://platform-vm-ip:3001`
 - [ ] Firewall active: `sudo ufw status`
+
+### DNS LXCs (tt1/tt2, agh1/agh2)
+- [ ] Technitium DNS responding: `dig @192.168.20.2 google.com` (tt1)
+- [ ] AdGuard accessible: `http://192.168.20.4:3000` (agh1)
 
 ### Agents
 - [ ] Unraid agent connected in Portainer
@@ -725,13 +751,17 @@ sudo netstat -tulpn | grep <port>
 
 ### DNS not resolving
 ```bash
-# Check Technitium is running
-docker logs technitium-dns
+# Check Technitium on tt1 LXC
+ssh root@192.168.20.2
+docker logs technitium
 
-# Test DNS directly
-dig @localhost example.com
+# Test DNS directly from tt1
+dig @192.168.20.2 example.com
 
-# Check /etc/resolv.conf
+# Or from tt2 (secondary)
+dig @192.168.20.3 example.com
+
+# Verify /etc/resolv.conf on your host
 cat /etc/resolv.conf
 ```
 
@@ -866,11 +896,12 @@ docker system prune -af
 
 ### Key URLs
 
-| Service | URL |
-|---------|-----|
-| Portainer | https://platform-vm:9443 |
-| NPM Admin | http://platform-vm:81 |
-| Technitium | http://platform-vm:5380 |
-| Grafana | http://platform-vm:3000 |
-| Uptime Kuma | http://platform-vm:3001 |
-| Prometheus | http://platform-vm:9090 |
+| Service | URL | Host |
+|---------|-----|------|
+| Portainer | https://platform-vm:9443 | Platform VM |
+| NPM Admin | http://platform-vm:81 | Platform VM |
+| Uptime Kuma | http://platform-vm:3001 | Platform VM |
+| Grafana | http://platform-vm:3000 | Platform VM |
+| Prometheus | http://platform-vm:9090 | Platform VM |
+| Technitium DNS | http://192.168.20.2:5380 | tt1 (LXC) |
+| AdGuard Home | http://192.168.20.4:3000 | agh1 (LXC) |

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Portainer-managed Docker infrastructure for a hybrid homelab spanning Unraid, Proxmox VMs, and WSL2 GPU workers. Git is the source of truth—Portainer deploys stacks from this repo.
+This is an Ansible-managed Docker infrastructure for a hybrid homelab spanning Unraid, Proxmox VMs/LXCs, and WSL2 GPU workers. Ansible is the primary deployment mechanism for services requiring dynamic configuration (MCP servers, DNS infrastructure). Portainer stacks in `stacks/` serve as reference deployments for simpler services.
 
 ## Architecture
 
@@ -24,6 +24,33 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 
 - **AdGuard Home** (agh1/agh2): Client-facing DNS with filtering, hands off local zones to Technitium
 - **Technitium** (tt1/tt2): Authoritative for `klsll.com` subdomains, DHCP server (primary on tt1)
+
+## Directory Structure
+
+```
+homelab-infra/
+├── ansible/
+│   ├── playbooks/          # Deployment orchestration
+│   ├── roles/              # Service-specific roles (MCP servers, etc.)
+│   ├── files/              # Compose files for Ansible deployments
+│   │   ├── dns/            # Technitium/AdGuard compose templates
+│   │   ├── openhands/      # OpenHands compose + config
+│   │   └── ollama/         # Ollama (Windows) compose
+│   └── inventory/          # Host definitions
+├── stacks/                 # Portainer reference stacks (secondary)
+│   ├── platform/           # Portainer, NPM, Uptime Kuma
+│   ├── gpu-worker/         # Ollama + Open WebUI
+│   └── monitoring/         # Prometheus, Grafana
+├── docker/                 # Custom Dockerfiles only
+│   ├── notion-mcp-server/  # Notion MCP custom build
+│   └── portainer-mcp/      # Portainer MCP custom build
+└── docs/                   # Documentation
+```
+
+**Deployment ownership:**
+- `ansible/` → Primary deployment mechanism (MCP servers, DNS, OpenHands, Ollama)
+- `stacks/` → Reference stacks for Portainer (Platform VM services)
+- `docker/` → Custom Dockerfiles only (no compose files)
 
 ## Key Commands
 
