@@ -88,7 +88,7 @@ homelab-infra/
 
 - **Git as Source of Truth** - Portainer deploys stacks from this repo
 - **LAN-Only Access** - Management interfaces never exposed publicly
-- **Secrets via .env** - Credentials never committed to Git
+- **Secrets via env + vault** - Credentials never committed in plaintext; 1Password is source of truth, sync into encrypted vaults or export env vars before runs
 - **Agent Architecture** - Standard agents for always-on, Edge for on-demand
 
 ## Documentation
@@ -118,6 +118,18 @@ docker compose up -d
 ```
 
 ## Scripts
+
+### Secrets & Vault helper
+- `ansible/scripts/sync-1password-to-vault.py`: Sync Ansible-tagged 1Password items into encrypted vaults (env → vault at runtime; no live `op` calls).
+  - Write to unraid vault with backup + prompt:
+    ```bash
+    ANSIBLE_VAULT_PASSWORD_FILE=ansible/scripts/ansible-vault-password.sh \
+    ansible/scripts/sync-1password-to-vault.py --group unraid
+    ```
+  - Print-only:
+    ```bash
+    ansible/scripts/sync-1password-to-vault.py --group unraid --print-only
+    ```
 
 ```bash
 # Install Portainer Agent on Linux hosts
