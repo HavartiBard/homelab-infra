@@ -17,6 +17,9 @@ services:
     image: ghcr.io/all-hands-ai/openhands:0.28.1
     container_name: openhands
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: ${OPENHANDS_ICON:-https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/robot.svg}
+      net.unraid.docker.webui: ${OPENHANDS_WEBUI_URL:-http://192.168.20.14:3000}
     ports:
       - "${OPENHANDS_PORT:-3000}:3000"
     volumes:

@@ -1,0 +1,6 @@
+---
+- name: Deploy Nginx Proxy Manager on Unraid
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - npm

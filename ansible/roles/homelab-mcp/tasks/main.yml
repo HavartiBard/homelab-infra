@@ -51,6 +51,8 @@
     docker run -d \
       --name {{ homelab_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ homelab_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ homelab_mcp_webui_url }}' \
       -p {{ homelab_mcp_port }}:{{ homelab_mcp_port }} \
       -v {{ homelab_mcp_config_file }}:/app/config.yaml:ro \
       -e TZ={{ timezone }} \

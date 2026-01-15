@@ -4,11 +4,6 @@
   hosts: unraid
   gather_facts: false
 
-  vars:
-    portainer_server: "192.168.20.14:9000"
-    portainer_token: "{{ lookup('env', 'PORTAINER_TOKEN') }}"
-    timezone: "America/Phoenix"
-
   roles:
     - portainer-mcp
 

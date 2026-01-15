@@ -5,6 +5,10 @@
 portainer_mcp_image: "ghcr.io/havartibard/portainer-mcp:latest"
 portainer_mcp_container_name: "portainer-mcp"
 portainer_mcp_port: 6972
+portainer_mcp_icon: >-
+  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/portainer.svg
+portainer_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ portainer_mcp_port }}/mcp
 
 # Paths
 portainer_mcp_appdata_dir: "/mnt/user/appdata/portainer-mcp"
@@ -15,7 +19,11 @@ portainer_mcp_transport: "streamable-http"
 
 # Portainer connection (override in playbook or vars file)
 portainer_server: "192.168.20.14:9000"
-portainer_token: ""
+portainer_op_item: "Portainer API Token"
+portainer_token: >-
+  {{ lookup('env', 'PORTAINER_TOKEN')
+  | default(vars.get('portainer_token_vault', ''), true)
+  | default('', true) }}
 
 # Timezone
-timezone: "America/New_York"
+timezone: "America/Phoenix"

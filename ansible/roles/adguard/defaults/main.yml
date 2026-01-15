@@ -1,6 +1,13 @@
 ---
-adguard_admin_user: admin
-adguard_admin_password: "{{ lookup('env', 'ADGUARD_ADMIN_PASSWORD') }}"
+adguard_op_item: "AdGuard Admin"
+adguard_admin_user: >-
+  {{ lookup('env', 'ADGUARD_ADMIN_USER')
+  | default(vars.get('adguard_admin_user_vault', ''), true)
+  | default('admin') }}
+adguard_admin_password: >-
+  {{ lookup('env', 'ADGUARD_ADMIN_PASSWORD')
+  | default(vars.get('adguard_admin_password_vault', ''), true)
+  | default('', true) }}
 
 adguard_http_port: 3000
 adguard_dns_port: 53

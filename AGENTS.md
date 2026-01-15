@@ -106,6 +106,7 @@ OpenHands should be deployed with a **mounted `config.toml`** for consistent red
 - Use `.env` files (excluded by `.gitignore`) or a secret store (1Password/Portainer secrets) where available.
 - When you must generate a placeholder, mark it clearly: `CHANGEME_*`.
 - When writing docs, include the *names* of required env vars, not the secret values.
+- Pattern for credentials: 1Password is the source of truth; code/docs should name the required env var. At runtime prefer the explicit env var; otherwise fetch from 1Password (or from an Ansible vault entry populated from 1Password). Keep item names stable so lookups don’t break.
 
 ---
 
@@ -170,6 +171,7 @@ For any task:
 - Add basic tests or smoke checks where appropriate.
 - Use consistent formatting (respect repo linters/formatters if present).
 - Don’t introduce new dependencies without justification.
+- Set service timezones to America/Phoenix where applicable; align new roles/playbooks to that default unless a target explicitly requires otherwise.
 
 ---
 

@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  npm:
+    image: jc21/nginx-proxy-manager:2.13.4
+    restart: unless-stopped
+    environment:
+      TZ: ${NPM_TIMEZONE:-America/Phoenix}
+    labels:
+      net.unraid.docker.icon: ${NPM_ICON:-https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nginxproxymanager-logo.png}
+      net.unraid.docker.webui: ${NPM_WEBUI_URL:-http://192.168.20.50:81}
+    dns:
+      - ${NPM_DNS_PRIMARY:-1.1.1.1}
+      - ${NPM_DNS_SECONDARY:-1.0.0.1}
+    volumes:
+      - ${NPM_APPDATA_ROOT:-/mnt/user/appdata/npm}/data:/data:rw
+      - ${NPM_APPDATA_ROOT:-/mnt/user/appdata/npm}/letsencrypt:/etc/letsencrypt:rw
+      - ${NPM_APPDATA_ROOT:-/mnt/user/appdata/npm}/certs:/shared/certs:rw
+    networks:
+      npm_net:
+        ipv4_address: ${NPM_IP}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://${NPM_IP}:${NPM_UI_PORT:-81}/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  npm_net:
+    external: true
+    name: ${NPM_NETWORK_NAME:-br0}

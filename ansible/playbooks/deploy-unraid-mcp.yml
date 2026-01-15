@@ -9,13 +9,12 @@
   hosts: unraid
   gather_facts: false
 
-  vars:
-    unraid_api_key: "{{ lookup('env', 'UNRAID_API_KEY') }}"
-
   pre_tasks:
     - name: Verify UNRAID_API_KEY is set
       ansible.builtin.fail:
-        msg: "UNRAID_API_KEY environment variable must be set"
+        msg: >-
+          UNRAID_API_KEY must be set (env override) or resolvable via the
+          configured 1Password item.
       when: unraid_api_key | length == 0
 
   roles:

@@ -5,6 +5,10 @@
 unraid_mcp_image: "ghcr.io/havartibard/unraid-mcp:latest"
 unraid_mcp_container_name: "unraid-mcp"
 unraid_mcp_port: 6970
+unraid_mcp_icon: >-
+  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/unraid.svg
+unraid_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ unraid_mcp_port }}/mcp
 
 # MCP settings
 unraid_mcp_host: "0.0.0.0"
@@ -12,7 +16,11 @@ unraid_mcp_transport: "streamable-http"
 
 # Unraid GraphQL API settings
 unraid_api_url: "https://localhost/graphql"
-unraid_api_key: ""
+unraid_op_item: "Unraid GraphQL - Wedge"
+unraid_api_key: >-
+  {{ lookup('env', 'UNRAID_API_KEY')
+  | default(vars.get('unraid_api_key_vault', ''), true)
+  | default('', true) }}
 unraid_verify_ssl: false
 unraid_auto_start_subscriptions: true
 
@@ -20,4 +28,4 @@ unraid_auto_start_subscriptions: true
 unraid_mcp_log_level: "INFO"
 
 # Timezone
-timezone: "America/Chicago"
+timezone: "America/Phoenix"

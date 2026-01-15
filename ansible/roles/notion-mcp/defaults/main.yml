@@ -5,14 +5,22 @@
 notion_mcp_image: "notion-mcp-server:latest"
 notion_mcp_container_name: "notion-mcp-public"
 notion_mcp_port: 3000
+notion_mcp_icon: >-
+  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/notion.svg
+notion_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ notion_mcp_port }}/mcp
 
 # MCP settings
 notion_mcp_host: "0.0.0.0"
 notion_mcp_transport: "streamable-http"
 
 # Notion settings
-notion_token: ""  # Set this in your environment or vault
+notion_op_item: "Notion MCP Integration"
+notion_token: >-
+  {{ lookup('env', 'NOTION_TOKEN')
+  | default(vars.get('notion_token_vault', ''), true)
+  | default('', true) }}
 auth_token: "notion-mcp-secret-2024"  # Custom auth token for HTTP transport
 
 # Timezone
-timezone: "America/Chicago"
+timezone: "America/Phoenix"

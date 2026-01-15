@@ -1,0 +1,451 @@
+---
+- name: Build proxy config path list
+  ansible.builtin.set_fact:
+    npm_proxy_config_list: >-
+      {{
+        npm_proxy_config_paths
+        if npm_proxy_config_paths | length > 0
+        else lookup('fileglob', npm_proxy_config_dir + '/*.yml', wantlist=True)
+      }}
+  when:
+    - npm_proxy_config_dir | length > 0
+      or npm_proxy_config_paths | length > 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Fail when no proxy config files are found
+  ansible.builtin.fail:
+    msg: >-
+      No proxy config files found. Set npm_proxy_config_paths
+      or populate npm_proxy_config_dir with *.yml files.
+  when:
+    - npm_proxy_config_list is not defined
+      or npm_proxy_config_list | length == 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Initialize proxy config list
+  ansible.builtin.set_fact:
+    npm_proxy_configs: []
+  delegate_to: localhost
+  run_once: true
+
+- name: Load proxy configs
+  ansible.builtin.set_fact:
+    npm_proxy_configs: >-
+      {{ npm_proxy_configs + [lookup('template', item) | from_yaml] }}
+  loop: "{{ npm_proxy_config_list }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Build combined config lists
+  ansible.builtin.set_fact:
+    npm_cert_defs: >-
+      {{
+        npm_proxy_configs
+        | selectattr('certificates', 'defined')
+        | map(attribute='certificates')
+        | list
+        | flatten
+      }}
+    npm_proxy_defs: >-
+      {{
+        npm_proxy_configs
+        | selectattr('proxy_hosts', 'defined')
+        | map(attribute='proxy_hosts')
+        | list
+        | flatten
+      }}
+    npm_dns_defs: >-
+      {{
+        npm_proxy_configs
+        | selectattr('dns_records', 'defined')
+        | map(attribute='dns_records')
+        | list
+        | flatten
+      }}
+  delegate_to: localhost
+  run_once: true
+
+- name: Validate NPM admin password
+  ansible.builtin.assert:
+    that:
+      - npm_admin_password | length > 0
+    fail_msg: >-
+      NPM_ADMIN_PASSWORD must be set in the environment
+      to manage proxy hosts.
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Login to NPM API
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/tokens"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ npm_admin_email }}"
+      secret: "{{ npm_admin_password }}"
+  register: npm_login
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Set NPM API token
+  ansible.builtin.set_fact:
+    npm_api_token: "{{ npm_login.json.token }}"
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Fetch existing NPM certificates
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/certificates"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+  register: npm_cert_list
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Initialize certificate map
+  ansible.builtin.set_fact:
+    npm_cert_map: {}
+    npm_cert_domain_map: {}
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Build certificate name map
+  ansible.builtin.set_fact:
+    npm_cert_map: >-
+      {{
+        npm_cert_map
+        | combine({
+          (item.name
+           | default(item.nice_name | default(item.domain_names[0] | default('')))): item.id
+        })
+      }}
+  vars:
+    npm_cert_items_raw: >-
+      {{ npm_cert_list.json.data
+      | default(npm_cert_list.json) }}
+  loop: "{{ npm_cert_items_raw }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_items_raw is iterable
+  delegate_to: localhost
+  run_once: true
+
+- name: Build certificate domain map
+  ansible.builtin.set_fact:
+    npm_cert_domain_map: >-
+      {{
+        npm_cert_domain_map
+        | combine({ (item.domain_names | sort | join(',')): item.id })
+      }}
+  vars:
+    npm_cert_items_raw: >-
+      {{ npm_cert_list.json.data
+      | default(npm_cert_list.json) }}
+  loop: "{{ npm_cert_items_raw }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_items_raw is iterable
+  delegate_to: localhost
+  run_once: true
+
+- name: Alias existing certs to desired names when domains match
+  ansible.builtin.set_fact:
+    npm_cert_map: >-
+      {{
+        npm_cert_map
+        | combine({
+          item.name: npm_cert_domain_map[item.domains | sort | join(',')]
+        })
+      }}
+  loop: "{{ npm_cert_defs | default([]) }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_domain_map is defined
+    - npm_cert_domain_map[item.domains | sort | join(',')] is defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Create certificates via NPM API
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/certificates"
+    method: POST
+    status_code:
+      - 200
+      - 201
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+    body_format: json
+    body:
+      provider: "letsencrypt"
+      nice_name: "{{ item.name | default('') }}"
+      domain_names: "{{ item.domains }}"
+      meta:
+        dns_challenge: "{{ item.dns_challenge | default(true) }}"
+        dns_provider: "{{ item.dns_provider }}"
+        dns_provider_credentials: >-
+          {% if item.dns_credentials is mapping %}
+          {{ item.dns_credentials | dict2items | map('join', ' = ') | join('\n') ~ '\n' }}
+          {% else %}
+          {{ item.dns_credentials }}
+          {% endif %}
+  loop: "{{ npm_cert_defs | default([]) }}"
+  when:
+    - npm_manage_proxies | bool
+    - (
+        npm_cert_map is not defined or (item.name not in npm_cert_map)
+      ) and (
+        npm_cert_domain_map is not defined
+        or (item.domains | sort | join(',') not in npm_cert_domain_map)
+      )
+  delegate_to: localhost
+  run_once: true
+
+- name: Refresh certificates after creation
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/certificates"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+  register: npm_cert_list_after
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Reset certificate map
+  ansible.builtin.set_fact:
+    npm_cert_map: {}
+    npm_cert_domain_map: {}
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Update certificate map
+  ansible.builtin.set_fact:
+    npm_cert_map: >-
+      {{
+        npm_cert_map
+        | combine({
+          (item.name
+           | default(item.nice_name | default(item.domain_names[0] | default('')))): item.id
+        })
+      }}
+  vars:
+    npm_cert_items_raw: >-
+      {{ npm_cert_list_after.json.data
+      | default(npm_cert_list_after.json) }}
+  loop: "{{ npm_cert_items_raw }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_items_raw is iterable
+  delegate_to: localhost
+  run_once: true
+
+- name: Update certificate domain map
+  ansible.builtin.set_fact:
+    npm_cert_domain_map: >-
+      {{
+        npm_cert_domain_map
+        | combine({ (item.domain_names | sort | join(',')): item.id })
+      }}
+  vars:
+    npm_cert_items_raw: >-
+      {{ npm_cert_list_after.json.data
+      | default(npm_cert_list_after.json) }}
+  loop: "{{ npm_cert_items_raw }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_items_raw is iterable
+  delegate_to: localhost
+  run_once: true
+
+- name: Alias refreshed certs to desired names when domains match
+  ansible.builtin.set_fact:
+    npm_cert_map: >-
+      {{
+        npm_cert_map
+        | combine({
+          item.name: npm_cert_domain_map[item.domains | sort | join(',')]
+        })
+      }}
+  loop: "{{ npm_cert_defs | default([]) }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_cert_domain_map is defined
+    - npm_cert_domain_map[item.domains | sort | join(',')] is defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Fetch existing NPM proxy hosts
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/proxy-hosts"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+  register: npm_proxy_list
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Initialize proxy host map
+  ansible.builtin.set_fact:
+    npm_proxy_host_map: {}
+  when: npm_manage_proxies | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Build proxy host map by domain
+  ansible.builtin.set_fact:
+    npm_proxy_host_map: >-
+      {{ npm_proxy_host_map
+      | combine({item.1: item.0}) }}
+  vars:
+    npm_proxy_items: >-
+      {{ npm_proxy_list.json.data
+      | default(npm_proxy_list.json) }}
+  when:
+    - npm_manage_proxies | bool
+    - npm_proxy_items is iterable
+  with_subelements:
+    - "{{ npm_proxy_items }}"
+    - domain_names
+  delegate_to: localhost
+  run_once: true
+
+- name: Update proxy hosts via NPM API
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/proxy-hosts/{{ existing_proxy.id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+    body_format: json
+    body:
+      domain_names: "{{ item.domains }}"
+      forward_host: "{{ item.forward_host }}"
+      forward_port: "{{ item.forward_port }}"
+      forward_scheme: "{{ item.scheme | default('http') }}"
+      caching_enabled: "{{ item.caching | default(false) }}"
+      block_exploits: "{{ item.block_exploits | default(true) }}"
+      allow_websocket_upgrade: "{{ item.websocket | default(true) }}"
+      access_list_id: >-
+        {{ item.access_list_id
+        | default(existing_proxy.access_list_id | default(0)) }}
+      certificate_id: "{{ npm_cert_map[item.certificate] | default(0) }}"
+      ssl_forced: "{{ item.ssl_forced | default(true) }}"
+      hsts_enabled: "{{ item.hsts | default(true) }}"
+      hsts_subdomains: "{{ item.hsts_subdomains | default(true) }}"
+      http2_support: "{{ item.http2 | default(true) }}"
+      advanced_config: "{{ item.advanced_config | default('') }}"
+  vars:
+    existing_proxy: "{{ npm_proxy_host_map[item.domains[0]] | default({}) }}"
+  loop: "{{ npm_proxy_defs | default([]) }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_proxy_host_map[item.domains[0]] is defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Create proxy hosts via NPM API
+  ansible.builtin.uri:
+    url: "{{ npm_api_base_url }}/nginx/proxy-hosts"
+    method: POST
+    status_code:
+      - 200
+      - 201
+    headers:
+      Authorization: "Bearer {{ npm_api_token }}"
+    body_format: json
+    body:
+      domain_names: "{{ item.domains }}"
+      forward_host: "{{ item.forward_host }}"
+      forward_port: "{{ item.forward_port }}"
+      forward_scheme: "{{ item.scheme | default('http') }}"
+      caching_enabled: "{{ item.caching | default(false) }}"
+      block_exploits: "{{ item.block_exploits | default(true) }}"
+      allow_websocket_upgrade: "{{ item.websocket | default(true) }}"
+      access_list_id: 0
+      certificate_id: "{{ npm_cert_map[item.certificate] | default(0) }}"
+      ssl_forced: "{{ item.ssl_forced | default(true) }}"
+      hsts_enabled: "{{ item.hsts | default(true) }}"
+      hsts_subdomains: "{{ item.hsts_subdomains | default(true) }}"
+      http2_support: "{{ item.http2 | default(true) }}"
+      advanced_config: "{{ item.advanced_config | default('') }}"
+  loop: "{{ npm_proxy_defs | default([]) }}"
+  when:
+    - npm_manage_proxies | bool
+    - npm_proxy_host_map[item.domains[0]] is not defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Validate Technitium admin password
+  ansible.builtin.assert:
+    that:
+      - technitium_api_url | length > 0
+      - (technitium_api_token | default('')) | length > 0
+        or (technitium_admin_password | default('')) | length > 0
+    fail_msg: >-
+      TECHNITIUM_ADMIN_PASSWORD and technitium_api_url
+      must be set to manage DNS.
+  when: npm_manage_dns | bool
+  delegate_to: localhost
+  run_once: true
+
+- name: Set Technitium token from api token (if provided)
+  ansible.builtin.set_fact:
+    technitium_token: "{{ technitium_api_token | regex_replace('\\s', '') | regex_replace('\"', '') }}"
+  when:
+    - npm_manage_dns | bool
+    - (technitium_api_token | default('')) | length > 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Login to Technitium
+  ansible.builtin.uri:
+    url: "{{ technitium_api_url }}/api/user/login"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      user: "{{ technitium_admin_user }}"
+      pass: "{{ technitium_admin_password }}"
+  register: technitium_login
+  when:
+    - npm_manage_dns | bool
+    - (technitium_api_token | default('')) | length == 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Set Technitium token from login
+  ansible.builtin.set_fact:
+    technitium_token: "{{ technitium_login.json.token }}"
+  when:
+    - npm_manage_dns | bool
+    - (technitium_api_token | default('')) | length == 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Ensure DNS records in Technitium
+  ansible.builtin.uri:
+    url: "{{ technitium_api_url }}/api/zones/records/add?token={{ technitium_token | regex_replace('\\s', '') | regex_replace('\"', '') | urlencode }}&domain={{ item.name | urlencode }}&zone={{ item.zone | default(technitium_zone) | urlencode }}&type={{ item.type | default('A') | urlencode }}&ttl={{ item.ttl | default(3600) | urlencode }}&data={{ item.value | urlencode }}&ipAddress={{ item.value | urlencode }}"
+    method: GET
+  register: technitium_dns_add
+  failed_when: >-
+    technitium_dns_add.json is defined and
+    technitium_dns_add.json.status is defined and
+    technitium_dns_add.json.status != 'ok' and
+    'already exists' not in (
+      technitium_dns_add.json.errorMessage | default('') | lower
+    ) and
+    'already exists' not in (
+      technitium_dns_add.json.message | default('') | lower
+    )
+  loop: "{{ npm_dns_defs | default([]) }}"
+  when: npm_manage_dns | bool
+  delegate_to: localhost
+  run_once: true

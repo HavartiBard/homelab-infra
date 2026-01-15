@@ -1,0 +1,31 @@
+---
+# Copy this file to ansible/files/npm/services/<service>.yml and adjust.
+# It drives NPM proxy/DNS automation via deploy-npm-unraid.yml.
+
+certificates:
+  - name: example-wildcard
+    domains:
+      - example.com
+      - "*.example.com"
+    dns_challenge: true
+    dns_provider: cloudflare
+    dns_credentials: "dns_cloudflare_api_token = {{ cloudflare_dns_token }}"
+
+proxy_hosts:
+  - name: example-app
+    domains:
+      - app.example.com
+    forward_host: 192.168.20.123
+    forward_port: 8080
+    scheme: http
+    websocket: true
+    certificate: example-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: app.example.com
+    type: A
+    value: 192.168.20.123
+    ttl: 3600

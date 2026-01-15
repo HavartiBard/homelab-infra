@@ -24,6 +24,9 @@ node_modules/
 # Docker Desktop/Portainer artifacts
 *.log
 
+# Ansible vault backups
+ansible/group_vars/**/*.bak.*
+
 # Terraform
 *.tfstate
 *.tfstate.*

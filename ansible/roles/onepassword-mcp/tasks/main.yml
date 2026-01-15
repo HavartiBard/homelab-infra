@@ -23,6 +23,8 @@
     docker run -d \
       --name {{ onepassword_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ onepassword_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ onepassword_mcp_webui_url }}' \
       -p {{ onepassword_mcp_port }}:{{ onepassword_mcp_port }} \
       -e OP_SERVICE_ACCOUNT_TOKEN='{{ op_service_account_token }}' \
       -e OP_VAULT='{{ op_vault }}' \

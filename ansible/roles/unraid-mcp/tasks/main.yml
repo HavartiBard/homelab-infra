@@ -35,6 +35,8 @@
     docker run -d \
       --name {{ unraid_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ unraid_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ unraid_mcp_webui_url }}' \
       -p {{ unraid_mcp_port }}:{{ unraid_mcp_port }} \
       -e UNRAID_API_URL='{{ unraid_api_url }}' \
       -e UNRAID_API_KEY='{{ unraid_api_key }}' \

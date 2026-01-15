@@ -1,0 +1,69 @@
+---
+# Role defaults for Nginx Proxy Manager deployment
+npm_ip: 192.168.20.50
+npm_subnet: 192.168.20.0/23
+npm_gateway: 192.168.20.1
+npm_parent_iface: br0
+npm_network_driver: macvlan
+npm_network_name: br0
+npm_appdata_root: /mnt/user/appdata/npm
+npm_stack_root: /mnt/user/appdata/stacks/npm
+npm_ui_port: 81
+timezone: America/Phoenix
+# Docker icon URL for Unraid UI
+npm_icon: >-
+  https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nginxproxymanager-logo.png
+npm_webui_url: "http://{{ npm_ip }}:{{ npm_ui_port }}"
+npm_dns_primary: 1.1.1.1
+npm_dns_secondary: 1.0.0.1
+compose_version: v2.27.0
+compose_bin_path: /usr/local/bin/docker-compose
+compose_download_url: >-
+  https://github.com/docker/compose/releases/download/{{
+  compose_version }}/docker-compose-linux-x86_64
+acme_output_dir: "{{ npm_appdata_root }}/certs"
+enable_external_acme_issuer: false
+acme_issuer_type: lego
+acme_dns_provider: cloudflare
+acme_email: admin@klsll.com
+acme_base_domain: klsll.com
+acme_wildcard_domain: "*.klsll.com"
+acme_dns_env: {}
+npm_manage_network: false
+npm_manage_proxies: false
+npm_manage_dns: false
+npm_proxy_config_dir: ""
+npm_proxy_config_paths: []
+npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
+op_vault: "{{ lookup('env', 'OP_VAULT') | default('', true) }}"
+npm_op_item: "Nginx Proxy Manager Admin"
+technitium_op_item: "DNS Automation Credential"
+cloudflare_op_item: "Cloudflare DNS Token"
+npm_op_command: >-
+  op item get "{{ npm_op_item }}" --fields password --reveal{% if op_vault | length > 0 %}
+  --vault "{{ op_vault }}"{% endif %}
+npm_op_user_command: >-
+  op item get "{{ npm_op_item }}" --fields username --reveal{% if op_vault | length > 0 %}
+  --vault "{{ op_vault }}"{% endif %}
+technitium_op_command: >-
+  op item get "{{ technitium_op_item }}" --fields credential --reveal{% if op_vault | length > 0 %}
+  --vault "{{ op_vault }}"{% endif %}
+cloudflare_op_command: >-
+  op item get "{{ cloudflare_op_item }}" --fields credential --reveal{% if op_vault | length > 0 %}
+  --vault "{{ op_vault }}"{% endif %}
+npm_admin_email: >-
+  {{ lookup('env', 'NPM_ADMIN_EMAIL')
+  | default(lookup('pipe', npm_op_user_command), true) }}
+npm_admin_password: >-
+  {{ lookup('env', 'NPM_ADMIN_PASSWORD')
+  | default(lookup('pipe', npm_op_command), true) }}
+technitium_api_url: ""
+technitium_zone: klsll.com
+technitium_admin_user: dns-automation
+technitium_api_token: "{{ lookup('env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
+technitium_admin_password: >-
+  {{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD')
+  | default(lookup('pipe', technitium_op_command), true) }}
+cloudflare_dns_token: >-
+  {{ lookup('env', 'CLOUDFLARE_API_TOKEN')
+  | default(lookup('pipe', cloudflare_op_command), true) }}
