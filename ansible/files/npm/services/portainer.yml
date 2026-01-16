@@ -1,10 +1,10 @@
 ---
 proxy_hosts:
-  - name: npm-ui
+  - name: portainer-ui
     domains:
-      - npm.klsll.com
-    forward_host: 192.168.20.50
-    forward_port: 81
+      - portainer.klsll.com
+    forward_host: 192.168.20.14
+    forward_port: 9000
     scheme: http
     websocket: true
     certificate: klsll-wildcard
@@ -13,7 +13,7 @@ proxy_hosts:
     http2: true
 
 dns_records:
-  - name: npm.klsll.com
+  - name: portainer.klsll.com
     type: A
     value: 192.168.20.50
     ttl: 3600

@@ -3,7 +3,7 @@
 #
 # Usage:
 #   export NOTION_TOKEN='ntn_your_token_here'
-#   ansible-playbook playbooks/deploy-notion-mcp-public.yml
+#   ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
 
 - name: Deploy Notion MCP to Unraid
   hosts: unraid

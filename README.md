@@ -77,12 +77,14 @@ homelab-infra/
 
 ## Ansible Playbooks
 
-| Playbook | Purpose |
-|----------|---------|
-| **provision-dns-dhcp.yml** | Create DNS/DHCP LXCs on Proxmox (tt1/tt2/agh1/agh2) |
-| **provision-dns-dhcp-services.yml** | Deploy Docker + Technitium/AdGuard in LXCs |
-| **deploy-adguard-config.yml** | Configure AdGuard upstreams and filters |
-| **deploy-*-mcp.yml** | Deploy MCP server containers to Unraid |
+Playbooks are grouped by service area inside `ansible/playbooks/` to keep the root tidy:
+
+- `ansible/playbooks/mcp/` – MCP deployments (`deploy-*-mcp.yml`), including Portainer, Proxmox, OnePassword, Homelab, and Notion.
+- `ansible/playbooks/dns/` – DNS and proxy automation (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`, `update-*-proxy.yml`).
+- `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, and OpenHands.
+- `ansible/playbooks/misc/` – Utility helpers (e.g., `deploy-ssh-keys.yml`).
+
+See `ansible/playbooks/README.md` for more detail on each playbook.
 
 ## Key Principles
 

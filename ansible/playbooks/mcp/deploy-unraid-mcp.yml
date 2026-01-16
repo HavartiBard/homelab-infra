@@ -3,7 +3,7 @@
 #
 # Usage:
 #   export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge>'
-#   ansible-playbook playbooks/deploy-unraid-mcp.yml
+#   ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 
 - name: Deploy Unraid MCP to Unraid
   hosts: unraid

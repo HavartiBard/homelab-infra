@@ -21,7 +21,7 @@ npm_dns_primary: 1.1.1.1
 npm_dns_secondary: 1.0.0.1
 npm_manage_proxies: true
 npm_manage_dns: true
-npm_proxy_config_dir: "{{ playbook_dir }}/../files/npm/services"
+npm_proxy_config_dir: "{{ playbook_dir | dirname }}/../files/npm/services"
 npm_proxy_config_paths: []
 npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
 

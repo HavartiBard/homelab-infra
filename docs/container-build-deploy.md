@@ -92,7 +92,7 @@ export PORTAINER_TOKEN=$(op read "op://Personal/Portainer Homelab API/credential
 # Run deployment
 ANSIBLE_ROLES_PATH=./ansible/roles ansible-playbook \
   -i ansible/inventory/hosts.yml \
-  ansible/playbooks/deploy-<service-name>.yml
+  ansible/playbooks/<group>/<playbook>.yml
 ```
 
 ### 3.2 Verify Production Deployment

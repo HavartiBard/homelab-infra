@@ -36,7 +36,7 @@ This playbook can create NPM proxy hosts (with certs) and DNS records in Technit
    - `export NPM_ADMIN_PASSWORD='CHANGEME'`
    - `export TECHNITIUM_ADMIN_PASSWORD='CHANGEME'`
 3. Ensure `npm_manage_proxies: true` and `npm_manage_dns: true` in `ansible/group_vars/unraid.yml`.
-4. Run `ansible-playbook playbooks/deploy-npm-unraid.yml`.
+4. Run `ansible-playbook playbooks/platform/deploy-npm-unraid.yml`.
 
 Notes:
 - NPM API base URL defaults to `http://<npm_ip>:<npm_ui_port>/api`.

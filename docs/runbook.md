@@ -84,7 +84,7 @@ docker run hello-world
 ```bash
 # Point to your DNS servers (Technitium LXCs or fallback)
 # Note: Technitium/AdGuard are deployed to dedicated LXCs via Ansible,
-# not on Platform VM. See: ansible/playbooks/provision-dns-dhcp-services.yml
+# not on Platform VM. See: ansible/playbooks/dns/provision-dns-dhcp-services.yml
 sudo rm /etc/resolv.conf
 echo "nameserver 192.168.20.2" | sudo tee /etc/resolv.conf    # tt1
 echo "nameserver 192.168.20.3" | sudo tee -a /etc/resolv.conf # tt2
@@ -178,7 +178,7 @@ docker compose ps
 | Uptime Kuma | http://platform-vm-ip:3001 | Create admin on first login |
 
 **Note:** DNS (Technitium/AdGuard) runs on dedicated LXCs (tt1/tt2, agh1/agh2), not Platform VM.
-See Phase 6 or `ansible/playbooks/provision-dns-dhcp-services.yml` for DNS deployment.
+See Phase 6 or `ansible/playbooks/dns/provision-dns-dhcp-services.yml` for DNS deployment.
 
 **First-time setup tasks:**
 1. **Portainer:** Create admin account, save password in 1Password
@@ -601,15 +601,15 @@ export TECHNITIUM_ADMIN_PASSWORD="<strong-password>"
 export LAB_ROOT_PASSWORD="<strong-password>"
 
 # Deploy DNS/DHCP LXCs + services
-ansible-playbook playbooks/provision-dns-dhcp.yml --check --diff
-ansible-playbook playbooks/provision-dns-dhcp.yml --diff
+ansible-playbook ansible/playbooks/dns/provision-dns-dhcp.yml --check --diff
+ansible-playbook ansible/playbooks/dns/provision-dns-dhcp.yml --diff
 
 # Deploy DNS service configs
-ansible-playbook playbooks/provision-dns-dhcp-services.yml --check --diff
-ansible-playbook playbooks/provision-dns-dhcp-services.yml --diff
+ansible-playbook ansible/playbooks/dns/provision-dns-dhcp-services.yml --check --diff
+ansible-playbook ansible/playbooks/dns/provision-dns-dhcp-services.yml --diff
 ```
 
-See `ansible/playbooks/provision-dns-dhcp-services.yml` and `ansible/files/dns/` for compose templates.
+See `ansible/playbooks/dns/provision-dns-dhcp-services.yml` and `ansible/files/dns/` for compose templates.
 
 ### 6.2 Configure Technitium as Authoritative DNS
 
@@ -642,6 +642,39 @@ Update your router's DHCP settings to use Technitium/AdGuard as DNS:
 | status.home.local | localhost | 3001 | Let's Encrypt* |
 
 *For LAN-only services, you can use self-signed certs or HTTP.
+
+#### 6.4.1 Automated service proxies
+
+We keep the proxy/DNS definitions for key portals under `ansible/files/npm/services/`
+and sync them to NPM with the matching playbooks:
+
+| Playbook | Purpose |
+|----------|---------|
+| `ansible/playbooks/dns/update-adguard-proxy.yml` | Publish `adguard.klsll.com` pointing to AdGuard HTTP UI via the wildcard cert (loaded from `ansible/files/npm/services/certificates.yml`) |
+| `ansible/playbooks/dns/update-dns-proxy.yml` | Publish `dns.klsll.com` so Technitium and DNS1/2 hostnames resolve through NPM |
+| `ansible/playbooks/dns/update-proxmox-proxy.yml` | Publish `pve.klsll.com` for the Proxmox web UI |
+| `ansible/playbooks/dns/update-portainer-proxy.yml` | Publish `portainer.klsll.com` for Portainer MCP access |
+| `ansible/playbooks/dns/update-unraid-proxy.yml` | Publish `unraid.klsll.com` for the Unraid web UI |
+
+Each config ensures the vanity DNS name resolves to the NPM IP (192.168.20.50) so the UI traffic flows through the proxy stack and shares the wildcard certificate.
+
+Run the applicable playbook any time you change the upstream port, move the service, or tweak certificate settings:
+
+```bash
+ansible-playbook ansible/playbooks/dns/update-unraid-proxy.yml
+ansible-playbook ansible/playbooks/dns/update-portainer-proxy.yml
+ansible-playbook ansible/playbooks/dns/update-adguard-proxy.yml
+ansible-playbook ansible/playbooks/dns/update-proxmox-proxy.yml
+ansible-playbook ansible/playbooks/dns/update-dns-proxy.yml
+```
+
+After the playbook completes, verify from any management host:
+
+```bash
+dig @192.168.20.50 adguard.klsll.com +short
+curl -k https://pve.klsll.com
+curl https://portainer.klsll.com/api/status
+```
 
 ---
 

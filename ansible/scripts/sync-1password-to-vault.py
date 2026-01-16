@@ -132,6 +132,49 @@ def snippet_keys(snippet: str) -> List[str]:
     return keys
 
 
+def line_key(line: str) -> Optional[str]:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or ":" not in stripped:
+        return None
+    return stripped.split(":", 1)[0]
+
+
+def merge_snippet(existing: str, snippet: str) -> str:
+    # Replace keys found in snippet; drop duplicate keys in the existing content; append only new keys at the end.
+    snippet_lines = [ln for ln in snippet.splitlines() if ln.strip()]
+    snippet_order: List[str] = []
+    snippet_map: Dict[str, str] = {}
+    for ln in snippet_lines:
+        k = line_key(ln)
+        if k:
+            if k not in snippet_order:
+                snippet_order.append(k)
+            snippet_map[k] = ln
+
+    seen: set = set()
+    merged_lines: List[str] = []
+    for ln in existing.splitlines():
+        k = line_key(ln)
+        if k:
+            if k in seen:
+                continue  # drop duplicate occurrences in existing
+            seen.add(k)
+            if k in snippet_map:
+                merged_lines.append(snippet_map.pop(k))
+                continue
+        merged_lines.append(ln)
+
+    # Append any keys from snippet not present in existing.
+    if snippet_map:
+        if merged_lines and merged_lines[-1].strip():
+            merged_lines.append("")
+        for k in snippet_order:
+            if k in snippet_map:
+                merged_lines.append(snippet_map[k])
+
+    return "\n".join(merged_lines).rstrip() + "\n"
+
+
 def backup_timestamp() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
@@ -158,7 +201,17 @@ def apply_to_vault(
     tmp_decrypted = Path(tmp_path)
     try:
         vault_exists = vault_path.exists()
+        decrypted = ""
+
         if vault_exists:
+            try:
+                decrypted = run(
+                    ["ansible-vault", "view", "--vault-password-file", str(password_file), str(vault_path)]
+                )
+            except subprocess.CalledProcessError as exc:
+                sys.stderr.write(f"Failed to decrypt {vault_path}: {exc}\n")
+                return False
+
             backup = vault_path.with_suffix(
                 vault_path.suffix + f".bak.{backup_timestamp()}"
             )
@@ -173,19 +226,8 @@ def apply_to_vault(
                 ).strip().lower()
                 if resp not in ("y", "yes"):
                     sys.stderr.write("Aborted by user (vault creation declined).\n")
-                    return
+                    return False
             sys.stderr.write(f"{color('🆕 creating vault:', '33')} {vault_path}\n")
-
-        if vault_exists:
-            try:
-                decrypted = run(
-                    ["ansible-vault", "view", "--vault-password-file", str(password_file), str(vault_path)]
-                )
-            except subprocess.CalledProcessError as exc:
-                sys.stderr.write(f"Failed to decrypt {vault_path}: {exc}\n")
-                return False
-        else:
-            decrypted = ""
 
         existing_keys = parse_existing_keys(decrypted)
         new_keys = snippet_keys(snippet)
@@ -202,7 +244,8 @@ def apply_to_vault(
                 sys.stderr.write("Aborted by user.\n")
                 return
 
-        tmp_decrypted.write_text(decrypted + ("\n" if decrypted else "") + snippet)
+        merged = merge_snippet(decrypted, snippet)
+        tmp_decrypted.write_text(merged)
         sys.stderr.write(f"{color('📝 writing updated content...', '36')}\n")
         try:
             encrypt_cmd = [

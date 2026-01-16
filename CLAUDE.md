@@ -62,26 +62,26 @@ All playbook operations run from the `ansible/` directory:
 cd ansible
 
 # Standard workflow: syntax → dry-run → apply → verify
-ansible-playbook playbooks/<playbook>.yml --syntax-check
-ansible-playbook playbooks/<playbook>.yml --check --diff --limit <host>
-ansible-playbook playbooks/<playbook>.yml --diff --limit <host> -v
+ansible-playbook playbooks/<group>/<playbook>.yml --syntax-check
+ansible-playbook playbooks/<group>/<playbook>.yml --check --diff --limit <host>
+ansible-playbook playbooks/<group>/<playbook>.yml --diff --limit <host> -v
 
 # Verify idempotence (expect changed=0)
-ansible-playbook playbooks/<playbook>.yml --check --diff --limit <host>
+ansible-playbook playbooks/<group>/<playbook>.yml --check --diff --limit <host>
 ```
 
 Common playbooks and their required env vars:
 
 **DNS Infrastructure:**
-- `provision-dns-dhcp.yml` → `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET`
-- `provision-dns-dhcp-services.yml` → Same Proxmox vars + optional `TECHNITIUM_ADMIN_PASSWORD`
-- `deploy-adguard-config.yml` → `ADGUARD_ADMIN_PASSWORD` (or via `op read`)
+- `ansible/playbooks/dns/provision-dns-dhcp.yml` → `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET`
+- `ansible/playbooks/dns/provision-dns-dhcp-services.yml` → Same Proxmox vars + optional `TECHNITIUM_ADMIN_PASSWORD`
+- `ansible/playbooks/dns/deploy-adguard-config.yml` → `ADGUARD_ADMIN_PASSWORD` (or via `op read`)
 
 **MCP Servers:**
-- `deploy-unraid-mcp.yml` → `UNRAID_API_KEY`
-- `deploy-homelab-mcp.yml` → `ORBI_PASSWORD`
-- `deploy-onepassword-mcp.yml` → `OP_SERVICE_ACCOUNT_TOKEN`
-- `deploy-proxmox-mcp.yml` → Uses `group_vars/unraid/vault.yml`
+- `ansible/playbooks/mcp/deploy-unraid-mcp.yml` → `UNRAID_API_KEY`
+- `ansible/playbooks/mcp/deploy-homelab-mcp.yml` → `ORBI_PASSWORD`
+- `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` → `OP_SERVICE_ACCOUNT_TOKEN`
+- `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` → Uses `group_vars/unraid/vault.yml`
 
 ### Docker Compose Stacks
 

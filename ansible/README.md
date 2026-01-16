@@ -59,7 +59,7 @@ Deploys the Homelab MCP server (Orbi, NPM, Pi-hole tools).
 
 ```bash
 export ORBI_PASSWORD='<from 1Password: Orbi Login>'
-ansible-playbook playbooks/deploy-homelab-mcp.yml
+ansible-playbook playbooks/mcp/deploy-homelab-mcp.yml
 ```
 
 ### deploy-onepassword-mcp.yml
@@ -68,7 +68,7 @@ Deploys the 1Password MCP server.
 
 ```bash
 export OP_SERVICE_ACCOUNT_TOKEN='<from 1Password>'
-ansible-playbook playbooks/deploy-onepassword-mcp.yml
+ansible-playbook playbooks/mcp/deploy-onepassword-mcp.yml
 ```
 
 ### deploy-unraid-mcp.yml
@@ -77,7 +77,7 @@ Deploys the Unraid MCP server (GraphQL-based Unraid management).
 
 ```bash
 export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge → credential>'
-ansible-playbook playbooks/deploy-unraid-mcp.yml
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 **Target:** 192.168.20.14:6970
@@ -89,7 +89,7 @@ ansible-playbook playbooks/deploy-unraid-mcp.yml
 Deploys Nginx Proxy Manager on Unraid with a dedicated macvlan/ipvlan IP and optional ACME issuer. The playbook creates required directories, templated `docker-compose.yml`, pulls images, and performs a health check via the dedicated IP/port.
 
 ```bash
-ansible-playbook playbooks/deploy-npm-unraid.yml
+ansible-playbook playbooks/platform/deploy-npm-unraid.yml
 ```
 
 **Notes:** Update `ansible/group_vars/unraid.yml` with the desired `npm_*` variables before running. The playbook relies on the `unraid` host group and expects SSH access as configured in `inventory/hosts.yml`. If the Unraid host lacks `docker compose`, the role will download a pinned `docker-compose` binary to `{{ compose_bin_path }}`. Optional: enable `npm_manage_proxies` / `npm_manage_dns` and place per-service configs in `ansible/files/npm/services/` to create proxy hosts and Technitium DNS records using the NPM API.
@@ -116,10 +116,10 @@ When adding a new service, pick a clear, purpose-specific item name, tag it `Ans
 
 | Env/var | 1Password item | Field(s) used | Playbooks/roles |
 | --- | --- | --- | --- |
-| `ORBI_PASSWORD` | Orbi Login | password | `deploy-homelab-mcp.yml` (homelab-mcp role) |
-| `OP_SERVICE_ACCOUNT_TOKEN` | OP_SERVICE_ACCOUNT_TOKEN | credential | `deploy-onepassword-mcp.yml` |
-| `UNRAID_API_KEY` | Unraid GraphQL - Wedge | credential | `deploy-unraid-mcp.yml` |
-| `NPM_ADMIN_EMAIL`/`NPM_ADMIN_PASSWORD` | Nginx Proxy Manager Admin | username, password | `deploy-npm-unraid.yml` (npm role) |
+| `ORBI_PASSWORD` | Orbi Login | password | `ansible/playbooks/mcp/deploy-homelab-mcp.yml` (homelab-mcp role) |
+| `OP_SERVICE_ACCOUNT_TOKEN` | OP_SERVICE_ACCOUNT_TOKEN | credential | `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` |
+| `UNRAID_API_KEY` | Unraid GraphQL - Wedge | credential | `ansible/playbooks/mcp/deploy-unraid-mcp.yml` |
+| `NPM_ADMIN_EMAIL`/`NPM_ADMIN_PASSWORD` | Nginx Proxy Manager Admin | username, password | `ansible/playbooks/platform/deploy-npm-unraid.yml` (npm role) |
 | `TECHNITIUM_API_TOKEN` / `TECHNITIUM_ADMIN_PASSWORD` | DNS Automation Credential | credential (token) and/or password | `deploy-npm-unraid.yml` (npm role, Technitium DNS) |
 | `CLOUDFLARE_API_TOKEN` | Cloudflare DNS Token | credential | `deploy-npm-unraid.yml` (npm role, cert DNS challenge) |
 | `PROXMOX_MCP_*` (HOST/PORT/USER/TOKEN_NAME/TOKEN_VALUE/ALLOW_ELEVATED) | Proxmox MCP Token | host, port, username, token_name, credential, allow_elevated | `deploy-proxmox-mcp.yml` |
@@ -146,7 +146,7 @@ export PROXMOX_API_TOKEN_ID='root@pam!ansible'
 export PROXMOX_API_TOKEN_SECRET='<from 1Password>'
 
 # Optional: toggle guest VLAN NICs for AdGuard in group_vars/all/dns_dhcp.yml
-ansible-playbook playbooks/provision-dns-dhcp.yml
+ansible-playbook playbooks/dns/provision-dns-dhcp.yml
 ```
 
 Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.template_vmid`), VLAN-aware bridge is `vmbr0`, and VLAN tags 1/20/30 (and optional 40) are trunked to pve-01/pve-02.
