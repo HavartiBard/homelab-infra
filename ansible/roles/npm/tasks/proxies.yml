@@ -5,7 +5,11 @@
       {{
         npm_proxy_config_paths
         if npm_proxy_config_paths | length > 0
-        else lookup('fileglob', npm_proxy_config_dir + '/*.yml', wantlist=True)
+        else (
+          lookup('fileglob', npm_proxy_config_dir + '/*.yml', wantlist=True)
+          | reject('match', '.*/_template\\.yml$')
+          | list
+        )
       }}
   when:
     - npm_proxy_config_dir | length > 0
