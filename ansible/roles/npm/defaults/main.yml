@@ -12,8 +12,9 @@ npm_ui_port: 81
 timezone: America/Phoenix
 # Docker icon URL for Unraid UI
 npm_icon: >-
-  https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nginxproxymanager-logo.png
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png
 npm_webui_url: "http://{{ npm_ip }}:{{ npm_ui_port }}"
+npm_container_name: nginx-proxy-manager
 npm_dns_primary: 1.1.1.1
 npm_dns_secondary: 1.0.0.1
 compose_version: v2.27.0

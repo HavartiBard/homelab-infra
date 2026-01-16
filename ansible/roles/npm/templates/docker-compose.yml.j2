@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   npm:
+    container_name: "{{ npm_container_name }}"
     image: jc21/nginx-proxy-manager:2.13.4
     restart: unless-stopped
     environment:
