@@ -14,7 +14,7 @@ npm_stack_root: /mnt/user/appdata/stacks/npm
 npm_ui_port: 81
 timezone: America/Phoenix
 npm_icon: >-
-  https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/nginxproxymanager-logo.png
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png
 npm_webui_url: >-
   http://{{ npm_ip }}:{{ npm_ui_port }}
 npm_dns_primary: 1.1.1.1

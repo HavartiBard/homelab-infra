@@ -94,7 +94,7 @@ ansible-playbook playbooks/platform/deploy-npm-unraid.yml
 
 **Notes:** Update `ansible/group_vars/unraid.yml` with the desired `npm_*` variables before running. The playbook relies on the `unraid` host group and expects SSH access as configured in `inventory/hosts.yml`. If the Unraid host lacks `docker compose`, the role will download a pinned `docker-compose` binary to `{{ compose_bin_path }}`. Optional: enable `npm_manage_proxies` / `npm_manage_dns` and place per-service configs in `ansible/files/npm/services/` to create proxy hosts and Technitium DNS records using the NPM API.
 
-**Proxy/DNS template:** Copy `ansible/files/npm/services/_template.yml` to a new filename, set domains/targets/cert name, and rerun this playbook. The role will reuse existing certs when domain sets match (to avoid duplicate wildcards) and manage both NPM proxy hosts and Technitium DNS.
+**Proxy/DNS template:** Copy `ansible/files/npm/templates/_template.yml` to a new filename under `ansible/files/npm/services/`, set domains/targets/cert name, and rerun this playbook. The role will reuse existing certs when domain sets match (to avoid duplicate wildcards) and manage both NPM proxy hosts and Technitium DNS.
 
 ### 1Password item naming (avoid breakage)
 
