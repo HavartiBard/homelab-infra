@@ -1,12 +1,12 @@
 ---
-proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:latest"
-proxmox_mcp_container_name: "mcp-proxmox"
+proxmox_mcp_image: "ghcr.io/havartibard/proxmox-mcp:latest"
+proxmox_mcp_container_name: "proxmox-mcp"
 proxmox_mcp_icon: >-
   https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png
 proxmox_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp
 
-proxmox_mcp_appdata_dir: "/mnt/user/appdata/mcp-proxmox"
+proxmox_mcp_appdata_dir: "/mnt/user/appdata/proxmox-mcp"
 proxmox_mcp_env_file: "{{ proxmox_mcp_appdata_dir }}/.env"
 # Host port for the MCP service (container listens on proxmox_mcp_container_port)
 proxmox_mcp_port: "6974"
