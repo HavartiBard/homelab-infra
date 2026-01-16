@@ -27,6 +27,7 @@ This document lists all ports used by homelab stacks with access requirements.
 | Technitium | 8443 | UDP | 🔒 LAN-Only | DNS-over-HTTPS (QUIC) |
 | Technitium | 853 | TCP | 🔒 LAN-Only | DNS-over-TLS (optional) |
 | **Uptime Kuma** | 3001 | TCP | 🌐 Proxied | Status page UI |
+| **Homepage** | 3002 | TCP | 🌐 Proxied | Homelab landing page |
 
 ## Monitoring Stack
 
@@ -145,17 +146,17 @@ sudo ufw enable
 
 ## Recommended Reverse Proxy Hostnames
 
-Configure these in NPM for internal access:
+Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium/AdGuard. Targets below assume the Platform stack is running on the platform host; update IPs as needed.
 
-| Hostname | Target | Auth |
-|----------|--------|------|
-| `portainer.home.local` | localhost:9443 | Built-in |
-| `npm.home.local` | localhost:81 | Built-in |
-| `dns.home.local` | localhost:5380 | Built-in |
-| `status.home.local` | localhost:3001 | Built-in |
-| `grafana.home.local` | localhost:3000 | Built-in |
-| `prometheus.home.local` | localhost:9090 | NPM Access List |
-| `ollama.home.local` | <worker-ip>:11434 | NPM Access List |
-| `chat.home.local` | <worker-ip>:8080 | Built-in |
-| `netbox.home.local` | <unraid-ip>:8001 | Built-in |
-| `adguard.home.local` | <unraid-ip>:8053 | Built-in |
+| Hostname | Target | Auth | Notes |
+|----------|--------|------|-------|
+| `portainer.klsll.com` | https://portainer:9443 | Built-in | Platform stack |
+| `npm.klsll.com` | http://npm:81 | Built-in | Platform stack |
+| `home.klsll.com` | http://homepage:3000 | Built-in | Platform stack (Homepage) |
+| `status.klsll.com` | http://uptime-kuma:3001 | Built-in | Reserve; Kuma not deployed yet |
+| `grafana.klsll.com` | http://grafana:3000 | Built-in | Reserve; Grafana not deployed yet |
+| `prometheus.klsll.com` | http://prometheus:9090 | NPM Access List | Reserve; Prometheus not deployed yet |
+| `ollama.klsll.com` | <worker-ip>:11434 | NPM Access List | GPU worker |
+| `chat.klsll.com` | <worker-ip>:8080 | Built-in | GPU worker |
+| `netbox.klsll.com` | <unraid-ip>:8001 | Built-in | Unraid |
+| `adguard.klsll.com` | <unraid-ip>:8053 | Built-in | Unraid |

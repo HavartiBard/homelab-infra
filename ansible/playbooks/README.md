@@ -5,7 +5,8 @@ Playbooks are organized by service domain to keep the root directory uncluttered
 | Directory | Description |
 |-----------|-------------|
 | `mcp/` | MCP deployments (Portainer, Proxmox, Notion, OnePassword, Homelab aggregator, etc.) |
-| `dns/` | DNS/DHCP provisioning, AdGuard config, and the NPM proxy sync playbooks that expose the vanity hostnames |
+| `dns/` | DNS/DHCP provisioning and AdGuard/Technitium config |
+| `services/` | Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`) |
 | `platform/` | Platform VM services such as Nginx Proxy Manager, Ollama, and OpenHands |
 | `misc/` | Supporting utilities (currently `deploy-ssh-keys.yml`) |
 

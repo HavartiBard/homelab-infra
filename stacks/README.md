@@ -10,6 +10,7 @@ Core infrastructure services for the Platform VM:
 - **Nginx Proxy Manager** - Reverse proxy with Let's Encrypt
 - **Technitium DNS** - Local DNS server
 - **Uptime Kuma** - Status monitoring
+- **Homepage** - Landing page for homelab links/widgets
 
 ### GPU Worker (`gpu-worker/`)
 AI/ML workloads for WSL2 GPU workers:

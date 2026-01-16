@@ -80,7 +80,8 @@ homelab-infra/
 Playbooks are grouped by service area inside `ansible/playbooks/` to keep the root tidy:
 
 - `ansible/playbooks/mcp/` – MCP deployments (`deploy-*-mcp.yml`), including Portainer, Proxmox, OnePassword, Homelab, and Notion.
-- `ansible/playbooks/dns/` – DNS and proxy automation (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`, `update-*-proxy.yml`).
+- `ansible/playbooks/dns/` – DNS and DHCP provisioning plus AdGuard/Technitium config (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`).
+- `ansible/playbooks/services/` – Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`).
 - `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, and OpenHands.
 - `ansible/playbooks/misc/` – Utility helpers (e.g., `deploy-ssh-keys.yml`).
 

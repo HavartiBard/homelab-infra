@@ -1,0 +1,156 @@
+---
+- name: Deploy Homepage on Unraid
+  hosts: unraid
+  become: true
+  gather_facts: false
+  vars:
+    homepage_dir: "/mnt/user/appdata/homepage"
+    compose_file: "{{ homepage_dir }}/docker-compose.yml"
+    env_file: "{{ homepage_dir }}/.env"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+    homepage_compose_content: "{{ lookup('file', playbook_dir + '/../../files/homepage/docker-compose.yml') }}"
+    homepage_compose_b64: "{{ homepage_compose_content | b64encode }}"
+
+  tasks:
+    - name: Create homepage directory
+      raw: "mkdir -p {{ homepage_dir }}/config"
+
+    - name: Write docker-compose.yml via raw (base64 decode)
+      raw: "echo '{{ homepage_compose_b64 }}' | base64 -d > {{ compose_file }}"
+
+    - name: Read existing HOMEPAGE_PORT from .env (if present)
+      raw: |
+        if [ -f {{ env_file }} ]; then
+          grep -E '^HOMEPAGE_PORT=' {{ env_file }} | tail -n1 | cut -d= -f2
+        fi
+      register: existing_port_cmd
+      changed_when: false
+
+    - name: Find free port on host for Homepage
+      raw: |
+        find_free_port() {
+          start=$1; end=$2
+          for p in $(seq "$start" "$end"); do
+            if ! ss -ltn | awk 'NR>1{print $4}' | grep -qE "[:.]${p}$"; then
+              echo "$p"
+              return 0
+            fi
+          done
+          return 1
+        }
+        find_free_port 3002 3099
+      register: free_port_cmd
+      changed_when: false
+      failed_when: free_port_cmd.rc != 0 and (existing_port_cmd.stdout | trim == '')
+
+    - name: Set homepage port fact
+      set_fact:
+        homepage_port: >-
+          {{ (existing_port_cmd.stdout | trim)
+             if (existing_port_cmd.stdout | trim) != '' else (free_port_cmd.stdout | trim) }}
+
+    - name: Build homepage env content
+      set_fact:
+        homepage_env_content: |
+          TZ=America/Phoenix
+          HOMEPAGE_PORT={{ homepage_port }}
+          HOMEPAGE_PUID=1000
+          HOMEPAGE_PGID=1000
+          HOMEPAGE_LOG_LEVEL=info
+          HOMEPAGE_WEBUI_URL={{ HOMEPAGE_WEBUI_URL | default('https://home.klsll.com', true) }}
+          HOMEPAGE_ICON={{ HOMEPAGE_ICON | default('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png', true) }}
+
+    - name: Encode homepage env content
+      set_fact:
+        homepage_env_b64: "{{ homepage_env_content | b64encode }}"
+
+    - name: Ensure .env exists with HOMEPAGE_PORT and metadata
+      raw: |
+        if [ ! -f {{ env_file }} ]; then
+          echo '{{ homepage_env_b64 }}' | base64 -d > {{ env_file }}
+        elif ! grep -q '^HOMEPAGE_PORT=' {{ env_file }}; then
+          echo "HOMEPAGE_PORT={{ homepage_port }}" >> {{ env_file }}
+        fi
+
+    - name: Fail if chosen port is already in use by another service
+      raw: |
+        in_use=$(ss -ltn | awk 'NR>1{print $4}' | grep -E "[:.]{{ homepage_port }}$" || true)
+        if [ -n "$in_use" ]; then
+          if docker ps -q -f name=^/homepage$ >/dev/null 2>&1; then
+            exit 0
+          else
+            echo "Port {{ homepage_port }} already in use on host" >&2
+            exit 1
+          fi
+        fi
+
+    - name: Check for docker compose plugin
+      raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      set_fact:
+        homepage_compose_command: >-
+          {% if docker_compose_plugin.rc == 0 %}
+          docker compose
+          {% else %}
+          {{ compose_bin_path }}
+          {% endif %}
+
+    - name: Deploy Homepage stack
+      raw: "cd {{ homepage_dir }} && {{ homepage_compose_command }} up -d"
+
+    - name: Determine homepage port
+      raw: |
+        if [ -f {{ env_file }} ]; then
+          . {{ env_file }}
+          echo "${HOMEPAGE_PORT:-3002}"
+        else
+          echo "3002"
+        fi
+      register: homepage_port_cmd
+      changed_when: false
+
+    - name: Set homepage port fact
+      set_fact:
+        homepage_port: "{{ homepage_port_cmd.stdout | trim }}"
+
+    - name: Display deployment info
+      debug:
+        msg: |
+          Homepage deployed. No inline healthcheck (python not present).
+          URL: http://{{ ansible_host }}:{{ homepage_port }}
+          Compose dir: {{ homepage_dir }}

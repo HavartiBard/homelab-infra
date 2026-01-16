@@ -650,22 +650,22 @@ and sync them to NPM with the matching playbooks:
 
 | Playbook | Purpose |
 |----------|---------|
-| `ansible/playbooks/dns/update-adguard-proxy.yml` | Publish `adguard.klsll.com` pointing to AdGuard HTTP UI via the wildcard cert (loaded from `ansible/files/npm/services/certificates.yml`) |
-| `ansible/playbooks/dns/update-dns-proxy.yml` | Publish `dns.klsll.com` so Technitium and DNS1/2 hostnames resolve through NPM |
-| `ansible/playbooks/dns/update-proxmox-proxy.yml` | Publish `pve.klsll.com` for the Proxmox web UI |
-| `ansible/playbooks/dns/update-portainer-proxy.yml` | Publish `portainer.klsll.com` for Portainer MCP access |
-| `ansible/playbooks/dns/update-unraid-proxy.yml` | Publish `unraid.klsll.com` for the Unraid web UI |
+| `ansible/playbooks/services/update-adguard-proxy.yml` | Publish `adguard.klsll.com` pointing to AdGuard HTTP UI via the wildcard cert (loaded from `ansible/files/npm/services/certificates.yml`) |
+| `ansible/playbooks/services/update-dns-proxy.yml` | Publish `dns.klsll.com` so Technitium and DNS1/2 hostnames resolve through NPM |
+| `ansible/playbooks/services/update-proxmox-proxy.yml` | Publish `pve.klsll.com` for the Proxmox web UI |
+| `ansible/playbooks/services/update-portainer-proxy.yml` | Publish `portainer.klsll.com` for Portainer MCP access |
+| `ansible/playbooks/services/update-unraid-proxy.yml` | Publish `unraid.klsll.com` for the Unraid web UI |
 
 Each config ensures the vanity DNS name resolves to the NPM IP (192.168.20.50) so the UI traffic flows through the proxy stack and shares the wildcard certificate.
 
 Run the applicable playbook any time you change the upstream port, move the service, or tweak certificate settings:
 
 ```bash
-ansible-playbook ansible/playbooks/dns/update-unraid-proxy.yml
-ansible-playbook ansible/playbooks/dns/update-portainer-proxy.yml
-ansible-playbook ansible/playbooks/dns/update-adguard-proxy.yml
-ansible-playbook ansible/playbooks/dns/update-proxmox-proxy.yml
-ansible-playbook ansible/playbooks/dns/update-dns-proxy.yml
+ansible-playbook ansible/playbooks/services/update-unraid-proxy.yml
+ansible-playbook ansible/playbooks/services/update-portainer-proxy.yml
+ansible-playbook ansible/playbooks/services/update-adguard-proxy.yml
+ansible-playbook ansible/playbooks/services/update-proxmox-proxy.yml
+ansible-playbook ansible/playbooks/services/update-dns-proxy.yml
 ```
 
 After the playbook completes, verify from any management host:
