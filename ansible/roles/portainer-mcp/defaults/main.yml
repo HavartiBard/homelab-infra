@@ -6,7 +6,7 @@ portainer_mcp_image: "ghcr.io/havartibard/portainer-mcp:latest"
 portainer_mcp_container_name: "portainer-mcp"
 portainer_mcp_port: 6972
 portainer_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/portainer.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/portainer.png
 portainer_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ portainer_mcp_port }}/mcp
 

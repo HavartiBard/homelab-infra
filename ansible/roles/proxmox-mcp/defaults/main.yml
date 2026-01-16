@@ -2,7 +2,7 @@
 proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:latest"
 proxmox_mcp_container_name: "mcp-proxmox"
 proxmox_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/proxmox.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png
 proxmox_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp
 

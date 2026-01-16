@@ -6,7 +6,7 @@ onepassword_mcp_image: "ghcr.io/havartibard/onepassword-mcp-server:latest"
 onepassword_mcp_container_name: "onepassword-mcp"
 onepassword_mcp_port: 6975
 onepassword_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/1password.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/1password.png
 onepassword_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ onepassword_mcp_port }}{{ onepassword_mcp_path }}
 

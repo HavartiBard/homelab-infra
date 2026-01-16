@@ -6,7 +6,7 @@ unraid_mcp_image: "ghcr.io/havartibard/unraid-mcp:latest"
 unraid_mcp_container_name: "unraid-mcp"
 unraid_mcp_port: 6970
 unraid_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/unraid.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/unraid.png
 unraid_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ unraid_mcp_port }}/mcp
 

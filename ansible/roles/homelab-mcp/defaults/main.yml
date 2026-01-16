@@ -6,7 +6,7 @@ homelab_mcp_image: "ghcr.io/havartibard/homelab-mcp:latest"
 homelab_mcp_container_name: "homelab-mcp"
 homelab_mcp_port: 6971
 homelab_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/terminal.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/terminal.png
 homelab_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
 

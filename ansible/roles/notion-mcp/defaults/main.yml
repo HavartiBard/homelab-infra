@@ -6,7 +6,7 @@ notion_mcp_image: "notion-mcp-server:latest"
 notion_mcp_container_name: "notion-mcp-public"
 notion_mcp_port: 3000
 notion_mcp_icon: >-
-  https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/notion.svg
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/notion.png
 notion_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ notion_mcp_port }}/mcp
 
