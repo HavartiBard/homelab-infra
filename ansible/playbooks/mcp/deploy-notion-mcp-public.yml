@@ -9,9 +9,6 @@
   hosts: unraid
   gather_facts: false
 
-  vars:
-    notion_token: "{{ lookup('env', 'NOTION_TOKEN') }}"
-
   pre_tasks:
     - name: Verify NOTION_TOKEN is set
       ansible.builtin.fail:
