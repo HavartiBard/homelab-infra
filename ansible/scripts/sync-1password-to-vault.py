@@ -48,7 +48,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_VAULT_PATH: Dict[str, Optional[Path]] = {
     "unraid": REPO_ROOT / "group_vars" / "unraid" / "vault.yml",
     "agh": REPO_ROOT / "group_vars" / "agh" / "vault.yml",
-    "all": None,
+    "all": REPO_ROOT / "group_vars" / "all" / "vault.yml",
 }
 
 
@@ -175,6 +175,48 @@ def merge_snippet(existing: str, snippet: str) -> str:
     return "\n".join(merged_lines).rstrip() + "\n"
 
 
+def find_duplicate_keys(content: str) -> List[str]:
+    counts = {}
+    for ln in content.splitlines():
+        k = line_key(ln)
+        if not k:
+            continue
+        counts[k] = counts.get(k, 0) + 1
+    return sorted([k for k, c in counts.items() if c > 1])
+
+
+def normalize_value(val: str) -> str:
+    val = val.strip()
+    if len(val) >= 2 and val[0] in ("'", '"') and val[-1] == val[0]:
+        val = val[1:-1]
+    return val
+
+
+def strip_inline_comment(val: str) -> str:
+    # Remove inline comments starting with space-# to avoid mangling tokens containing '#'.
+    if " #" in val:
+        val = val.split(" #", 1)[0]
+    return val
+
+
+def parse_kv(content: str) -> Dict[str, str]:
+    kv = {}
+    for ln in content.splitlines():
+        if ":" not in ln:
+            continue
+        k, v = ln.split(":", 1)
+        k = k.strip()
+        if not k or k.startswith("#"):
+            continue
+        raw_v = v.strip()
+        if raw_v and raw_v[0] in ("'", '"') and raw_v[-1] == raw_v[0]:
+            clean = raw_v[1:-1]
+        else:
+            clean = strip_inline_comment(raw_v).strip()
+        kv[k] = clean
+    return kv
+
+
 def backup_timestamp() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
@@ -231,11 +273,20 @@ def apply_to_vault(
 
         existing_keys = parse_existing_keys(decrypted)
         new_keys = snippet_keys(snippet)
+        existing_kv = parse_kv(decrypted)
+        snippet_kv = parse_kv(snippet)
 
         sys.stderr.write(f"{color('🔐 target vault:', '36')} {vault_path}\n")
         sys.stderr.write(f"{color('➡️  keys to set/update:', '36')} ({len(new_keys)})\n")
         for k in new_keys:
-            status = color("update", "34") if k in existing_keys else color("add", "32")
+            if k in existing_keys:
+                status = (
+                    color("unchanged", "32")
+                    if normalize_value(snippet_kv.get(k, "")) == normalize_value(existing_kv.get(k, ""))
+                    else color("update", "34")
+                )
+            else:
+                status = color("add", "32")
             sys.stderr.write(f"   • {k} [{status}]\n")
 
         if not assume_yes:
@@ -245,6 +296,10 @@ def apply_to_vault(
                 return
 
         merged = merge_snippet(decrypted, snippet)
+        if vault_exists and merged.strip() == decrypted.strip():
+            sys.stderr.write(f"{color('ℹ️  no changes needed; vault already up to date.', '36')}\n")
+            return True
+
         tmp_decrypted.write_text(merged)
         sys.stderr.write(f"{color('📝 writing updated content...', '36')}\n")
         try:
@@ -270,6 +325,26 @@ def apply_to_vault(
                 sys.stderr.write(f"stderr:\n{exc.stderr}\n")
             return False
         sys.stderr.write(f"{color('✅ updated vault file:', '32')} {vault_path}\n")
+
+        # Post-verify to ensure we didn't introduce duplicates.
+        try:
+            verified = run(
+                ["ansible-vault", "view", "--vault-password-file", str(password_file), str(vault_path)]
+            )
+            dup_keys = find_duplicate_keys(verified)
+            if dup_keys:
+                sys.stderr.write(
+                    f"{color('❌ duplicate keys detected after write:', '31')} {', '.join(dup_keys)}\n"
+                )
+                return False
+        except subprocess.CalledProcessError as exc:
+            sys.stderr.write("Failed to re-read vault for verification.\n")
+            if exc.stdout:
+                sys.stderr.write(f"stdout:\n{exc.stdout}\n")
+            if exc.stderr:
+                sys.stderr.write(f"stderr:\n{exc.stderr}\n")
+            return False
+
         return True
     finally:
         tmp_decrypted.unlink(missing_ok=True)
@@ -291,6 +366,11 @@ def main():
         default=os.environ.get("ANSIBLE_VAULT_PASSWORD_FILE"),
         help="Vault password file path (required when using --vault)",
     )
+    parser.add_argument(
+        "--each-group",
+        action="store_true",
+        help="When --group all, fan out to each group default vault (unraid, agh). Otherwise writes to group_vars/all/vault.yml.",
+    )
     args = parser.parse_args()
 
     require_cmd("op")
@@ -299,11 +379,7 @@ def main():
 
     encrypt_vault_id = args.encrypt_vault_id if args.encrypt_vault_id else None
 
-    if args.group == "all" and args.vault:
-        sys.stderr.write("Cannot use --group all with a single --vault path; run per group or omit --vault.\n")
-        sys.exit(1)
-
-    if args.group == "all":
+    if args.group == "all" and args.each_group:
         groups = sorted([g for g in DEFAULT_VAULT_PATH.keys() if g != "all"])
         if not groups:
             sys.stderr.write("No group defaults configured; nothing to do.\n")
