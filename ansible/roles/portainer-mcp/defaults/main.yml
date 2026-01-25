@@ -22,7 +22,7 @@ portainer_server: "192.168.20.14:9000"
 portainer_op_item: "Portainer API Token"
 portainer_token: >-
   {{ lookup('env', 'PORTAINER_TOKEN')
-  | default(vars.get('portainer_token_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Portainer API Token/credential" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 
 # Timezone

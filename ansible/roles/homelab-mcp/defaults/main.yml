@@ -24,11 +24,11 @@ orbi_host: "192.168.1.1"
 orbi_op_item: "Orbi Login"
 orbi_username: >-
   {{ lookup('env', 'ORBI_USERNAME')
-  | default(vars.get('orbi_username_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/username" 2>/dev/null || echo ""'), true)
   | default('admin') }}
 orbi_password: >-
   {{ lookup('env', 'ORBI_PASSWORD')
-  | default(vars.get('orbi_password_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/password" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 orbi_port: 80
 orbi_ssl: false

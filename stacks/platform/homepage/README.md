@@ -42,6 +42,14 @@ Ansible deploy to Unraid:
 ansible-playbook ansible/playbooks/services/deploy-homepage.yml
 ```
 
+## Validate config
+
+Run a quick YAML parse on homepage configs:
+
+```bash
+./scripts/test-homepage-config.sh
+```
+
 ## DNS / Proxy
 
 1. Add a DNS record `home.klsll.com` pointing to the Platform host (Technitium/AdGuard).

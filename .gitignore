@@ -34,3 +34,8 @@ ansible/group_vars/**/*.bak.*
 .terraform.lock.hcl
 *.tfvars
 !*.tfvars.example
+
+# Vault files deprecated - using direct 1Password service account lookups
+ansible/group_vars/*/vault.yml
+ansible/group_vars/*/vault.yml.bak.*
+ansible/artifacts/

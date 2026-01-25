@@ -1,0 +1,27 @@
+- logo:
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- datetime:
+    timezone: America/Phoenix
+    format:
+      dateStyle: short
+      timeStyle: short
+      hour12: true
+
+- openmeteo:
+    label: Phoenix
+    latitude: 33.4484
+    longitude: -112.0740
+    timezone: America/Phoenix
+    units: imperial
+    cache: 5
+
+- resources:
+    label: Container
+    cpu: true
+    memory: true
+    disk: /

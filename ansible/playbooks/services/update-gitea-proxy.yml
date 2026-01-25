@@ -1,0 +1,11 @@
+---
+- name: Sync Gitea proxy and DNS into Nginx Proxy Manager
+  hosts: unraid
+  gather_facts: false
+  vars:
+    npm_proxy_config_paths:
+      - "{{ playbook_dir }}/../../files/npm/services/gitea.yml"
+    npm_manage_proxies: true
+    npm_manage_dns: true
+  roles:
+    - npm

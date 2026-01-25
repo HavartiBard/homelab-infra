@@ -19,6 +19,25 @@
     - name: Create homepage directory
       raw: "mkdir -p {{ homepage_dir }}/config"
 
+    - name: Load Homepage config content (render templates for secrets/vars)
+      set_fact:
+        homepage_settings_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/settings.yaml') | b64encode }}"
+        homepage_services_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/services.yaml') | b64encode }}"
+        homepage_widgets_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/widgets.yaml') | b64encode }}"
+        homepage_bookmarks_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/bookmarks.yaml') | b64encode }}"
+
+    - name: Write homepage settings.yaml
+      raw: "echo '{{ homepage_settings_b64 }}' | base64 -d > {{ homepage_dir }}/config/settings.yaml"
+
+    - name: Write homepage services.yaml
+      raw: "echo '{{ homepage_services_b64 }}' | base64 -d > {{ homepage_dir }}/config/services.yaml"
+
+    - name: Write homepage widgets.yaml
+      raw: "echo '{{ homepage_widgets_b64 }}' | base64 -d > {{ homepage_dir }}/config/widgets.yaml"
+
+    - name: Write homepage bookmarks.yaml
+      raw: "echo '{{ homepage_bookmarks_b64 }}' | base64 -d > {{ homepage_dir }}/config/bookmarks.yaml"
+
     - name: Write docker-compose.yml via raw (base64 decode)
       raw: "echo '{{ homepage_compose_b64 }}' | base64 -d > {{ compose_file }}"
 
@@ -63,18 +82,15 @@
           HOMEPAGE_LOG_LEVEL=info
           HOMEPAGE_WEBUI_URL={{ HOMEPAGE_WEBUI_URL | default('https://home.klsll.com', true) }}
           HOMEPAGE_ICON={{ HOMEPAGE_ICON | default('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png', true) }}
+          HOMEPAGE_ALLOWED_HOSTS={{ HOMEPAGE_ALLOWED_HOSTS | default('home.klsll.com,localhost,192.168.20.14', true) }}
 
     - name: Encode homepage env content
       set_fact:
         homepage_env_b64: "{{ homepage_env_content | b64encode }}"
 
-    - name: Ensure .env exists with HOMEPAGE_PORT and metadata
+    - name: Ensure .env exists with HOMEPAGE_PORT and metadata (always replace to apply host allowlist)
       raw: |
-        if [ ! -f {{ env_file }} ]; then
-          echo '{{ homepage_env_b64 }}' | base64 -d > {{ env_file }}
-        elif ! grep -q '^HOMEPAGE_PORT=' {{ env_file }}; then
-          echo "HOMEPAGE_PORT={{ homepage_port }}" >> {{ env_file }}
-        fi
+        echo '{{ homepage_env_b64 }}' | base64 -d > {{ env_file }}
 
     - name: Fail if chosen port is already in use by another service
       raw: |

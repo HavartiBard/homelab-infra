@@ -15,27 +15,27 @@ proxmox_mcp_container_port: "6971"
 proxmox_op_item: "Proxmox MCP Token"
 proxmox_host: >-
   {{ lookup('env', 'PROXMOX_MCP_HOST')
-  | default(vars.get('proxmox_mcp_host_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/host" 2>/dev/null || echo ""'), true)
   | default('', true) | default('') }}
 proxmox_port: >-
   {{ lookup('env', 'PROXMOX_MCP_PORT')
-  | default(vars.get('proxmox_mcp_port_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/port" 2>/dev/null || echo ""'), true)
   | default('', true) | default('8006') }}
 proxmox_user: >-
   {{ lookup('env', 'PROXMOX_MCP_USER')
-  | default(vars.get('proxmox_mcp_user_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/username" 2>/dev/null || echo ""'), true)
   | default('', true) | default('') }}
 proxmox_token_name: >-
   {{ lookup('env', 'PROXMOX_MCP_TOKEN_NAME')
-  | default(vars.get('proxmox_mcp_token_name_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/token_name" 2>/dev/null || echo ""'), true)
   | default('', true) | default('') }}
 proxmox_token_value: >-
   {{ lookup('env', 'PROXMOX_MCP_TOKEN_VALUE')
-  | default(vars.get('proxmox_mcp_token_value_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/credential" 2>/dev/null || echo ""'), true)
   | default('', true) | default('') }}
 proxmox_allow_elevated: >-
   {{ lookup('env', 'PROXMOX_MCP_ALLOW_ELEVATED')
-  | default(vars.get('proxmox_mcp_allow_elevated_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/allow_elevated" 2>/dev/null || echo ""'), true)
   | default('', true) | default('false') }}
 
 # Timezone

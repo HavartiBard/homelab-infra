@@ -12,30 +12,48 @@ sudo apt install ansible
 ansible-galaxy collection install community.docker community.general
 ```
 
-## Vault password helper
+## Credential Management
 
-`ansible/group_vars/unraid/vault.yml` is encrypted. Instead of typing the vault password when running playbooks, source the setup helper (or manually export the helpers) so the secret is read directly from 1Password:
+This repository uses a 1Password Service Account for automated credential access. No vault files or manual `op signin` required.
+
+### One-time Setup
+
+1. Ensure `OP_SERVICE_ACCOUNT_TOKEN` is exported in your `~/.bashrc`:
+   ```bash
+   echo 'export OP_SERVICE_ACCOUNT_TOKEN="ops-YOUR-TOKEN-HERE"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+2. Verify the service account works:
+   ```bash
+   op read "op://AI Wedge/Notion MCP Integration/credential"
+   # Should output the token without prompting for signin
+   ```
+
+### Usage
+
+All playbooks automatically read credentials from 1Password. Just run them:
 
 ```bash
-eval "$(op signin <subdomain>.1password.com <email>)"      # ensure CLI session exists
-source ansible/scripts/setup-vault-helper-env.sh
+# Credentials are automatically fetched from 1Password
+ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
 ```
 
-The helper exports `ANSIBLE_VAULT_PASSWORD_FILE`/`ANSIBLE_VAULT_OP_*` while still letting `ansible/scripts/ansible-vault-password.sh` emit the password via `op item get … --fields password --reveal`; adjust `ANSIBLE_VAULT_OP_ITEM`/`ANSIBLE_VAULT_OP_VAULT` if your vault layout differs. Add `source /home/james/CascadeProjects/homelab-infra/ansible/scripts/setup-vault-helper-env.sh` to `~/.bashrc` (or another session init file) if you want every shell to already have the helper configured. Test the configuration with `ANSIBLE_VAULT_PASSWORD_FILE=ansible/scripts/ansible-vault-password.sh ansible-inventory -i inventory/hosts.yml --list-hosts` to confirm the password is emitted without a prompt.
+### Override Credentials for Testing
 
-To populate vault variables from 1Password (without runtime `op` calls), use the sync helper (Python):
 ```bash
-# Generate snippet
-ANSIBLE_CONFIG=ansible/ansible.cfg \
-ansible/scripts/sync-1password-to-vault.py --group unraid > /tmp/vault-snippet.yml
-# then `ansible-vault edit ansible/group_vars/<group>/vault.yml` and paste
-
-# Or apply directly (requires ANSIBLE_VAULT_PASSWORD_FILE):
-ANSIBLE_CONFIG=ansible/ansible.cfg \
-ANSIBLE_VAULT_PASSWORD_FILE=ansible/scripts/ansible-vault-password.sh \
-ansible/scripts/sync-1password-to-vault.py --group unraid --vault ansible/group_vars/<group>/vault.yml
+# Override a specific credential via environment variable
+NOTION_TOKEN="test-token" ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
 ```
-The script pulls items tagged `Ansible` and mapped to the vars used in defaults (AdGuard, Orbi, Notion MCP, 1Password MCP, Portainer, Proxmox MCP, Unraid GraphQL). Use `--group agh|all` to change scope.
+
+### How It Works
+
+Roles use a two-tier fallback pattern:
+1. **Environment variable** (e.g., `NOTION_TOKEN`) - highest priority
+2. **Direct 1Password lookup** via `op read` - automatic via service account
+3. **Empty fallback** - role fails with clear error if credential missing
+
+No vault files, no sync script, no manual credential export needed.
 
 ## Agent runbook
 
@@ -95,6 +113,17 @@ ansible-playbook playbooks/platform/deploy-npm-unraid.yml
 **Notes:** Update `ansible/group_vars/unraid.yml` with the desired `npm_*` variables before running. The playbook relies on the `unraid` host group and expects SSH access as configured in `inventory/hosts.yml`. If the Unraid host lacks `docker compose`, the role will download a pinned `docker-compose` binary to `{{ compose_bin_path }}`. Optional: enable `npm_manage_proxies` / `npm_manage_dns` and place per-service configs in `ansible/files/npm/services/` to create proxy hosts and Technitium DNS records using the NPM API.
 
 **Proxy/DNS template:** Copy `ansible/files/npm/templates/_template.yml` to a new filename under `ansible/files/npm/services/`, set domains/targets/cert name, and rerun this playbook. The role will reuse existing certs when domain sets match (to avoid duplicate wildcards) and manage both NPM proxy hosts and Technitium DNS.
+
+### deploy-gitea.yml
+
+Deploys Gitea on Unraid using a Postgres backend plus the built-in container registry. The service runs on the same macvlan segment as NPM, so keep `gitea_ip` and `gitea_network_*` aligned with the VLAN20 plan and route TLS through Nginx Proxy Manager.
+
+```bash
+ansible-playbook playbooks/platform/deploy-gitea.yml
+```
+
+**Notes:** Supply secrets via the new `Gitea Service Credentials` 1Password item (fields `db_password` and `admin_password`) or set `GITEA_DB_PASSWORD`/`GITEA_ADMIN_PASSWORD` in the shell before running. Update `ansible/group_vars/unraid/unraid.yml` if you need to change the dedicated IP/domain. See `docs/services/gitea.md` for full architecture, DNS, and registry guidance.
+After deploying Gitea, run `ansible-playbook playbooks/services/update-gitea-proxy.yml` so the `code.klsll.com` and `registry.klsll.com` proxy hosts + DNS records are created via the npm role. Re-run the playbook whenever the endpoints or IPs change.
 
 ### 1Password item naming (avoid breakage)
 

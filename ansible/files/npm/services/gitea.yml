@@ -1,0 +1,38 @@
+---
+proxy_hosts:
+  - name: gitea-http
+    domains:
+      - code.klsll.com
+    forward_host: 192.168.20.52
+    forward_port: 3000
+    scheme: http
+    websocket: true
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+  - name: gitea-registry
+    domains:
+      - registry.klsll.com
+    forward_host: 192.168.20.52
+    forward_port: 5000
+    scheme: http
+    websocket: false
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: code.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600
+  - name: registry.klsll.com
+    type: A
+    value: 192.168.20.52
+    ttl: 3600
+  - name: gitea.klsll.com
+    type: A
+    value: 192.168.20.52
+    ttl: 3600

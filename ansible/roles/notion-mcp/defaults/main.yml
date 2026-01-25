@@ -18,7 +18,7 @@ notion_mcp_transport: "streamable-http"
 notion_op_item: "Notion MCP Integration"
 notion_token: >-
   {{ lookup('env', 'NOTION_TOKEN')
-  | default(vars.get('notion_token_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Notion MCP Integration/credential" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 auth_token: "notion-mcp-secret-2024"  # Custom auth token for HTTP transport
 

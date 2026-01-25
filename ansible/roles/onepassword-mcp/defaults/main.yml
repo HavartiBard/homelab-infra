@@ -20,7 +20,7 @@ op_vault: "AI Wedge"
 op_service_account_item: "OP_SERVICE_ACCOUNT_TOKEN"
 op_service_account_token: >-
   {{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')
-  | default(vars.get('op_service_account_token_vault', ''), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/OP_SERVICE_ACCOUNT_TOKEN/credential" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 
 # Timezone

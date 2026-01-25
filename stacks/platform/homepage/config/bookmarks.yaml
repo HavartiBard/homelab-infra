@@ -1,0 +1,22 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/bookmarks
+
+- Developer:
+    - Homelab Infra Repo:
+        - abbr: GH
+          href: https://github.com/HavartiBard/homelab-infra
+    - Open PRs:
+        - abbr: PR
+          href: https://github.com/HavartiBard/homelab-infra/pulls
+
+- Docs:
+    - Homepage Docs:
+        - abbr: HP
+          href: https://gethomepage.dev/
+    - AGENTS Rules:
+        - abbr: AG
+          href: https://github.com/HavartiBard/homelab-infra/blob/main/AGENTS.md
+    - Repo README:
+        - abbr: RD
+          href: https://github.com/HavartiBard/homelab-infra/blob/main/README.md

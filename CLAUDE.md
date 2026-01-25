@@ -132,6 +132,27 @@ Docker Desktop on WSL2 behaves differently from Linux Docker—don't assume `hos
 - Mark placeholders as `CHANGEME_*`
 - Required env var names use `:?` syntax in compose files to error if missing
 
+### Credential Access for AI Agents
+
+Claude Code and AI agents can read credentials directly from 1Password using the service account:
+
+```bash
+# Read a credential via op read
+op read "op://AI Wedge/Notion MCP Integration/credential"
+
+# Example in Python
+import subprocess
+result = subprocess.run(
+    ['op', 'read', 'op://AI Wedge/Unraid GraphQL - Wedge/credential'],
+    capture_output=True, text=True, check=True
+)
+api_key = result.stdout.strip()
+```
+
+**Available credentials**: All items in the "AI Wedge" vault tagged "Ansible" are accessible. See `ansible/scripts/sync-1password-to-vault.py.DEPRECATED` for the complete mapping.
+
+**Note**: AI agents have read-only access to 1Password via the service account (`OP_SERVICE_ACCOUNT_TOKEN`). To create new credentials, manually add them to 1Password and tag them "Ansible" or "Generated".
+
 ### Ansible Notes
 
 - Unraid lacks Python—roles use `raw` commands
