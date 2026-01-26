@@ -1,0 +1,51 @@
+services:
+{% for i in range(1, gitea_runner_count | int + 1) %}
+  {{ gitea_runner_container_name }}-{{ i }}:
+    container_name: "{{ gitea_runner_container_name }}-{{ i }}"
+    image: "{{ gitea_runner_image }}"
+    restart: unless-stopped
+    privileged: true
+    user: "0"
+    environment:
+      TZ: "{{ timezone }}"
+      GITEA_INSTANCE_URL: "{{ gitea_instance_url }}"
+      GITEA_RUNNER_REGISTRATION_TOKEN: "{{ gitea_runner_token }}"
+      GITEA_RUNNER_NAME: "{{ gitea_runner_name_prefix }}-{{ ansible_hostname }}-{{ i }}"
+      GITEA_RUNNER_LABELS: "{{ gitea_runner_labels | join(',') }}"
+      LOG_LEVEL: "{{ gitea_runner_log_level }}"
+      DOCKER_HOST: "{{ gitea_runner_docker_host }}"
+      DOCKER_BUILDKIT: "1"
+      BUILDKIT_PROGRESS: "plain"
+    volumes:
+      - "{{ gitea_runner_data_dir }}-{{ i }}:/data:rw"
+      - "{{ gitea_runner_cache_dir }}:/cache:rw"
+      - "{{ gitea_runner_docker_socket_path }}:{{ gitea_runner_docker_socket_path }}:rw"
+    mem_limit: "{{ gitea_runner_memory_limit }}"
+    mem_reservation: "{{ gitea_runner_memory_reservation }}"
+    cpus: "{{ gitea_runner_cpus_limit }}"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service={{ gitea_runner_container_name }},index={{ i }}"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "test -f /data/config.yml && echo Running || exit 1"
+      interval: "{{ gitea_runner_health_interval }}s"
+      timeout: 5s
+      retries: {{ gitea_runner_health_attempts }}
+      start_period: 30s
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gitea.png"
+      com.gitea.runner.index: "{{ i }}"
+    networks:
+      - {{ gitea_network_name }}
+
+{% endfor %}
+
+networks:
+  {{ gitea_network_name }}:
+    external: true
+    driver: macvlan

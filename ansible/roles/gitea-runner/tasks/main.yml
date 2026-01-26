@@ -1,0 +1,186 @@
+---
+# Gitea Runner Deployment Tasks
+- name: Validate required variables
+  ansible.builtin.fail:
+    msg: |
+      Required Gitea Runner configuration missing:
+      - gitea_runner_token: {{ gitea_runner_token | default('NOT SET') }}
+      - gitea_instance_url: {{ gitea_instance_url | default('NOT SET') }}
+      Set GITEA_RUNNER_TOKEN environment variable or provide as role variable.
+  when:
+    - not gitea_runner_token or gitea_runner_token == ''
+    - not gitea_instance_url or gitea_instance_url == ''
+
+- name: Ensure runner directories exist
+  ansible.builtin.raw: |
+    mkdir -p {{ gitea_runner_stack_root }} \
+             {{ gitea_runner_data_dir }} \
+             {{ gitea_runner_cache_dir }}
+  changed_when: false
+
+- name: Create individual runner data directories
+  ansible.builtin.raw: |
+    set -e
+    {% for i in range(1, gitea_runner_count | int + 1) %}
+    mkdir -p {{ gitea_runner_data_dir }}-{{ i }}
+    {% endfor %}
+  changed_when: false
+
+- name: Detect available Docker Compose
+  ansible.builtin.shell: |
+    set +e
+    COMPOSE_BIN="{{ compose_bin_path }}"
+    if docker compose version >/dev/null 2>&1; then
+      echo "docker_compose_plugin"
+      exit 0
+    elif $COMPOSE_BIN version >/dev/null 2>&1; then
+      echo "docker_compose_legacy"
+      exit 0
+    else
+      exit 1
+    fi
+  register: docker_compose_check
+  changed_when: false
+  failed_when: false
+
+- name: Install docker-compose binary when missing
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+      curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+      chmod +x {{ compose_bin_path }}
+    fi
+  when: docker_compose_check.rc != 0
+
+- name: Select compose command
+  ansible.builtin.set_fact:
+    docker_compose_command: >-
+      {{ 'docker compose'
+      if docker_compose_check.stdout | trim == 'docker_compose_plugin'
+      else compose_bin_path }}
+
+- name: Create registry credentials config
+  ansible.builtin.raw: |
+    set -euo pipefail
+    {% if registry_username and registry_password %}
+    mkdir -p {{ gitea_runner_appdata_root }}/.docker
+    cat <<'EOF' > {{ gitea_runner_appdata_root }}/.docker/config.json
+    {
+      "auths": {
+        "{{ registry_host }}": {
+          "auth": "{{ (registry_username + ':' + registry_password) | b64encode }}"
+        }
+      }
+    }
+    EOF
+    chmod 600 {{ gitea_runner_appdata_root }}/.docker/config.json
+    {% else %}
+    echo "Registry credentials not configured, skipping docker config setup"
+    {% endif %}
+  changed_when: false
+
+- name: Render Docker Compose stack definition
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ gitea_runner_stack_root }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Validate generated docker-compose file
+  ansible.builtin.shell: |
+    cd {{ gitea_runner_stack_root }}
+    docker compose config >/dev/null
+  register: compose_validate
+  failed_when: false
+  changed_when: false
+
+- name: Show docker-compose validation error if any
+  ansible.builtin.debug:
+    msg: "{{ compose_validate.stderr }}"
+  when: compose_validate.rc != 0
+
+- name: Fail if docker-compose is invalid
+  ansible.builtin.fail:
+    msg: "Generated docker-compose.yml is invalid. See output above."
+  when: compose_validate.rc != 0
+
+- name: Pull Docker images for runner stack
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ gitea_runner_stack_root }}
+    {{ docker_compose_command }} pull
+
+- name: Deploy Gitea runner stack
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ gitea_runner_stack_root }}
+    {{ docker_compose_command }} up -d
+
+- name: Wait for runners to register with Gitea
+  ansible.builtin.raw: |
+    set -euo pipefail
+    attempts=0
+    while [ $attempts -lt {{ gitea_runner_health_attempts }} ]; do
+      # Check if runner config file was created (indicates successful registration)
+      {% for i in range(1, gitea_runner_count | int + 1) %}
+      if [ -f {{ gitea_runner_data_dir }}-{{ i }}/config.yml ]; then
+        attempts=$(({{ gitea_runner_health_attempts }} + 1))
+      fi
+      {% endfor %}
+      attempts=$((attempts + 1))
+      sleep {{ gitea_runner_health_interval }}
+    done
+
+- name: Verify runner containers are running
+  ansible.builtin.raw: |
+    set -euo pipefail
+    {% for i in range(1, gitea_runner_count | int + 1) %}
+    docker ps --filter "name={{ gitea_runner_container_name }}-{{ i }}" --filter "status=running" | grep -q {{ gitea_runner_container_name }}-{{ i }} || exit 1
+    {% endfor %}
+
+- name: Get runner container IP addresses
+  ansible.builtin.shell: |
+    docker ps -qf "name={{ gitea_runner_container_name }}" | xargs -I {} \
+      docker inspect -f '{% raw %}{{.Name}}: {{.NetworkSettings.Networks.br0.IPAddress}}{% endraw %}' {}
+  register: runner_ips
+  changed_when: false
+  failed_when: false
+
+- name: Get runner container MAC addresses for DHCP reservations
+  ansible.builtin.shell: |
+    docker ps -qf "name={{ gitea_runner_container_name }}" | xargs -I {} \
+      docker inspect -f '{% raw %}{{.Name}}: {{.NetworkSettings.Networks.br0.MacAddress}}{% endraw %}' {}
+  register: runner_macs
+  changed_when: false
+  failed_when: false
+
+- name: Display runner deployment info
+  ansible.builtin.debug:
+    msg: |
+      ✓ Gitea Runners deployed successfully!
+
+      Deployment Details:
+      - Stack Root: {{ gitea_runner_stack_root }}
+      - Data Directory: {{ gitea_runner_data_dir }}
+      - Runner Count: {{ gitea_runner_count }}
+      - Instance URL: {{ gitea_instance_url }}
+      - Labels: {{ gitea_runner_labels | join(', ') }}
+
+      Runners (currently assigned IPs via DHCP):
+      {{ runner_ips.stdout }}
+
+      MAC Addresses (for DHCP reservations):
+      {{ runner_macs.stdout }}
+
+      ⚠️  IMPORTANT: Set up DHCP reservations in Technitium
+      This ensures stable IPs across restarts:
+      1. Visit: https://tt1.klsll.com:5380/ (Technitium admin)
+      2. Go to: DHCP > DHCP Reservations (by MAC)
+      3. Add reservations for each runner using the MAC addresses above
+      4. Assign stable IPs (e.g., 192.168.20.161, 192.168.20.162, etc.)
+      5. Restart runners to apply new reservations
+
+      Useful Commands:
+      - View stack: cd {{ gitea_runner_stack_root }} && {{ docker_compose_command }} ps
+      - View logs: cd {{ gitea_runner_stack_root }} && {{ docker_compose_command }} logs -f
+      - Restart stack: cd {{ gitea_runner_stack_root }} && {{ docker_compose_command }} restart
+      - Scale runners: Edit {{ gitea_runner_stack_root }}/docker-compose.yml and run {{ docker_compose_command }} up -d
