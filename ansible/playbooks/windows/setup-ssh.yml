@@ -1,0 +1,204 @@
+---
+# =============================================================================
+# Setup SSH on Windows GPU Worker (spraycheese)
+# =============================================================================
+# This playbook enables OpenSSH Server on Windows and configures it for
+# network access via SSH key authentication.
+#
+# PREREQUISITES:
+# 1. WinRM must be enabled on the Windows system (default on Server, optional on Pro)
+# 2. Set credentials before running:
+#    export ANSIBLE_WINDOWS_USER='james'
+#    export ANSIBLE_WINDOWS_PASSWORD='<your-password>'
+#
+# USAGE:
+#    cd ansible
+#    export ANSIBLE_WINDOWS_USER='james'
+#    export ANSIBLE_WINDOWS_PASSWORD='<password>'
+#    ansible-playbook playbooks/windows/setup-ssh.yml --limit spraycheese
+#
+# After this playbook succeeds, SSH should be accessible from the LAN:
+#    ssh -i ~/.ssh/id_ed25519_homelab james@192.168.20.50
+#
+# =============================================================================
+
+- name: Setup SSH on Windows GPU Worker
+  hosts: windows_gpu
+  gather_facts: yes
+  vars:
+    ssh_port: 22
+    ssh_user: james
+
+  tasks:
+    - name: Display prerequisites notice
+      debug:
+        msg: |
+          ⚠️  This playbook requires WinRM to be enabled on {{ ansible_host }}
+          If WinRM is not enabled, follow the manual setup guide:
+          https://docs.microsoft.com/en-us/windows/win32/winrm/installation-and-configuration-for-windows-remote-management
+
+    # ==========================================================================
+    # Install OpenSSH Server
+    # ==========================================================================
+    - name: Check if OpenSSH Server is already installed
+      win_shell: |
+        $service = Get-Service sshd -ErrorAction SilentlyContinue
+        if ($service) { Write-Host "installed" } else { Write-Host "not-installed" }
+      changed_when: false
+      register: ssh_install_status
+
+    - name: Install OpenSSH Server (if not already installed)
+      win_shell: |
+        Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
+        if ($?) {
+          Write-Host "OpenSSH Server installed successfully"
+        } else {
+          Write-Error "Failed to install OpenSSH Server"
+          exit 1
+        }
+      when: "'not-installed' in ssh_install_status.stdout"
+      register: ssh_install_result
+
+    # ==========================================================================
+    # Start and Enable SSH Service
+    # ==========================================================================
+    - name: Start sshd service
+      win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+      register: sshd_service_result
+
+    - name: Verify sshd service is running
+      win_service:
+        name: sshd
+        state: started
+      register: sshd_status
+      failed_when: sshd_status.state != 'started'
+
+    # ==========================================================================
+    # Configure Windows Firewall
+    # ==========================================================================
+    - name: Create Windows Firewall rule for SSH (if not exists)
+      win_shell: |
+        $rule = Get-NetFirewallRule -DisplayName "SSH Server (sshd)" -ErrorAction SilentlyContinue
+        if ($rule) {
+          Write-Host "Firewall rule already exists"
+        } else {
+          New-NetFirewallRule -DisplayName "SSH Server (sshd)" `
+            -Direction Inbound `
+            -Action Allow `
+            -Protocol TCP `
+            -LocalPort {{ ssh_port }} | Out-Null
+          Write-Host "Firewall rule created"
+        }
+      changed_when: "'created' in firewall_rule_result.stdout"
+      register: firewall_rule_result
+
+    # ==========================================================================
+    # Configure SSH Public Key Authentication
+    # ==========================================================================
+    - name: Create .ssh directory for user
+      win_file:
+        path: "C:\\Users\\{{ ssh_user }}\\.ssh"
+        state: directory
+
+    - name: Copy SSH public key to authorized_keys
+      win_copy:
+        dest: "C:\\Users\\{{ ssh_user }}\\.ssh\\authorized_keys"
+        content: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519_homelab.pub') }}"
+
+    - name: Set correct permissions on .ssh directory
+      win_shell: |
+        $path = "C:\\Users\\{{ ssh_user }}\\.ssh"
+        icacls $path /inheritance:r /grant:r "${env:COMPUTERNAME}\{{ ssh_user }}:(OI)(CI)F" | Out-Null
+        Write-Host "Permissions set"
+
+    - name: Set correct permissions on authorized_keys file
+      win_shell: |
+        $path = "C:\\Users\\{{ ssh_user }}\\.ssh\\authorized_keys"
+        icacls $path /inheritance:r /grant:r "${env:COMPUTERNAME}\{{ ssh_user }}:F" | Out-Null
+        Write-Host "File permissions set"
+
+    # ==========================================================================
+    # Configure SSH Server Settings
+    # ==========================================================================
+    - name: Check current SSH config
+      win_stat:
+        path: "C:\\ProgramData\\ssh\\sshd_config"
+      register: sshd_config_stat
+
+    - name: Backup original sshd_config
+      win_copy:
+        src: "C:\\ProgramData\\ssh\\sshd_config"
+        dest: "C:\\ProgramData\\ssh\\sshd_config.bak.{{ ansible_date_time.iso8601_basic_short }}"
+        remote_src: yes
+      when: sshd_config_stat.stat.exists
+
+    - name: Update sshd_config for key-based auth and disable password auth
+      win_shell: |
+        $config = "C:\\ProgramData\\ssh\\sshd_config"
+        $content = Get-Content $config
+
+        # Enable key-based authentication
+        $content = $content -replace '(?m)^#?PubkeyAuthentication.*', 'PubkeyAuthentication yes'
+
+        # Disable password authentication
+        $content = $content -replace '(?m)^#?PasswordAuthentication.*', 'PasswordAuthentication no'
+
+        # Ensure PermitEmptyPasswords is disabled
+        $content = $content -replace '(?m)^#?PermitEmptyPasswords.*', 'PermitEmptyPasswords no'
+
+        # Set authorized keys file location (Windows-specific)
+        if ($content -notmatch 'AuthorizedKeysFile') {
+          $authKeysBlock = "`n`n# Use public key authentication`nAuthorizedKeysFile .ssh/authorized_keys`n"
+          $content += $authKeysBlock
+        }
+
+        $content | Set-Content $config -Encoding UTF8
+        Write-Host "sshd_config updated"
+
+    - name: Validate sshd_config syntax
+      win_shell: |
+        & 'C:\Program Files\OpenSSH-Win64\sshd.exe' -T
+      register: sshd_validation
+      failed_when: sshd_validation.rc != 0
+
+    - name: Restart sshd to apply changes
+      win_service:
+        name: sshd
+        state: restarted
+
+    # ==========================================================================
+    # Verification
+    # ==========================================================================
+    - name: Verify sshd is listening on port {{ ssh_port }}
+      win_shell: |
+        $listener = Get-NetTCPConnection -LocalPort {{ ssh_port }} -State Listen -ErrorAction SilentlyContinue
+        if ($listener) {
+          Write-Host "SSH is listening on port {{ ssh_port }}"
+        } else {
+          Write-Error "SSH is not listening on port {{ ssh_port }}"
+          exit 1
+        }
+      retries: 3
+      delay: 2
+
+    - name: Display success message
+      debug:
+        msg: |
+          ✅ SSH Setup Complete!
+
+          SSH is now enabled on {{ inventory_hostname }} ({{ ansible_host }})
+
+          Connect with:
+            ssh -i ~/.ssh/id_ed25519_homelab {{ ssh_user }}@{{ ansible_host }}
+
+          Or via Ansible:
+            ansible -i inventory/hosts.yml -u {{ ssh_user }} spraycheese -m ping
+
+          Service Status:
+            - Service: sshd ({{ sshd_service_result.state }})
+            - Port: {{ ssh_port }}/tcp (listening)
+            - Auth: Public key only (password disabled)
+            - Firewall: Allowed from any (TCP {{ ssh_port }})

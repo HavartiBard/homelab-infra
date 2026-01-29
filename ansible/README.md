@@ -69,7 +69,41 @@ Hosts are defined in `inventory/hosts.yml`. Current hosts/groups:
 - **tt**: `tt1` (192.168.20.2), `tt2` (192.168.20.3) — python3.12, sudo
 - **agh**: `agh1` (192.168.20.4), `agh2` (192.168.20.5) — python3.12, sudo
 
-## Playbooks
+## Windows Playbooks
+
+### setup-ssh.yml (Windows GPU Worker)
+
+Enables OpenSSH Server on the Windows GPU worker (spraycheese) and configures it for SSH key-based authentication.
+
+**Prerequisites:**
+- WinRM must be enabled on the Windows system (default on Server, optional on Pro)
+- `pywinrm` package installed: `pip install pywinrm`
+
+```bash
+# Set Windows credentials
+export ANSIBLE_WINDOWS_USER='james'
+export ANSIBLE_WINDOWS_PASSWORD='<your-password>'
+
+# Run the SSH setup playbook
+ansible-playbook playbooks/windows/setup-ssh.yml --limit spraycheese -v
+```
+
+**What it does:**
+- ✅ Installs OpenSSH Server (Windows optional component)
+- ✅ Starts and enables `sshd` service with auto-start
+- ✅ Creates Windows Firewall rule allowing port 22
+- ✅ Installs SSH public key from `~/.ssh/id_ed25519_homelab.pub`
+- ✅ Configures key-based auth only (disables password authentication)
+- ✅ Verifies SSH is listening and functional
+
+**After setup, SSH access:**
+```bash
+ssh -i ~/.ssh/id_ed25519_homelab james@192.168.20.50
+```
+
+See `docs/windows-ssh-setup.md` for detailed setup and troubleshooting.
+
+## Linux/Unraid Playbooks
 
 ### deploy-homelab-mcp.yml
 
