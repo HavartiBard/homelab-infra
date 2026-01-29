@@ -62,7 +62,7 @@ if ($service) {
         Write-Success "OpenSSH Server installed successfully"
     } catch {
         Write-Error "Failed to install OpenSSH Server: $_"
-        Write-Info "Note: You may need to install it manually via Settings > Apps > Optional Features"
+        Write-Info "Note: You may need to install it manually via Settings (Apps - Optional Features)"
         exit 1
     }
 }
@@ -317,7 +317,7 @@ for ($i = 1; $i -le $retries; $i++) {
     }
 
     if ($i -lt $retries) {
-        Write-Info "Attempt $i/$retries: Waiting for SSH to start..."
+        Write-Info "Attempt $i of $retries : Waiting for SSH to start..."
         Start-Sleep -Seconds 2
     }
 }
