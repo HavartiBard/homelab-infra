@@ -3,8 +3,8 @@ proxy_hosts:
   - name: homepage
     domains:
       - home.klsll.com
-    forward_host: 192.168.20.14
-    forward_port: 3002
+    forward_host: 192.168.20.55
+    forward_port: 3000
     scheme: http
     websocket: true
     certificate: klsll-wildcard

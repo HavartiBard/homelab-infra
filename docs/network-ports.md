@@ -27,7 +27,7 @@ This document lists all ports used by homelab stacks with access requirements.
 | Technitium | 8443 | UDP | 🔒 LAN-Only | DNS-over-HTTPS (QUIC) |
 | Technitium | 853 | TCP | 🔒 LAN-Only | DNS-over-TLS (optional) |
 | **Uptime Kuma** | 3001 | TCP | 🌐 Proxied | Status page UI |
-| **Homepage** | 3002 | TCP | 🌐 Proxied | Homelab landing page |
+| **Homepage** | 3002 / 3000 | TCP | 🌐 Proxied | Platform host exposes 3002; Unraid VLAN `br0` (192.168.20.55) exposes 3000 for the same landing page. |
 
 ## Monitoring Stack
 
@@ -152,7 +152,7 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 |----------|--------|------|-------|
 | `portainer.klsll.com` | https://portainer:9443 | Built-in | Platform stack |
 | `npm.klsll.com` | http://npm:81 | Built-in | Platform stack |
-| `home.klsll.com` | http://homepage:3000 | Built-in | Platform stack (Homepage) |
+| `home.klsll.com` | http://homepage:3000 | Built-in | Platform stack (Homepage); refers to VLAN br0 host 192.168.20.55 on Unraid when the playbook deploys homepage there. |
 | `status.klsll.com` | http://uptime-kuma:3001 | Built-in | Reserve; Kuma not deployed yet |
 | `grafana.klsll.com` | http://grafana:3000 | Built-in | Reserve; Grafana not deployed yet |
 | `prometheus.klsll.com` | http://prometheus:9090 | NPM Access List | Reserve; Prometheus not deployed yet |

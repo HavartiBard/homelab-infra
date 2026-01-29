@@ -14,6 +14,27 @@
       compose_version }}/docker-compose-linux-x86_64
     homepage_compose_content: "{{ lookup('file', playbook_dir + '/../../files/homepage/docker-compose.yml') }}"
     homepage_compose_b64: "{{ homepage_compose_content | b64encode }}"
+    homepage_ip: 192.168.20.55
+    homepage_network_name: br0
+    homepage_allowed_hosts: >-
+      {{ HOMEPAGE_ALLOWED_HOSTS
+      | default('home.klsll.com,localhost,192.168.20.55:3000', true) }}
+    homepage_webui_url: >-
+      {{ HOMEPAGE_WEBUI_URL | default('https://home.klsll.com', true) }}
+    homepage_icon: >-
+      {{ HOMEPAGE_ICON
+      | default('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png', true) }}
+    homepage_puid: 1000
+    homepage_pgid: 1000
+    homepage_log_level: info
+    npm_admin_email_vault: "{{ npm_admin_email | default('', true) }}"
+    npm_admin_password_vault: "{{ npm_admin_password | default('', true) }}"
+    adguard_admin_user_vault: "{{ adguard_admin_user | default('', true) }}"
+    adguard_admin_password_vault: "{{ adguard_admin_password | default('', true) }}"
+    unraid_api_key_vault: "{{ unraid_api_key | default('', true) }}"
+    proxmox_mcp_user_vault: "{{ proxmox_user | default('', true) }}"
+    proxmox_mcp_token_name_vault: "{{ proxmox_token_name | default('', true) }}"
+    proxmox_mcp_token_value_vault: "{{ proxmox_token_value | default('', true) }}"
 
   tasks:
     - name: Create homepage directory
@@ -41,68 +62,26 @@
     - name: Write docker-compose.yml via raw (base64 decode)
       raw: "echo '{{ homepage_compose_b64 }}' | base64 -d > {{ compose_file }}"
 
-    - name: Read existing HOMEPAGE_PORT from .env (if present)
-      raw: |
-        if [ -f {{ env_file }} ]; then
-          grep -E '^HOMEPAGE_PORT=' {{ env_file }} | tail -n1 | cut -d= -f2
-        fi
-      register: existing_port_cmd
-      changed_when: false
-
-    - name: Find free port on host for Homepage
-      raw: |
-        find_free_port() {
-          start=$1; end=$2
-          for p in $(seq "$start" "$end"); do
-            if ! ss -ltn | awk 'NR>1{print $4}' | grep -qE "[:.]${p}$"; then
-              echo "$p"
-              return 0
-            fi
-          done
-          return 1
-        }
-        find_free_port 3002 3099
-      register: free_port_cmd
-      changed_when: false
-      failed_when: free_port_cmd.rc != 0 and (existing_port_cmd.stdout | trim == '')
-
-    - name: Set homepage port fact
-      set_fact:
-        homepage_port: >-
-          {{ (existing_port_cmd.stdout | trim)
-             if (existing_port_cmd.stdout | trim) != '' else (free_port_cmd.stdout | trim) }}
-
     - name: Build homepage env content
       set_fact:
         homepage_env_content: |
           TZ=America/Phoenix
-          HOMEPAGE_PORT={{ homepage_port }}
-          HOMEPAGE_PUID=1000
-          HOMEPAGE_PGID=1000
-          HOMEPAGE_LOG_LEVEL=info
-          HOMEPAGE_WEBUI_URL={{ HOMEPAGE_WEBUI_URL | default('https://home.klsll.com', true) }}
-          HOMEPAGE_ICON={{ HOMEPAGE_ICON | default('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png', true) }}
-          HOMEPAGE_ALLOWED_HOSTS={{ HOMEPAGE_ALLOWED_HOSTS | default('home.klsll.com,localhost,192.168.20.14', true) }}
+          HOMEPAGE_IP={{ homepage_ip }}
+          HOMEPAGE_NETWORK_NAME={{ homepage_network_name }}
+          HOMEPAGE_PUID={{ homepage_puid }}
+          HOMEPAGE_PGID={{ homepage_pgid }}
+          HOMEPAGE_LOG_LEVEL={{ homepage_log_level }}
+          HOMEPAGE_WEBUI_URL={{ homepage_webui_url }}
+          HOMEPAGE_ICON={{ homepage_icon }}
+          HOMEPAGE_ALLOWED_HOSTS={{ homepage_allowed_hosts }}
 
     - name: Encode homepage env content
       set_fact:
         homepage_env_b64: "{{ homepage_env_content | b64encode }}"
 
-    - name: Ensure .env exists with HOMEPAGE_PORT and metadata (always replace to apply host allowlist)
+    - name: Ensure .env exists with current configuration
       raw: |
         echo '{{ homepage_env_b64 }}' | base64 -d > {{ env_file }}
-
-    - name: Fail if chosen port is already in use by another service
-      raw: |
-        in_use=$(ss -ltn | awk 'NR>1{print $4}' | grep -E "[:.]{{ homepage_port }}$" || true)
-        if [ -n "$in_use" ]; then
-          if docker ps -q -f name=^/homepage$ >/dev/null 2>&1; then
-            exit 0
-          else
-            echo "Port {{ homepage_port }} already in use on host" >&2
-            exit 1
-          fi
-        fi
 
     - name: Check for docker compose plugin
       raw: |
@@ -149,24 +128,8 @@
     - name: Deploy Homepage stack
       raw: "cd {{ homepage_dir }} && {{ homepage_compose_command }} up -d"
 
-    - name: Determine homepage port
-      raw: |
-        if [ -f {{ env_file }} ]; then
-          . {{ env_file }}
-          echo "${HOMEPAGE_PORT:-3002}"
-        else
-          echo "3002"
-        fi
-      register: homepage_port_cmd
-      changed_when: false
-
-    - name: Set homepage port fact
-      set_fact:
-        homepage_port: "{{ homepage_port_cmd.stdout | trim }}"
-
     - name: Display deployment info
       debug:
         msg: |
-          Homepage deployed. No inline healthcheck (python not present).
-          URL: http://{{ ansible_host }}:{{ homepage_port }}
+          Homepage deployed on VLAN {{ homepage_network_name }} ({{ homepage_ip }}).
           Compose dir: {{ homepage_dir }}

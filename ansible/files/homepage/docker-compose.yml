@@ -5,8 +5,6 @@ services:
     image: ghcr.io/gethomepage/homepage:v1.9.0
     container_name: homepage
     restart: unless-stopped
-    ports:
-      - "${HOMEPAGE_PORT:-3002}:3000"
     volumes:
       - ./config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -15,7 +13,17 @@ services:
       - PUID=${HOMEPAGE_PUID:-1000}
       - PGID=${HOMEPAGE_PGID:-1000}
       - LOG_LEVEL=${HOMEPAGE_LOG_LEVEL:-info}
-      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-home.klsll.com,localhost,192.168.20.14}
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-home.klsll.com,localhost,192.168.20.55}
     labels:
       net.unraid.docker.icon: ${HOMEPAGE_ICON:-https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png}
       net.unraid.docker.webui: ${HOMEPAGE_WEBUI_URL:-https://home.klsll.com}
+    networks:
+      homepage-net:
+        ipv4_address: ${HOMEPAGE_IP:-192.168.20.55}
+
+networks:
+  homepage-net:
+    external: true
+    # The playbook sets HOMEPAGE_NETWORK_NAME=br0 so this connects the container to the VLAN bridge.
+    # Compose will reuse the existing br0 network instead of creating homepage_default, keeping the dedicated IP.
+    name: ${HOMEPAGE_NETWORK_NAME:-br0}
