@@ -20,19 +20,19 @@ param(
 
 # Color functions for output
 function Write-Success {
-    Write-Host "✅ $args" -ForegroundColor Green
+    Write-Host "[OK] $args" -ForegroundColor Green
 }
 
 function Write-Info {
-    Write-Host "ℹ️  $args" -ForegroundColor Cyan
+    Write-Host "[*] $args" -ForegroundColor Cyan
 }
 
 function Write-Warning {
-    Write-Host "⚠️  $args" -ForegroundColor Yellow
+    Write-Host "[!] $args" -ForegroundColor Yellow
 }
 
 function Write-Error {
-    Write-Host "❌ $args" -ForegroundColor Red
+    Write-Host "[X] $args" -ForegroundColor Red
 }
 
 # Check if running as Administrator
@@ -332,9 +332,9 @@ Write-Host ""
 # =============================================================================
 # Summary
 # =============================================================================
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "================================================================================" -ForegroundColor Green
 Write-Success "SSH Setup Complete!"
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "================================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Info "SSH is now enabled on this Windows system"
 Write-Host ""
@@ -347,4 +347,4 @@ Write-Host ""
 Write-Host "Service Status:" -ForegroundColor Cyan
 Get-Service sshd | Select-Object @{Name='Name';Expression={$_.Name}}, @{Name='Status';Expression={$_.Status}}, @{Name='StartType';Expression={$_.StartType}} | Format-Table -AutoSize
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "================================================================================" -ForegroundColor Green
