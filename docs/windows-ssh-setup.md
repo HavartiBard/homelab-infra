@@ -23,7 +23,23 @@ winrm enumerate winrm/config/listener
 - Port 5985 (WinRM HTTP) must be accessible from your management machine
 - Port 22 (SSH) must be accessible from the LAN after setup
 
-## Initial SSH Setup (via WinRM)
+## Quick Start: Direct PowerShell Setup
+
+**Fastest way (no WinRM required):**
+
+1. Save the PowerShell script: `ansible/playbooks/windows/setup-ssh.ps1`
+2. Copy your SSH public key to `C:\temp\id_ed25519_homelab.pub` on Windows
+3. Run in PowerShell as Administrator:
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+   C:\Users\james\setup-ssh.ps1
+   ```
+
+See `WINDOWS_SSH_QUICKSTART.md` for complete instructions.
+
+---
+
+## Detailed Setup: SSH via WinRM (Ansible)
 
 ### Step 1: Ensure pywinrm is Installed
 
