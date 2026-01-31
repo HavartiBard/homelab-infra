@@ -1,0 +1,37 @@
+model = "gpt-5.1-codex-mini"
+model_reasoning_effort = "medium"
+
+[mcp]
+enabled = true
+
+[mcp_servers]
+
+[mcp_servers.homelab]
+enabled = true
+transport = "shttp"
+url = "http://192.168.20.14:6971/mcp"
+
+[mcp_servers.unraid]
+enabled = true
+transport = "shttp"
+url = "http://192.168.20.14:6970/mcp"
+
+[mcp_servers.proxmox]
+enabled = true
+transport = "shttp"
+url = "http://192.168.20.14:6974/mcp"
+
+[mcp_servers.onepassword]
+enabled = true
+transport = "shttp"
+url = "http://192.168.20.14:6975/mcp"
+
+[mcp_servers.notion_public]
+enabled = true
+transport = "sse"
+url = "http://192.168.20.14:3000/mcp"
+bearer_token_env_var = "NOTION_MCP_TOKEN"
+
+[notice.model_migrations]
+"gpt-5.1-codex-max" = "gpt-5.2-codex"
+"gpt-5.1-codex-mini" = "gpt-5.2-codex"
