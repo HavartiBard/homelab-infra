@@ -1,0 +1,85 @@
+# Dev Environment - Oh My Zsh + Pure prompt
+
+# =============================================================================
+# Oh My Zsh
+# =============================================================================
+export ZSH="/opt/oh-my-zsh"
+export ZSH_CUSTOM="$ZSH/custom"
+
+# Pure prompt (loaded via oh-my-zsh theme)
+ZSH_THEME="pure"
+
+# Plugins
+plugins=(
+    git
+    docker
+    docker-compose
+    sudo
+    zsh-autosuggestions
+    zsh-syntax-highlighting
+)
+
+# Disable oh-my-zsh auto-update (managed by image rebuilds)
+zstyle ':omz:update' mode disabled
+
+source "$ZSH/oh-my-zsh.sh"
+
+# =============================================================================
+# History
+# =============================================================================
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+
+# =============================================================================
+# Aliases
+# =============================================================================
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Docker
+alias d='docker'
+alias dc='docker compose'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias dlogs='docker logs -f'
+
+# =============================================================================
+# Environment
+# =============================================================================
+export EDITOR=vim
+export VISUAL=vim
+export PAGER=less
+
+# Go
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:/usr/local/go/bin:$PATH"
+
+# Local bin
+export PATH="$HOME/.local/bin:$PATH"
+
+# =============================================================================
+# Container environment (API keys, etc.)
+# =============================================================================
+[ -f ~/.env_container ] && source ~/.env_container
+
+# =============================================================================
+# 1Password CLI completion
+# =============================================================================
+if command -v op &> /dev/null; then
+    eval "$(op completion zsh)" 2>/dev/null
+    compdef _op op
+fi
+
+# =============================================================================
+# 1Password SSH agent (if socket is mounted)
+# =============================================================================
+if [ -S "${OP_SSH_AUTH_SOCK:-$HOME/.1password/agent.sock}" ]; then
+    export SSH_AUTH_SOCK="${OP_SSH_AUTH_SOCK:-$HOME/.1password/agent.sock}"
+fi
