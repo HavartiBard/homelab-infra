@@ -1,0 +1,184 @@
+---
+- name: Install Docker and deploy DNS/AdGuard via Compose on LXCs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    technitium_admin_password: "{{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD') | default('', true) }}"
+    lab_root_password: "{{ lookup('env', 'LAB_ROOT_PASSWORD') | default('', true) }}"
+    lab_user: "james"
+    lab_user_pubkey_path: "{{ lookup('env', 'LAB_USER_PUBKEY') | default(lookup('env','HOME') + '/.ssh/id_ed25519_homelab.pub', true) }}"
+
+  vars_files:
+    - ../group_vars/all/dns_dhcp.yml
+
+  pre_tasks:
+    - name: Assert Proxmox API token secret is provided
+      ansible.builtin.assert:
+        that:
+          - dns_dhcp_proxmox.api_token_secret | length > 0
+        fail_msg: "Set PROXMOX_API_TOKEN_SECRET from 1Password before running."
+
+    - name: Assert LAB_ROOT_PASSWORD is provided
+      ansible.builtin.assert:
+        that:
+          - lab_root_password | length > 0
+        fail_msg: "Set LAB_ROOT_PASSWORD from 1Password before running."
+
+    - name: Assert TECHNITIUM_ADMIN_PASSWORD is provided
+      ansible.builtin.assert:
+        that:
+          - technitium_admin_password | length > 0
+        fail_msg: "Set TECHNITIUM_ADMIN_PASSWORD from 1Password before running."
+
+    - name: Assert LAB_USER public key exists locally
+      ansible.builtin.stat:
+        path: "{{ lab_user_pubkey_path }}"
+      register: lab_pubkey_stat
+      failed_when: not lab_pubkey_stat.stat.exists
+
+  tasks:
+    - name: Ensure local key content is loaded
+      ansible.builtin.set_fact:
+        lab_user_pubkey: "{{ lookup('file', lab_user_pubkey_path) }}"
+
+    - name: Normalize routing and DNS inside LXCs (default via vlan20)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -s <<'EOF'
+        set -euo pipefail
+        for f in /etc/systemd/network/*.network; do
+          [ -f "$f" ] || continue
+          if ! grep -q 'Name *= *eth1' "$f"; then
+            sed -i '/^Gateway/d' "$f"
+          fi
+        done
+        printf 'nameserver {{ dns_dhcp_vm_defaults.nameserver_bootstrap }}\n' > /etc/resolv.conf
+        systemctl restart systemd-networkd
+        while ip route del default 2>/dev/null; do :; done
+        ip route add default via {{ dns_dhcp_gateways.vlan20 }} dev eth1
+        EOF
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+      run_once: false
+
+    - name: Disable strict rp_filter inside LXCs (allow asym return paths)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -s <<'EOF'
+        set -euo pipefail
+        cat >/etc/sysctl.d/99-rp-filter-loose.conf <<'SYSCTL'
+        net.ipv4.conf.all.rp_filter=0
+        net.ipv4.conf.default.rp_filter=0
+        net.ipv4.conf.eth0.rp_filter=0
+        net.ipv4.conf.eth1.rp_filter=0
+        net.ipv4.conf.eth2.rp_filter=0
+        net.ipv4.conf.eth3.rp_filter=0
+        SYSCTL
+        sysctl --system >/dev/null
+        EOF
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+      run_once: false
+
+    - name: Ensure root/james users and SSH keys configured inside LXCs
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -s <<'EOF'
+        set -euo pipefail
+        echo "root:{{ lab_root_password }}" | chpasswd
+        id {{ lab_user }} >/dev/null 2>&1 || useradd -m -s /bin/bash {{ lab_user }}
+        echo "{{ lab_user }}:{{ lab_root_password }}" | chpasswd
+        install -d -m 700 /root/.ssh
+        install -d -m 700 /home/{{ lab_user }}/.ssh
+        cat >> /root/.ssh/authorized_keys <<'KEY'
+        {{ lab_user_pubkey }}
+        KEY
+        cat >> /home/{{ lab_user }}/.ssh/authorized_keys <<'KEY'
+        {{ lab_user_pubkey }}
+        KEY
+        sort -u /root/.ssh/authorized_keys -o /root/.ssh/authorized_keys
+        sort -u /home/{{ lab_user }}/.ssh/authorized_keys -o /home/{{ lab_user }}/.ssh/authorized_keys
+        chmod 600 /root/.ssh/authorized_keys /home/{{ lab_user }}/.ssh/authorized_keys
+        chown -R {{ lab_user }}:{{ lab_user }} /home/{{ lab_user }}/.ssh
+        usermod -aG sudo {{ lab_user }}
+        EOF
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+      run_once: false
+
+    - name: Ensure Docker and compose plugin installed inside LXCs
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -lc 'set -euo pipefail
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2
+        systemctl enable --now docker
+        '
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+      run_once: false
+
+    - name: Deploy Technitium compose on tt1/tt2
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -s <<'EOF'
+        set -euo pipefail
+        export TECHNITIUM_ADMIN_PASSWORD={{ technitium_admin_password | quote }}
+        mkdir -p /opt/dns && cd /opt/dns
+        cat > docker-compose.yml <<'COMPOSE'
+        {{ lookup('file', '../files/dns/technitium-compose.yml.j2') }}
+        COMPOSE
+        mkdir -p data/technitium
+        docker compose up -d
+        EOF
+      args:
+        executable: /bin/bash
+      when: "item.name in ['tt1','tt2']"
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"
+
+    - name: Deploy AdGuard compose on agh1/agh2
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct status {{ item.vmid }} | grep -q running || exit 0
+        pct exec {{ item.vmid }} -- bash -s <<'EOF'
+        set -euo pipefail
+        mkdir -p /opt/adguard && cd /opt/adguard
+        cat > docker-compose.yml <<'COMPOSE'
+        {{ lookup('file', '../files/dns/adguard-compose.yml.j2') }}
+        COMPOSE
+        mkdir -p data/adguard/work data/adguard/conf
+        docker compose up -d
+        EOF
+      args:
+        executable: /bin/bash
+      when: "item.name in ['agh1','agh2']"
+      delegate_to: "{{ item.node }}"
+      loop: "{{ dns_dhcp_vm_plan }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.vmid }})"

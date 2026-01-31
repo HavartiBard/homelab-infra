@@ -1,0 +1,23 @@
+---
+# Deploy AdGuard Home configuration to agh1/agh2
+#
+# Usage:
+#   export ADGUARD_ADMIN_PASSWORD=$(op read "op://Personal/AdGuard Admin/password")
+#   ansible-playbook -i inventory/hosts.yml playbooks/dns/deploy-adguard-config.yml
+#
+# Or with inline 1Password lookup:
+#   ADGUARD_ADMIN_PASSWORD=$(op read "op://Personal/AdGuard Admin/password") \
+#   ansible-playbook -i inventory/hosts.yml playbooks/dns/deploy-adguard-config.yml
+
+- name: Deploy AdGuard Home configuration
+  hosts: agh
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Display target hosts
+      ansible.builtin.debug:
+        msg: "Deploying AdGuard config to {{ inventory_hostname }} ({{ ansible_host }})"
+
+  roles:
+    - role: adguard

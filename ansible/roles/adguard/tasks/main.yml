@@ -1,0 +1,124 @@
+---
+- name: Assert AdGuard admin password is provided
+  ansible.builtin.assert:
+    that:
+      - adguard_admin_password | length > 0
+    fail_msg: "Set ADGUARD_ADMIN_PASSWORD env var (from 1Password 'AdGuard Admin')"
+
+- name: Install python3-bcrypt for password hashing
+  ansible.builtin.apt:
+    name: python3-bcrypt
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure systemd-resolved config directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Disable systemd-resolved stub listener (frees port 53)
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/nostub.conf
+    content: |
+      [Resolve]
+      DNSStubListener=no
+    mode: "0644"
+  become: true
+  register: resolved_config
+
+- name: Restart systemd-resolved if config changed
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true
+  when: resolved_config.changed
+
+- name: Generate bcrypt hash of admin password
+  ansible.builtin.shell: |
+    python3 -c "import bcrypt; print(bcrypt.hashpw(b'{{ adguard_admin_password }}', bcrypt.gensalt(rounds=10)).decode())"
+  register: bcrypt_result
+  changed_when: false
+  no_log: true
+
+- name: Set password hash fact
+  ansible.builtin.set_fact:
+    adguard_admin_password_hash: "{{ bcrypt_result.stdout }}"
+  no_log: true
+
+- name: Ensure AdGuard config directory exists
+  ansible.builtin.file:
+    path: "{{ adguard_config_dir }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Deploy AdGuardHome.yaml config
+  ansible.builtin.template:
+    src: AdGuardHome.yaml.j2
+    dest: "{{ adguard_config_dir }}/AdGuardHome.yaml"
+    mode: "0644"
+    backup: true
+  become: true
+  notify: restart adguard
+
+- name: Ensure AdGuard container is running
+  ansible.builtin.shell: |
+    cd /opt/adguard && docker compose ps -q {{ adguard_container_name }} | grep -q . || docker compose up -d
+  become: true
+  changed_when: false
+
+# --- adguardhome-sync (only on origin host) ---
+- name: Create sync config directory
+  ansible.builtin.file:
+    path: /opt/adguard-sync
+    state: directory
+    mode: "0755"
+  become: true
+  when:
+    - adguard_sync_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy adguardhome-sync config
+  ansible.builtin.template:
+    src: adguardhome-sync.yaml.j2
+    dest: /opt/adguard-sync/config.yaml
+    mode: "0644"
+  become: true
+  when:
+    - adguard_sync_enabled
+    - ansible_host == adguard_sync_origin
+  notify: restart adguard-sync
+
+- name: Deploy adguardhome-sync docker-compose
+  ansible.builtin.copy:
+    dest: /opt/adguard-sync/docker-compose.yml
+    mode: "0644"
+    content: |
+      services:
+        adguardhome-sync:
+          image: {{ adguard_sync_image }}
+          container_name: adguardhome-sync
+          restart: unless-stopped
+          command: run --config /config.yaml
+          volumes:
+            - ./config.yaml:/config.yaml:ro
+          network_mode: host
+          security_opt:
+            - apparmor=unconfined
+  become: true
+  when:
+    - adguard_sync_enabled
+    - ansible_host == adguard_sync_origin
+  notify: restart adguard-sync
+
+- name: Ensure adguardhome-sync container is running
+  ansible.builtin.shell: |
+    cd /opt/adguard-sync && docker compose up -d
+  become: true
+  changed_when: false
+  when:
+    - adguard_sync_enabled
+    - ansible_host == adguard_sync_origin

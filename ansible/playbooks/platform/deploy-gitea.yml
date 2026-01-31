@@ -1,0 +1,6 @@
+---
+- name: Deploy Gitea on Unraid
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - gitea

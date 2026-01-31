@@ -45,6 +45,8 @@
     docker run -d \
       --name {{ notion_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ notion_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ notion_mcp_webui_url }}' \
       -p {{ notion_mcp_port }}:3000 \
       -e NOTION_TOKEN='{{ notion_token }}' \
       -e TZ='{{ timezone }}' \

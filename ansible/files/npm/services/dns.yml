@@ -1,0 +1,20 @@
+---
+# Technitium DNS portal should resolve to NPM for proxying the UI.
+proxy_hosts:
+  - name: technitium-dns
+    domains:
+      - dns.klsll.com
+    forward_host: 192.168.20.2
+    forward_port: 5380
+    scheme: http
+    websocket: false
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: dns.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600

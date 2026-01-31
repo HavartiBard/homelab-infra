@@ -1,0 +1,32 @@
+---
+# Local source of exported Technitium data (config.json, zones/, dhcp/).
+# Set this explicitly when you have an exported snapshot. Leaving it undefined
+# prevents accidental bulk copies.
+technitium_data_src: null
+
+# Rsync include/exclude patterns (minimal config-only sync).
+technitium_rsync_include:
+  - "zones"
+  - "zones/***"
+  - "config.json"
+  - "dhcp/***"
+technitium_rsync_exclude:
+  - "logs/***"
+  - "stats/***"
+  - "*.log"
+  - "*.tmp"
+  - ".git"
+  - ".DS_Store"
+# Whether to delete extraneous files in dest (default false to avoid nuking stats/logs).
+technitium_rsync_delete: false
+
+# Remote target path on the LXC host/container.
+technitium_data_dest: "/opt/dns/data/technitium"
+
+# Ownership and permissions for synced files.
+technitium_owner: root
+technitium_group: root
+
+# Restart behavior after sync.
+technitium_restart: true
+technitium_restart_cmd: "cd /opt/dns && docker compose restart technitium || docker restart technitium"

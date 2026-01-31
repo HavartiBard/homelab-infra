@@ -1,0 +1,14 @@
+---
+- name: Deploy Proxmox MCP to Unraid
+  hosts: unraid-server
+  gather_facts: false
+  roles:
+    - role: proxmox-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Proxmox MCP deployed successfully!
+          Container: {{ proxmox_mcp_container_name }}
+          Logs: docker logs {{ proxmox_mcp_container_name }}

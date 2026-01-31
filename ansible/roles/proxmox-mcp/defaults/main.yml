@@ -1,13 +1,42 @@
 ---
-proxmox_mcp_image: "ghcr.io/havartibard/mcp-proxmox:latest"
-proxmox_mcp_container_name: "mcp-proxmox"
+proxmox_mcp_image: "ghcr.io/havartibard/proxmox-mcp:latest"
+proxmox_mcp_container_name: "proxmox-mcp"
+proxmox_mcp_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png
+proxmox_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp
 
-proxmox_mcp_appdata_dir: "/mnt/user/appdata/mcp-proxmox"
+proxmox_mcp_appdata_dir: "/mnt/user/appdata/proxmox-mcp"
 proxmox_mcp_env_file: "{{ proxmox_mcp_appdata_dir }}/.env"
+# Host port for the MCP service (container listens on proxmox_mcp_container_port)
+proxmox_mcp_port: "6974"
+proxmox_mcp_container_port: "6971"
 
-proxmox_host: ""
-proxmox_port: "8006"
-proxmox_user: ""
-proxmox_token_name: ""
-proxmox_token_value: ""
-proxmox_allow_elevated: "false"
+proxmox_op_item: "Proxmox MCP Token"
+proxmox_host: >-
+  {{ lookup('env', 'PROXMOX_MCP_HOST')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/host" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('') }}
+proxmox_port: >-
+  {{ lookup('env', 'PROXMOX_MCP_PORT')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/port" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('8006') }}
+proxmox_user: >-
+  {{ lookup('env', 'PROXMOX_MCP_USER')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/username" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('') }}
+proxmox_token_name: >-
+  {{ lookup('env', 'PROXMOX_MCP_TOKEN_NAME')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/token_name" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('') }}
+proxmox_token_value: >-
+  {{ lookup('env', 'PROXMOX_MCP_TOKEN_VALUE')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('') }}
+proxmox_allow_elevated: >-
+  {{ lookup('env', 'PROXMOX_MCP_ALLOW_ELEVATED')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/allow_elevated" 2>/dev/null || echo ""'), true)
+  | default('', true) | default('false') }}
+
+# Timezone
+timezone: "America/Phoenix"

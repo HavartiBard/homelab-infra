@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  npm:
+    container_name: "{{ npm_container_name }}"
+    image: jc21/nginx-proxy-manager:2.13.4
+    restart: unless-stopped
+    environment:
+      TZ: "{{ timezone }}"
+    labels:
+      net.unraid.docker.icon: "{{ npm_icon }}"
+      net.unraid.docker.webui: "{{ npm_webui_url }}"
+    dns:
+      - "{{ npm_dns_primary }}"
+      - "{{ npm_dns_secondary }}"
+    volumes:
+      - "{{ npm_appdata_root }}/data:/data:rw"
+      - "{{ npm_appdata_root }}/letsencrypt:/etc/letsencrypt:rw"
+      - "{{ acme_output_dir | default(npm_appdata_root + '/certs') }}:/shared/certs:rw"
+    networks:
+      npm_net:
+        ipv4_address: "{{ npm_ip }}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://{{ npm_ip }}:{{ npm_ui_port }}/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+{% if enable_external_acme_issuer %}
+  acme-issuer:
+    image: >
+      {% if acme_issuer_type == "acme.sh" %}
+      ghcr.io/acmesh-official/acme.sh:3.0.9
+      {% else %}
+      ghcr.io/go-acme/lego:v4.13.0
+      {% endif %}
+    restart: unless-stopped
+    volumes:
+      - "{{ acme_output_dir | default(npm_appdata_root + '/certs') }}:/certs:rw"
+    networks:
+      npm_net: {}
+    {% if acme_dns_env %}
+    environment:
+      {% for key, value in acme_dns_env.items() %}
+      {{ key }}: "{{ value }}"
+      {% endfor %}
+    {% endif %}
+    {% if acme_issuer_type == "acme.sh" %}
+    command: >
+      /bin/sh -c '
+        acme.sh --home /acme --issue --dns {{ acme_dns_provider }}
+          -d {{ acme_base_domain }} -d {{ acme_wildcard_domain }} --force &&
+        acme.sh --home /acme --install-cert -d {{ acme_base_domain }}
+          --key-file /certs/{{ acme_base_domain }}.key
+          --fullchain-file /certs/{{ acme_base_domain }}.crt &&
+        acme.sh --home /acme --install-cert -d {{ acme_wildcard_domain }}
+          --key-file /certs/{{ acme_wildcard_domain | replace('*.','') }}.key
+          --fullchain-file /certs/{{ acme_wildcard_domain | replace('*.','') }}.crt &&
+        tail -f /dev/null'
+    {% else %}
+    command: >
+      /bin/sh -c '
+        /lego --email {{ acme_email }}
+          {% for domain in (acme_domains | default([acme_base_domain, acme_wildcard_domain])) %}
+          --domains {{ domain }}
+          {% endfor %}
+          --dns {{ acme_dns_provider }} --path /certs run &&
+        tail -f /dev/null'
+    {% endif %}
+{% endif %}
+
+networks:
+  npm_net:
+    external: true
+    name: "{{ npm_network_name }}"

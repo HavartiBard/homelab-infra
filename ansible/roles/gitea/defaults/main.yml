@@ -1,0 +1,73 @@
+---
+# Role defaults for Gitea deployment on Unraid
+compose_version: v2.27.0
+compose_bin_path: /usr/local/bin/docker-compose
+compose_download_url: >-
+  https://github.com/docker/compose/releases/download/{{ compose_version }}/docker-compose-linux-x86_64
+
+# Networking and stack layout
+gitea_ip: 192.168.20.52
+gitea_subnet: 192.168.20.0/23
+gitea_gateway: 192.168.20.1
+gitea_parent_iface: br0
+gitea_network_driver: macvlan
+gitea_network_name: br0
+gitea_manage_network: false
+
+gitea_appdata_root: /mnt/user/appdata/gitea
+gitea_stack_root: /mnt/user/appdata/stacks/gitea
+
+# Volume layout
+gitea_data_dir: "{{ gitea_appdata_root }}/data"
+gitea_registry_root: "{{ gitea_appdata_root }}/registry"
+gitea_db_data_dir: "{{ gitea_appdata_root }}/postgres"
+
+gitea_container_name: gitea
+gitea_db_container_name: gitea-db
+
+gitea_image: gitea/gitea:1.25.4
+gitea_db_image: postgres:16-alpine
+
+gitea_db_name: gitea
+gitea_db_user: gitea
+gitea_db_ssl_mode: disable
+
+timezone: America/Phoenix
+
+gitea_domain: code.klsll.com
+gitea_webui_url: "https://{{ gitea_domain }}"
+gitea_root_url: "https://{{ gitea_domain }}/"
+gitea_ssh_domain: "{{ gitea_domain }}"
+gitea_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gitea.png
+gitea_db_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/postgresql.png
+
+gitea_admin_user: HavartiBard
+gitea_admin_email: >-
+  {{ lookup('env', 'GITEA_ADMIN_EMAIL')
+  | default('james@klsll.com', true) }}
+gitea_registration_enabled: false
+gitea_ssh_enabled: false
+
+gitea_http_port: 3000
+gitea_ssh_port: 22
+gitea_registry_port: 5000
+gitea_registry_enabled: true
+gitea_registry_protocol: http
+gitea_registry_host: registry.klsll.com
+gitea_registry_path: /data/registry
+gitea_db_ip: 192.168.20.53
+
+gitea_health_interval: 10
+gitea_health_attempts: 6
+
+gitea_db_password: >-
+  {{ lookup('env', 'GITEA_DB_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea DB Credentials/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+
+gitea_admin_password: >-
+  {{ lookup('env', 'GITEA_ADMIN_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea Service Credentials/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}

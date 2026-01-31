@@ -1,0 +1,71 @@
+---
+# Gitea Runner Role Defaults
+# Deploy act-based runners for Gitea Actions automation
+
+# Docker Compose configuration
+compose_version: v2.27.0
+compose_bin_path: /usr/local/bin/docker-compose
+compose_download_url: >-
+  https://github.com/docker/compose/releases/download/{{ compose_version }}/docker-compose-linux-x86_64
+
+# Runner deployment paths
+gitea_runner_appdata_root: /mnt/user/appdata/gitea-runner
+gitea_runner_stack_root: "{{ gitea_runner_appdata_root }}/stacks"
+gitea_runner_data_dir: "{{ gitea_runner_appdata_root }}/data"
+gitea_runner_cache_dir: "{{ gitea_runner_appdata_root }}/cache"
+
+# Runner container configuration
+gitea_runner_container_name: gitea-runner
+gitea_runner_image: gitea/act_runner:latest
+gitea_runner_count: 1  # Number of concurrent runners
+gitea_runner_name_prefix: "runner"
+
+# Gitea instance connectivity
+# Use HTTP on internal port 3000 for local runner access (Gitea doesn't expose HTTPS internally)
+gitea_instance_url: http://gitea.klsll.com:3000
+gitea_runner_token: "{{ lookup('env', 'GITEA_RUNNER_TOKEN') | default('', true) }}"
+
+# Runner labels and tags
+gitea_runner_labels:
+  - ubuntu-latest
+  - linux
+  - docker
+  - x86_64
+
+# Resource limits per runner
+gitea_runner_memory_limit: "4g"
+gitea_runner_memory_reservation: "2g"
+gitea_runner_cpus_limit: "2"
+
+# Logging and monitoring
+gitea_runner_log_level: info  # debug, info, warn, error
+gitea_runner_log_retention_days: 30
+gitea_runner_health_interval: 10
+gitea_runner_health_attempts: 6
+
+# Registry configuration for container builds
+registry_host: registry.klsll.com
+registry_protocol: https
+registry_username: >-
+  {{ lookup('env', 'REGISTRY_USERNAME') | default('', true) }}
+registry_password: >-
+  {{ lookup('env', 'REGISTRY_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea Registry Credentials/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+
+# GitHub Actions compatibility (for some workflows)
+github_token: >-
+  {{ lookup('env', 'GITHUB_TOKEN') | default('', true) }}
+
+# Network configuration
+timezone: America/Phoenix
+gitea_network_name: br0  # Must match Gitea's network (macvlan)
+gitea_network_driver: macvlan
+
+# Docker socket mounting (for containerized builds)
+gitea_runner_docker_socket_path: /var/run/docker.sock
+gitea_runner_docker_host: "unix:///var/run/docker.sock"
+
+# Job queue configuration
+gitea_runner_job_timeout_minutes: 120
+gitea_runner_log_truncate_lines: 10000

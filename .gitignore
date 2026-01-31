@@ -15,6 +15,7 @@ ide_configs/
 
 # Agent/planner artifacts
 .sisyphus/
+
 # Config files with credentials
 docker/*-unraid.env
 
@@ -29,6 +30,9 @@ node_modules/
 # Docker Desktop/Portainer artifacts
 *.log
 
+# Ansible vault backups
+ansible/group_vars/**/*.bak.*
+
 # Terraform
 *.tfstate
 *.tfstate.*
@@ -36,3 +40,8 @@ node_modules/
 .terraform.lock.hcl
 *.tfvars
 !*.tfvars.example
+
+# Vault files deprecated - using direct 1Password service account lookups
+ansible/group_vars/*/vault.yml
+ansible/group_vars/*/vault.yml.bak.*
+ansible/artifacts/

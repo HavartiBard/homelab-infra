@@ -23,6 +23,8 @@
     docker run -d \
       --name {{ portainer_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ portainer_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ portainer_mcp_webui_url }}' \
       -p {{ portainer_mcp_port }}:{{ portainer_mcp_port }} \
       -e TZ={{ timezone }} \
       {{ portainer_mcp_image }} \

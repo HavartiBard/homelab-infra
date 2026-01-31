@@ -1,0 +1,6 @@
+title: Homelab Dashboard
+icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png
+theme: dark
+layout:
+  columns: 3
+  iconStyle: round

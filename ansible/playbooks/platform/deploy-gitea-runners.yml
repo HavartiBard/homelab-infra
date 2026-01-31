@@ -1,0 +1,89 @@
+---
+# =============================================================================
+# Deploy Gitea Runners on Unraid (and optionally other hosts)
+# =============================================================================
+# This playbook deploys act-based Gitea runners for GitHub Actions-compatible
+# CI/CD workflows. Runners can be deployed to multiple hosts and scaled based
+# on workload requirements.
+#
+# Prerequisites:
+#   1. Gitea instance deployed and running (deploy-gitea.yml)
+#   2. GITEA_RUNNER_TOKEN from Gitea Admin → Runners → Create
+#   3. Docker available on target host
+#
+# Usage:
+#   # Deploy single runner on Unraid
+#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml
+#
+#   # Deploy 3 concurrent runners
+#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml \
+#     -e gitea_runner_count=3
+#
+#   # Deploy to specific host
+#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml \
+#     --limit unraid-server
+#
+# Scaling:
+#   - Increase gitea_runner_count for more concurrent jobs
+#   - Deploy to multiple hosts for redundancy and parallel processing
+#   - Slow jobs (builds) can run on dedicated runners
+
+- name: Deploy Gitea Runners for CI/CD Automation
+  hosts: unraid
+  become: true
+  gather_facts: true
+  vars:
+    # Default runner configuration
+    gitea_runner_count: 2  # Number of concurrent runner containers
+    # Use HTTP on internal port 3000 for runner access (Gitea doesn't expose HTTPS internally)
+    gitea_instance_url: http://gitea.klsll.com:3000
+    gitea_runner_labels:
+      - ubuntu-latest
+      - linux
+      - docker
+      - x86_64
+    # Resource allocation per runner
+    gitea_runner_memory_limit: "4g"
+    gitea_runner_memory_reservation: "2g"
+    gitea_runner_cpus_limit: "2"
+    # Logging
+    gitea_runner_log_level: info
+    timezone: America/Phoenix
+  roles:
+    - gitea-runner
+  post_tasks:
+    - name: Display post-deployment instructions
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════════════════════
+          ✓ Gitea Runners deployed successfully!
+          ════════════════════════════════════════════════════════════════════
+
+          Next Steps:
+          1. Verify runners are online:
+             - Visit: https://gitea.klsll.com/admin/runners
+             - Should see {{ gitea_runner_count }} runner(s) in "online" state
+
+          2. Create a test workflow to verify job execution:
+             - Create .gitea/workflows/test.yml in a repository
+             - Example: https://docs.gitea.com/usage/actions/quickstart
+
+          3. Monitor runner logs:
+             ssh root@192.168.20.14
+             cd /mnt/user/appdata/gitea-runner/stacks
+             docker compose logs -f gitea-runner-1
+
+          Troubleshooting:
+          - Check runner registration: docker exec gitea-runner-1 cat /data/config.yml
+          - Verify Gitea connectivity: docker logs gitea-runner-1 | grep "GITEA"
+          - Check Docker socket access: ls -la /var/run/docker.sock
+
+          Scaling:
+          - To add more runners, edit /mnt/user/appdata/gitea-runner/stacks/docker-compose.yml
+          - Modify gitea_runner_count and re-run this playbook
+          - Or manually scale: docker compose up -d --scale gitea-runner=5
+
+          Documentation:
+          - Gitea Actions: https://docs.gitea.com/usage/actions/
+          - Act Runner: https://gitea.com/gitea/act_runner
+          ════════════════════════════════════════════════════════════════════

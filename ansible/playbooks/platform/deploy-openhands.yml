@@ -1,0 +1,119 @@
+---
+# =============================================================================
+# Deploy OpenHands on Unraid
+# =============================================================================
+- name: Deploy OpenHands Control Plane on Unraid
+  hosts: unraid
+  become: true
+  vars:
+    openhands_dir: "/mnt/user/appdata/openhands"
+    compose_file: "{{ openhands_dir }}/docker-compose.yml"
+    env_file: "{{ openhands_dir }}/.env"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+  tasks:
+    - name: Create OpenHands directory
+      file:
+        path: "{{ openhands_dir }}"
+        state: directory
+        mode: '0755'
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../files/openhands/docker-compose.yml
+        dest: "{{ compose_file }}"
+        mode: '0644'
+
+    - name: Copy config.toml
+      copy:
+        src: ../files/openhands/config/config.toml
+        dest: "{{ openhands_dir }}/config/config.toml"
+        mode: '0644'
+
+    - name: Check if .env exists
+      stat:
+        path: "{{ env_file }}"
+      register: env_stat
+
+    - name: Copy .env.example if .env doesn't exist
+      copy:
+        src: ../files/openhands/.env.example
+        dest: "{{ env_file }}"
+        mode: '0600'
+      when: not env_stat.stat.exists
+    - name: Verify .env configuration
+      fail:
+        msg: >-
+          Please configure OPENHANDS_SECRET_KEY and OLLAMA_HOST_IP
+          in {{ env_file }}
+      when: env_stat.stat.exists
+      failed_when:
+        - >-
+          lookup('envfile', env_file).OPENHANDS_SECRET_KEY ==
+          'your-secret-key-here-32-bytes-hex'
+        - >-
+          lookup('envfile', env_file).OLLAMA_HOST_IP ==
+          '192.168.1.XXX'
+
+    - name: Check for docker compose plugin
+      raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      set_fact:
+        openhands_compose_command: >-
+          {% if docker_compose_plugin.rc == 0 %}
+          docker compose
+          {% else %}
+          {{ compose_bin_path }}
+          {% endif %}
+
+    - name: Deploy OpenHands stack
+      raw: "cd {{ openhands_dir }} && {{ openhands_compose_command }} up -d"
+    - name: Wait for OpenHands to be healthy
+      uri:
+        url: "http://{{ ansible_host }}:3000/health"
+        method: GET
+        timeout: 60
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 10
+    - name: Display deployment info
+      debug:
+        msg: |
+          OpenHands deployed successfully!
+          Web UI: http://{{ ansible_host }}:3000
+          Health: http://{{ ansible_host }}:3000/health
+          Config: {{ openhands_dir }}/config/config.toml

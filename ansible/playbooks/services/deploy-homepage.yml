@@ -1,0 +1,135 @@
+---
+- name: Deploy Homepage on Unraid
+  hosts: unraid
+  become: true
+  gather_facts: false
+  vars:
+    homepage_dir: "/mnt/user/appdata/homepage"
+    compose_file: "{{ homepage_dir }}/docker-compose.yml"
+    env_file: "{{ homepage_dir }}/.env"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+    homepage_compose_content: "{{ lookup('file', playbook_dir + '/../../files/homepage/docker-compose.yml') }}"
+    homepage_compose_b64: "{{ homepage_compose_content | b64encode }}"
+    homepage_ip: 192.168.20.55
+    homepage_network_name: br0
+    homepage_allowed_hosts: >-
+      {{ HOMEPAGE_ALLOWED_HOSTS
+      | default('home.klsll.com,localhost,192.168.20.55:3000', true) }}
+    homepage_webui_url: >-
+      {{ HOMEPAGE_WEBUI_URL | default('https://home.klsll.com', true) }}
+    homepage_icon: >-
+      {{ HOMEPAGE_ICON
+      | default('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png', true) }}
+    homepage_puid: 1000
+    homepage_pgid: 1000
+    homepage_log_level: info
+    npm_admin_email_vault: "{{ npm_admin_email | default('', true) }}"
+    npm_admin_password_vault: "{{ npm_admin_password | default('', true) }}"
+    adguard_admin_user_vault: "{{ adguard_admin_user | default('', true) }}"
+    adguard_admin_password_vault: "{{ adguard_admin_password | default('', true) }}"
+    unraid_api_key_vault: "{{ unraid_api_key | default('', true) }}"
+    proxmox_mcp_user_vault: "{{ proxmox_user | default('', true) }}"
+    proxmox_mcp_token_name_vault: "{{ proxmox_token_name | default('', true) }}"
+    proxmox_mcp_token_value_vault: "{{ proxmox_token_value | default('', true) }}"
+
+  tasks:
+    - name: Create homepage directory
+      raw: "mkdir -p {{ homepage_dir }}/config"
+
+    - name: Load Homepage config content (render templates for secrets/vars)
+      set_fact:
+        homepage_settings_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/settings.yaml') | b64encode }}"
+        homepage_services_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/services.yaml') | b64encode }}"
+        homepage_widgets_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/widgets.yaml') | b64encode }}"
+        homepage_bookmarks_b64: "{{ lookup('template', playbook_dir + '/../../../stacks/platform/homepage/config/bookmarks.yaml') | b64encode }}"
+
+    - name: Write homepage settings.yaml
+      raw: "echo '{{ homepage_settings_b64 }}' | base64 -d > {{ homepage_dir }}/config/settings.yaml"
+
+    - name: Write homepage services.yaml
+      raw: "echo '{{ homepage_services_b64 }}' | base64 -d > {{ homepage_dir }}/config/services.yaml"
+
+    - name: Write homepage widgets.yaml
+      raw: "echo '{{ homepage_widgets_b64 }}' | base64 -d > {{ homepage_dir }}/config/widgets.yaml"
+
+    - name: Write homepage bookmarks.yaml
+      raw: "echo '{{ homepage_bookmarks_b64 }}' | base64 -d > {{ homepage_dir }}/config/bookmarks.yaml"
+
+    - name: Write docker-compose.yml via raw (base64 decode)
+      raw: "echo '{{ homepage_compose_b64 }}' | base64 -d > {{ compose_file }}"
+
+    - name: Build homepage env content
+      set_fact:
+        homepage_env_content: |
+          TZ=America/Phoenix
+          HOMEPAGE_IP={{ homepage_ip }}
+          HOMEPAGE_NETWORK_NAME={{ homepage_network_name }}
+          HOMEPAGE_PUID={{ homepage_puid }}
+          HOMEPAGE_PGID={{ homepage_pgid }}
+          HOMEPAGE_LOG_LEVEL={{ homepage_log_level }}
+          HOMEPAGE_WEBUI_URL={{ homepage_webui_url }}
+          HOMEPAGE_ICON={{ homepage_icon }}
+          HOMEPAGE_ALLOWED_HOSTS={{ homepage_allowed_hosts }}
+
+    - name: Encode homepage env content
+      set_fact:
+        homepage_env_b64: "{{ homepage_env_content | b64encode }}"
+
+    - name: Ensure .env exists with current configuration
+      raw: |
+        echo '{{ homepage_env_b64 }}' | base64 -d > {{ env_file }}
+
+    - name: Check for docker compose plugin
+      raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      set_fact:
+        homepage_compose_command: >-
+          {% if docker_compose_plugin.rc == 0 %}
+          docker compose
+          {% else %}
+          {{ compose_bin_path }}
+          {% endif %}
+
+    - name: Deploy Homepage stack
+      raw: "cd {{ homepage_dir }} && {{ homepage_compose_command }} up -d"
+
+    - name: Display deployment info
+      debug:
+        msg: |
+          Homepage deployed on VLAN {{ homepage_network_name }} ({{ homepage_ip }}).
+          Compose dir: {{ homepage_dir }}

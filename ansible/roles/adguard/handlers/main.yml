@@ -1,0 +1,10 @@
+---
+- name: restart adguard
+  ansible.builtin.shell: |
+    cd /opt/adguard && docker compose restart {{ adguard_container_name }}
+  become: true
+
+- name: restart adguard-sync
+  ansible.builtin.shell: |
+    cd /opt/adguard-sync && docker compose restart adguardhome-sync
+  become: true

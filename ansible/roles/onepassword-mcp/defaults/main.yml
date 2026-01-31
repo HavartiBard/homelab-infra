@@ -5,6 +5,10 @@
 onepassword_mcp_image: "ghcr.io/havartibard/onepassword-mcp-server:latest"
 onepassword_mcp_container_name: "onepassword-mcp"
 onepassword_mcp_port: 6975
+onepassword_mcp_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/1password.png
+onepassword_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ onepassword_mcp_port }}{{ onepassword_mcp_path }}
 
 # MCP settings
 onepassword_mcp_host: "0.0.0.0"
@@ -13,7 +17,11 @@ onepassword_mcp_path: "/mcp"
 
 # 1Password settings (override via environment variable or vault)
 op_vault: "AI Wedge"
-op_service_account_token: ""
+op_service_account_item: "OP_SERVICE_ACCOUNT_TOKEN"
+op_service_account_token: >-
+  {{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')
+  | default(lookup('pipe', 'op read "op://AI Wedge/OP_SERVICE_ACCOUNT_TOKEN/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
 
 # Timezone
-timezone: "America/Chicago"
+timezone: "America/Phoenix"

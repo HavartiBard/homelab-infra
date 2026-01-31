@@ -1,6 +1,9 @@
 # Platform Stack - Core Infrastructure Services
 # Deploy to: Platform VM (Proxmox) or Unraid
-# Includes: Portainer, Nginx Proxy Manager, Technitium DNS, Uptime Kuma
+# Includes: Portainer, Nginx Proxy Manager, Uptime Kuma
+#
+# Note: DNS (Technitium/AdGuard) is deployed to dedicated LXCs via Ansible
+#       See: ansible/playbooks/dns/provision-dns-dhcp-services.yml
 #
 # Prerequisites:
 #   - Copy .env.example to .env and fill in values
@@ -89,42 +92,6 @@ services:
       start_period: 60s
 
   # =============================================================================
-  # Technitium DNS Server
-  # WARNING: Port 53 conflicts with systemd-resolved on Ubuntu.
-  #          Run: sudo systemctl disable --now systemd-resolved
-  #          Or configure resolved to use a different port.
-  # =============================================================================
-  technitium:
-    image: technitium/dns-server:13.2.0
-    container_name: technitium-dns
-    restart: unless-stopped
-    ports:
-      # DNS ports
-      - "${TECHNITIUM_DNS_PORT:-53}:53/udp"
-      - "${TECHNITIUM_DNS_PORT:-53}:53/tcp"
-      # Admin web UI
-      - "${TECHNITIUM_ADMIN_PORT:-5380}:5380"
-      # DNS-over-HTTPS (optional)
-      - "${TECHNITIUM_DOH_PORT:-443}:443/udp"   # HTTP/3 (QUIC)
-      # - "853:853/tcp"   # DNS-over-TLS (uncomment if needed)
-    environment:
-      - TZ=${TZ:-America/New_York}
-      - DNS_SERVER_DOMAIN=${TECHNITIUM_DOMAIN:-dns.local}
-      - DNS_SERVER_ADMIN_PASSWORD=${TECHNITIUM_ADMIN_PASSWORD:?TECHNITIUM_ADMIN_PASSWORD required}
-    volumes:
-      - technitium-data:/etc/dns
-    networks:
-      - platform-net
-    cap_add:
-      - NET_BIND_SERVICE
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5380/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # =============================================================================
   # Uptime Kuma - Status Monitoring
   # =============================================================================
   uptime-kuma:
@@ -146,6 +113,35 @@ services:
       retries: 3
       start_period: 30s
 
+  # =============================================================================
+  # Homepage - Homelab Dashboard
+  # =============================================================================
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v0.8.11
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "${HOMEPAGE_PORT:-3002}:3000"
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - PUID=${HOMEPAGE_PUID:-1000}
+      - PGID=${HOMEPAGE_PGID:-1000}
+      - LOG_LEVEL=${HOMEPAGE_LOG_LEVEL:-info}
+    labels:
+      net.unraid.docker.icon: ${HOMEPAGE_ICON:-https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png}
+      net.unraid.docker.webui: ${HOMEPAGE_WEBUI_URL:-https://home.klsll.com}
+    networks:
+      - platform-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
 networks:
   platform-net:
     driver: bridge
@@ -164,7 +160,5 @@ volumes:
     name: npm-letsencrypt
   npm-db-data:
     name: npm-db-data
-  technitium-data:
-    name: technitium-data
   kuma-data:
     name: kuma-data

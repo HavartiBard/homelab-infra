@@ -6,14 +6,25 @@ Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs,
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           LAN / VPN Only                             │
+│                           LAN / VPN Only                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│   Platform VM (Proxmox)          Endpoints                           │
+│   Platform VM (Proxmox)          Endpoints                          │
 │   ├── Portainer Server ◄──────── Unraid (Agent)                     │
 │   ├── Nginx Proxy Manager        Proxmox VMs (Agent)                │
-│   ├── Technitium DNS             WSL2 Workers (Edge Agent)          │
-│   └── Uptime Kuma                                                    │
+│   └── Uptime Kuma                WSL2 Workers (Edge Agent)          │
+│                                                                     │
+│   DNS Infrastructure (LXCs)      Query Flow                         │
+│   ├── agh1/agh2 (AdGuard)  ←──── Clients (DHCP-assigned DNS)        │
+│   │   └── .4/.5 per VLAN         ├── local → Technitium             │
+│   └── tt1/tt2 (Technitium)       └── external → DoH (CF/Quad9)      │
+│       └── .2/.3 per VLAN                                            │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+### DNS Query Flow
+```
+Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3)
+                          └─ external queries ──→ DoH (Cloudflare/Quad9)
 ```
 
 ## Quick Start
@@ -29,50 +40,58 @@ Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs,
 ```
 homelab-infra/
 ├── stacks/                    # Docker Compose stacks (source of truth)
-│   ├── platform/              # Core infra: Portainer, NPM, DNS, Kuma
+│   ├── platform/              # Core infra: Portainer, NPM, Kuma
 │   ├── gpu-worker/            # AI/ML: Ollama, Open WebUI
 │   └── monitoring/            # Observability: Prometheus, Grafana
 ├── ansible/                   # Ansible automation
 │   ├── playbooks/             # Deployment playbooks
-│   └── roles/                 # MCP server roles (unraid, proxmox, notion, etc.)
+│   ├── roles/                 # Service roles (adguard, technitium, MCP servers)
+│   ├── inventory/             # Host inventory (hosts.yml)
+│   └── group_vars/            # Host group variables
 ├── docker/                    # Standalone compose files and Dockerfiles
-├── configs/                   # IDE/tool configuration files
-├── portainer/                 # Portainer stack templates
 ├── scripts/                   # Helper scripts
-│   ├── install-portainer-agent.sh
-│   ├── install-edge-agent.sh
-│   ├── gaming-toggle.sh
-│   └── backup-volumes.sh
 └── docs/                      # Documentation
     ├── runbook.md             # Step-by-step deployment guide
-    ├── plan.md                # Architecture and design
-    ├── network-ports.md       # Port reference
-    └── checklist.md           # Deployment verification checklist
+    └── agents/                # Agent-specific runbooks
 ```
 
 ## Stacks
 
 | Stack | Purpose | Deploy To |
 |-------|---------|-----------|
-| **platform** | Portainer, NPM, Technitium DNS, Uptime Kuma | Platform VM |
+| **platform** | Portainer, NPM, Uptime Kuma | Platform VM |
 | **gpu-worker** | Ollama, Open WebUI | WSL2 GPU workers |
 | **monitoring** | Prometheus, Grafana, Node Exporter | Platform VM |
 
 ## Ansible Roles
 
 | Role | Purpose |
-|------|---------|  
+|------|---------|
+| **adguard** | Configure AdGuard Home (DNS filtering, upstreams) |
+| **technitium** | Configure Technitium DNS (zones, DHCP) |
 | **unraid-mcp** | Deploy Unraid MCP server container |
 | **proxmox-mcp** | Deploy Proxmox MCP server container |
 | **notion-mcp** | Deploy Notion MCP server container |
 | **onepassword-mcp** | Deploy 1Password MCP server container |
 | **homelab-mcp** | Deploy Homelab MCP aggregator container |
 
+## Ansible Playbooks
+
+Playbooks are grouped by service area inside `ansible/playbooks/` to keep the root tidy:
+
+- `ansible/playbooks/mcp/` – MCP deployments (`deploy-*-mcp.yml`), including Portainer, Proxmox, OnePassword, Homelab, and Notion.
+- `ansible/playbooks/dns/` – DNS and DHCP provisioning plus AdGuard/Technitium config (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`).
+- `ansible/playbooks/services/` – Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`).
+- `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, and OpenHands.
+- `ansible/playbooks/misc/` – Utility helpers (e.g., `deploy-ssh-keys.yml`).
+
+See `ansible/playbooks/README.md` for more detail on each playbook.
+
 ## Key Principles
 
 - **Git as Source of Truth** - Portainer deploys stacks from this repo
 - **LAN-Only Access** - Management interfaces never exposed publicly
-- **Secrets via .env** - Credentials never committed to Git
+- **Secrets via env + vault** - Credentials never committed in plaintext; 1Password is source of truth, sync into encrypted vaults or export env vars before runs
 - **Agent Architecture** - Standard agents for always-on, Edge for on-demand
 
 ## Documentation
@@ -103,16 +122,24 @@ docker compose up -d
 
 ## Scripts
 
+### Secrets & Vault helper
+- `ansible/scripts/sync-1password-to-vault.py`: Sync Ansible-tagged 1Password items into encrypted vaults (env → vault at runtime; no live `op` calls).
+  - Write to unraid vault with backup + prompt:
+    ```bash
+    ANSIBLE_VAULT_PASSWORD_FILE=ansible/scripts/ansible-vault-password.sh \
+    ansible/scripts/sync-1password-to-vault.py --group unraid
+    ```
+  - Print-only:
+    ```bash
+    ansible/scripts/sync-1password-to-vault.py --group unraid --print-only
+    ```
+
 ```bash
 # Install Portainer Agent on Linux hosts
 ./scripts/install-portainer-agent.sh
 
 # Install Edge Agent for WSL2/remote workers
 ./scripts/install-edge-agent.sh <EDGE_ID> <EDGE_KEY>
-
-# Toggle GPU workloads for gaming
-./scripts/gaming-toggle.sh stop   # Before gaming
-./scripts/gaming-toggle.sh start  # After gaming
 
 # Backup Docker volumes
 ./scripts/backup-volumes.sh

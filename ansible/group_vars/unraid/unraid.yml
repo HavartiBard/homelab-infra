@@ -1,0 +1,145 @@
+---
+# Variables for Unraid hosts
+# Vault variables are loaded from vault.yml in the same directory
+
+# Nginx Proxy Manager dedicated IP deployment variables
+npm_ip: 192.168.20.50  # pick an unused VLAN20 address reserved in Technitium
+npm_subnet: 192.168.20.0/23
+npm_gateway: 192.168.20.1
+npm_parent_iface: br0
+npm_network_driver: macvlan
+npm_network_name: br0
+npm_appdata_root: /mnt/user/appdata/npm
+npm_stack_root: /mnt/user/appdata/stacks/npm
+npm_ui_port: 81
+timezone: America/Phoenix
+npm_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png
+npm_webui_url: >-
+  http://{{ npm_ip }}:{{ npm_ui_port }}
+npm_dns_primary: 1.1.1.1
+npm_dns_secondary: 1.0.0.1
+npm_manage_proxies: true
+npm_manage_dns: true
+npm_proxy_config_dir: "{{ playbook_dir | dirname }}/../files/npm/services"
+npm_proxy_config_paths: []
+npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
+
+
+op_vault: "{{ lookup('env', 'OP_VAULT') | default('AI Wedge', true) }}"
+npm_op_item: "Nginx Proxy Manager Admin"
+technitium_op_item: "DNS Automation Credential"
+cloudflare_op_item: "Cloudflare DNS Token"
+npm_op_command: >-
+  op item get "{{ npm_op_item }}" --vault "{{ op_vault }}" --fields password --reveal
+npm_op_user_command: >-
+  op item get "{{ npm_op_item }}" --vault "{{ op_vault }}" --fields username --reveal
+technitium_op_command: >-
+  op item get "{{ technitium_op_item }}" --vault "{{ op_vault }}" --fields credential --reveal
+cloudflare_op_command: >-
+  op item get "{{ cloudflare_op_item }}" --vault "{{ op_vault }}" --fields credential --reveal
+npm_admin_email: >-
+  {{ lookup('env', 'NPM_ADMIN_EMAIL')
+  | default(lookup('pipe', npm_op_user_command), true) }}
+npm_admin_password: >-
+  {{ lookup('env', 'NPM_ADMIN_PASSWORD')
+  | default(lookup('pipe', npm_op_command), true) }}
+technitium_api_url: "http://192.168.20.2:5380"
+technitium_zone: klsll.com
+technitium_admin_user: dns-automation
+technitium_api_token: >-
+  {{ lookup('env', 'TECHNITIUM_API_TOKEN')
+  | default(lookup('pipe', technitium_op_command), true) }}
+technitium_admin_password: >-
+  {{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD')
+  | default(lookup('pipe', technitium_op_command), true) }}
+cloudflare_dns_token: >-
+  {{ lookup('env', 'CLOUDFLARE_API_TOKEN')
+  | default(lookup('pipe', cloudflare_op_command), true) }}
+
+# Optional external ACME issuer
+# Set to true to enable the lego/acme.sh helper container.
+enable_external_acme_issuer: false
+acme_issuer_type: lego
+acme_dns_provider: cloudflare
+acme_output_dir: "{{ npm_appdata_root }}/certs"
+acme_email: admin@klsll.com
+acme_base_domain: klsll.com
+acme_wildcard_domain: "*.klsll.com"
+acme_dns_env: {}
+
+# MCP credentials (loaded from 1Password service account)
+notion_token: >-
+  {{ lookup('env', 'NOTION_TOKEN')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Notion MCP Integration/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+unraid_api_key: >-
+  {{ lookup('env', 'UNRAID_API_KEY')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Unraid GraphQL - Wedge/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+orbi_username: >-
+  {{ lookup('env', 'ORBI_USERNAME')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/username" 2>/dev/null || echo ""'), true)
+  | default('admin') }}
+orbi_password: >-
+  {{ lookup('env', 'ORBI_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+portainer_token: >-
+  {{ lookup('env', 'PORTAINER_TOKEN')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Portainer API Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+op_service_account_token: >-
+  {{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')
+  | default(lookup('pipe', 'op read "op://AI Wedge/OP_SERVICE_ACCOUNT_TOKEN/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+proxmox_host: >-
+  {{ lookup('env', 'PROXMOX_MCP_HOST')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/host" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+proxmox_port: >-
+  {{ lookup('env', 'PROXMOX_MCP_PORT')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/port" 2>/dev/null || echo ""'), true)
+  | default('8006') }}
+proxmox_user: >-
+  {{ lookup('env', 'PROXMOX_MCP_USER')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/username" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+proxmox_token_name: >-
+  {{ lookup('env', 'PROXMOX_MCP_TOKEN_NAME')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/token_name" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+proxmox_token_value: >-
+  {{ lookup('env', 'PROXMOX_MCP_TOKEN_VALUE')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+proxmox_allow_elevated: >-
+  {{ lookup('env', 'PROXMOX_MCP_ALLOW_ELEVATED')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/allow_elevated" 2>/dev/null || echo ""'), true)
+  | default('false') }}
+adguard_admin_user: >-
+  {{ lookup('env', 'ADGUARD_ADMIN_USER')
+  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/username" 2>/dev/null || echo ""'), true)
+  | default('admin') }}
+adguard_admin_password: >-
+  {{ lookup('env', 'ADGUARD_ADMIN_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+gitea_db_password: >-
+  {{ lookup('env', 'GITEA_DB_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea DB Credentials/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+gitea_admin_password: >-
+  {{ lookup('env', 'GITEA_ADMIN_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea Service Credentials/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+
+# Gitea Git and registry service on Unraid
+gitea_ip: 192.168.20.52
+gitea_db_ip: 192.168.20.53
+gitea_admin_email: james@klsll.com
+gitea_domain: code.klsll.com
+gitea_registry_host: registry.klsll.com
+gitea_appdata_root: /mnt/user/appdata/gitea
+gitea_stack_root: /mnt/user/appdata/stacks/gitea
+gitea_ssh_domain: gitea.klsll.com

@@ -6,12 +6,14 @@
 - name: Generate .env file content
   ansible.builtin.set_fact:
     proxmox_env_content: |
-      PROXMOX_HOST={{ proxmox_host_fact }}
-      PROXMOX_PORT={{ proxmox_port_fact }}
-      PROXMOX_USER={{ proxmox_user_fact }}
-      PROXMOX_TOKEN_NAME={{ proxmox_token_name_fact }}
-      PROXMOX_TOKEN_VALUE={{ proxmox_token_value_fact }}
-      PROXMOX_ALLOW_ELEVATED={{ proxmox_allow_elevated_fact }}
+      PROXMOX_HOST={{ proxmox_host }}
+      PROXMOX_PORT={{ proxmox_port }}
+      PROXMOX_USER={{ proxmox_user }}
+      PROXMOX_TOKEN_NAME={{ proxmox_token_name }}
+      PROXMOX_TOKEN_VALUE={{ proxmox_token_value }}
+      PROXMOX_ALLOW_ELEVATED={{ proxmox_allow_elevated }}
+      PROXMOX_MCP_HOST=0.0.0.0
+      PROXMOX_MCP_PORT={{ proxmox_mcp_container_port }}
 
 - name: Write .env file
   ansible.builtin.raw: |
@@ -56,9 +58,14 @@
     docker run -d -i \
       --name {{ proxmox_mcp_container_name }} \
       --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ proxmox_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ proxmox_mcp_webui_url }}' \
       --env-file {{ proxmox_mcp_env_file }} \
       -v {{ proxmox_mcp_env_file }}:/.env:ro \
-      {{ proxmox_mcp_image }}
+      -p {{ proxmox_mcp_port }}:{{ proxmox_mcp_container_port }} \
+      -w /app \
+      {{ proxmox_mcp_image }} \
+      node index.js
   register: container_result
   changed_when: container_result.rc == 0
 

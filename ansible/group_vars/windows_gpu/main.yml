@@ -1,0 +1,22 @@
+---
+# Windows GPU Worker (spraycheese) - WinRM configuration
+# Required for initial remote management before SSH is enabled
+
+# WinRM connection settings (default for Windows)
+ansible_connection: winrm
+ansible_winrm_transport: basic
+ansible_winrm_port: 5985
+ansible_winrm_scheme: http
+
+# Credentials (override via environment variables in production)
+# IMPORTANT: Set ANSIBLE_WINDOWS_USER and ANSIBLE_WINDOWS_PASSWORD in your shell
+ansible_user: "{{ lookup('env', 'ANSIBLE_WINDOWS_USER') | default('james') }}"
+ansible_password: "{{ lookup('env', 'ANSIBLE_WINDOWS_PASSWORD') | default('') }}"
+
+# Allow connection with self-signed certificates
+ansible_winrm_validate_certs: false
+
+# SSH setup variables
+ssh_port: 22
+ssh_user: james
+ssh_pubkey_file: "~/.ssh/id_ed25519_homelab.pub"

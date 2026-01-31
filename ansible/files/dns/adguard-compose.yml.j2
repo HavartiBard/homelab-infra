@@ -1,0 +1,17 @@
+---
+# AdGuard Home - deployed to agh1/agh2 LXCs
+# Managed by Ansible: ansible/playbooks/dns/provision-dns-dhcp-services.yml
+version: "3.8"
+services:
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: adguard
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./data/adguard/work:/opt/adguardhome/work
+      - ./data/adguard/conf:/opt/adguardhome/conf
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - apparmor=unconfined

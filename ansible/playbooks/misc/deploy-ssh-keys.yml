@@ -1,0 +1,35 @@
+---
+-
+  name: Deploy SSH public key to hosts
+  hosts: "{{ target_hosts | default('unraid') }}"
+  become: yes
+  gather_facts: no
+  vars:
+    public_key_path: "{{ lookup('env','HOME') + '/.ssh/id_ed25519_homelab.pub' }}"
+    remote_user_to_install: "{{ ansible_user | default('root') }}"
+  tasks:
+    - name: Ensure public key exists on controller
+      local_action: stat path="{{ public_key_path }}"
+      register: keystat
+      failed_when: not keystat.stat.exists
+      changed_when: false
+
+    - name: Install authorized key for remote user (preferred)
+      ansible.posix.authorized_key:
+        user: "{{ remote_user_to_install }}"
+        key: "{{ lookup('file', public_key_path) }}"
+        manage_dir: true
+        state: present
+      ignore_errors: true
+      register: auth_result
+
+    - name: Fallback install for systems without Python (raw)
+      raw: |
+        set -e
+        TARGET_HOME=$(eval echo ~{{ remote_user_to_install }})
+        mkdir -p "$TARGET_HOME/.ssh"
+        grep -qxF "{{ lookup('file', public_key_path) }}" "$TARGET_HOME/.ssh/authorized_keys" || \
+          printf '%s\n' "{{ lookup('file', public_key_path) }}" >> "$TARGET_HOME/.ssh/authorized_keys"
+        chmod 700 "$TARGET_HOME/.ssh"
+        chmod 600 "$TARGET_HOME/.ssh/authorized_keys"
+      when: auth_result is failed

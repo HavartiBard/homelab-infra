@@ -1,0 +1,9 @@
+---
+certificates:
+  - name: klsll-wildcard
+    domains:
+      - klsll.com
+      - "*.klsll.com"
+    dns_challenge: true
+    dns_provider: cloudflare
+    dns_credentials: "dns_cloudflare_api_token = {{ cloudflare_dns_token }}"

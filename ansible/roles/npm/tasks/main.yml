@@ -1,0 +1,161 @@
+---
+- name: Ensure appdata and stack directories exist
+  ansible.builtin.raw: |
+    mkdir -p {{ npm_appdata_root }}/data \
+             {{ npm_appdata_root }}/letsencrypt \
+             {{ acme_output_dir | default(npm_appdata_root + '/certs') }} \
+             {{ npm_stack_root }}
+  changed_when: false
+
+- name: Check for Unraid icon file
+  ansible.builtin.raw: |
+    test -f {{ npm_icon }}
+  register: npm_icon_check
+  changed_when: false
+  failed_when: false
+  when: npm_icon is string and not (npm_icon is match('^https?://'))
+
+- name: Warn when icon file is missing
+  ansible.builtin.debug:
+    msg: >-
+      Unraid icon not found at {{ npm_icon }}.
+      Set npm_icon or upload the file.
+  when:
+    - npm_icon_check is defined
+    - npm_icon_check.rc is defined
+    - npm_icon_check.rc != 0
+
+- name: Validate npm_ip against {{ npm_subnet }}
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import ipaddress, sys
+    ip = ipaddress.IPv4Address("{{ npm_ip }}")
+    network = ipaddress.IPv4Network("{{ npm_subnet }}", strict=False)
+    if ip not in network:
+        sys.stderr.write(
+            (
+                "Error: {{ npm_ip }} not inside {{ npm_subnet }} "
+                "(gateway {{ npm_gateway }})\n"
+            )
+        )
+        sys.exit(1)
+    if ip == network.network_address or ip == network.broadcast_address:
+        sys.stderr.write(
+            "Error: {{ npm_ip }} cannot be network/broadcast address "
+            "of {{ npm_subnet }}\n"
+        )
+        sys.exit(1)
+    PY
+  delegate_to: localhost
+  run_once: true
+
+- name: Check for an existing dedicated Docker network
+  ansible.builtin.raw: |
+    docker network inspect {{ npm_network_name }}
+  register: npm_network_inspect
+  changed_when: false
+  failed_when: false
+
+- name: Fail when network is missing and auto-creation is disabled
+  ansible.builtin.fail:
+    msg: |
+      Dedicated Docker network {{ npm_network_name }} is missing,
+      and npm_manage_network is false.
+      Create the network manually (matching {{ npm_subnet }}/{{ npm_gateway }})
+      or enable automated creation by setting npm_manage_network: true.
+  when: npm_network_inspect.rc != 0 and not npm_manage_network
+
+- name: Check for docker compose plugin
+  ansible.builtin.raw: |
+    if docker compose version >/dev/null 2>&1; then
+      echo "docker_compose=1"
+    else
+      exit 1
+    fi
+  register: docker_compose_plugin
+  changed_when: false
+  ignore_errors: true
+
+- name: Check for legacy docker-compose
+  ansible.builtin.raw: |
+    if {{ compose_bin_path }} version >/dev/null 2>&1; then
+      echo "docker_compose_legacy=1"
+    else
+      exit 1
+    fi
+  register: docker_compose_legacy
+  changed_when: false
+  ignore_errors: true
+
+- name: Install docker-compose binary when missing
+  ansible.builtin.raw: |
+    set -euo pipefail
+    if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+      curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+      chmod +x {{ compose_bin_path }}
+    fi
+  when:
+    - docker_compose_plugin.rc != 0
+    - docker_compose_legacy.rc != 0
+
+- name: Select compose command
+  ansible.builtin.set_fact:
+    docker_compose_command: >-
+      {{ 'docker compose'
+      if docker_compose_plugin.rc == 0
+      else compose_bin_path }}
+
+- name: Create or verify dedicated Docker network
+  ansible.builtin.raw: |
+    set -euo pipefail
+    if ! docker network inspect {{ npm_network_name }} >/dev/null 2>&1; then
+      docker network create \
+        -d {{ npm_network_driver }} \
+        --subnet {{ npm_subnet }} \
+        --gateway {{ npm_gateway }} \
+        --opt parent={{ npm_parent_iface }} \
+        {{ npm_network_name }}
+    fi
+  when: npm_manage_network and npm_network_inspect.rc != 0
+
+- name: Render Docker Compose stack definition
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cat <<'EOF' > {{ npm_stack_root }}/docker-compose.yml
+    {{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}
+    EOF
+
+- name: Pull Docker images for NPM stack
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ npm_stack_root }}
+    {{ docker_compose_command }} pull
+
+- name: Deploy NPM stack
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ npm_stack_root }}
+    {{ docker_compose_command }} up -d
+
+- name: Validate NPM health endpoint
+  ansible.builtin.raw: |
+    set -euo pipefail
+    attempts=0
+    until curl -fsSL http://{{ npm_ip }}:{{ npm_ui_port }} >/dev/null; do
+      attempts=$((attempts + 1))
+      if [ $attempts -ge 5 ]; then
+        echo "NPM UI at {{ npm_ip }}:{{ npm_ui_port }} is unreachable"
+        exit 1
+      fi
+      sleep 5
+    done
+
+- name: Show Docker network details
+  ansible.builtin.raw: |
+    set -euo pipefail
+    docker network inspect {{ npm_network_name }}
+  changed_when: false
+
+- name: Manage NPM proxy hosts and DNS
+  ansible.builtin.import_tasks: proxies.yml
+  when: npm_manage_proxies | bool or npm_manage_dns | bool

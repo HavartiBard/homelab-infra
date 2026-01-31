@@ -1,0 +1,14 @@
+---
+- name: Deploy Homelab MCP to Unraid
+  hosts: unraid
+  gather_facts: no
+
+  roles:
+    - homelab-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Homelab MCP deployed successfully!
+          Endpoint: http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp

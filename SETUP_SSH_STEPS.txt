@@ -1,0 +1,96 @@
+================================================================================
+WINDOWS SSH SETUP - ESSENTIAL STEPS
+================================================================================
+
+WHAT YOU NEED TO DO:
+1. Copy your SSH public key to Windows
+2. Run the PowerShell script on Windows
+3. Test SSH from your Linux machine
+
+================================================================================
+STEP 1: Copy SSH Public Key to Windows
+================================================================================
+
+FROM YOUR LINUX MACHINE:
+    cat ~/.ssh/id_ed25519_homelab.pub
+
+COPY THE OUTPUT, THEN:
+
+Option A - Via SCP (easiest if you have network access):
+    scp ~/.ssh/id_ed25519_homelab.pub james@192.168.20.50:C:\temp\
+
+Option B - Manual (if no network access yet):
+    1. Copy the output from: cat ~/.ssh/id_ed25519_homelab.pub
+    2. Use USB drive or other method to get to Windows
+    3. Save to: C:\temp\id_ed25519_homelab.pub
+
+================================================================================
+STEP 2: Run PowerShell Script on Windows (spraycheese)
+================================================================================
+
+1. Open PowerShell as Administrator (right-click → Run as Administrator)
+
+2. Copy the setup script from repo:
+   ansible/playbooks/windows/setup-ssh.ps1
+
+   Save it as: C:\Users\james\setup-ssh.ps1
+
+3. Allow script execution:
+   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+
+4. Run the script:
+   C:\Users\james\setup-ssh.ps1
+
+The script will:
+  ✅ Install OpenSSH Server
+  ✅ Start and enable SSH service
+  ✅ Configure SSH for key-based auth
+  ✅ Set up Windows Firewall rules
+  ✅ Install your SSH public key
+  ✅ Verify everything is working
+
+================================================================================
+STEP 3: Test SSH from Linux
+================================================================================
+
+FROM YOUR LINUX MACHINE:
+    ssh -i ~/.ssh/id_ed25519_homelab james@192.168.20.50
+
+If it works, you should be logged in to Windows!
+
+ALTERNATIVELY, TEST WITH ANSIBLE:
+    cd ansible
+    ansible -i inventory/hosts.yml -u james spraycheese -m ping
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Public key not found at: C:\temp\id_ed25519_homelab.pub"
+Solution: Copy your SSH public key to that location first (Step 1)
+
+Problem: "This script must be run as Administrator"
+Solution: Right-click PowerShell and select "Run as Administrator"
+
+Problem: "cannot be loaded because running scripts is disabled"
+Solution: Run this first:
+    Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+
+Problem: Can't copy SSH key via SCP (no network yet)
+Solution: Use USB drive or manual copy method (Option B in Step 1)
+
+================================================================================
+FILE REFERENCES
+================================================================================
+
+PowerShell Script:
+  ansible/playbooks/windows/setup-ssh.ps1
+
+Quick Start Guide:
+  WINDOWS_SSH_QUICKSTART.md
+
+Detailed Setup Guide:
+  docs/windows-ssh-setup.md
+
+Ansible Playbook (WinRM alternative):
+  ansible/playbooks/windows/setup-ssh.yml

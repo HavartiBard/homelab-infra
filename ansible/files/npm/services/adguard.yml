@@ -1,0 +1,20 @@
+---
+proxy_hosts:
+  - name: adguard-admin
+    domains:
+      - adguard.klsll.com
+    forward_host: 192.168.20.4
+    forward_port: 3000
+    scheme: http
+    websocket: true
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  # All vanity hosts resolve to the NPM IP so traffic routes through the proxy.
+  - name: adguard.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600

@@ -1,0 +1,19 @@
+---
+proxy_hosts:
+  - name: unraid-ui
+    domains:
+      - unraid.klsll.com
+    forward_host: 192.168.20.14
+    forward_port: 9443
+    scheme: https
+    websocket: true
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: unraid.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600
