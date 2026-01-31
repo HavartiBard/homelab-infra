@@ -159,6 +159,17 @@ ansible-playbook playbooks/platform/deploy-gitea.yml
 **Notes:** Supply secrets via the new `Gitea Service Credentials` 1Password item (fields `db_password` and `admin_password`) or set `GITEA_DB_PASSWORD`/`GITEA_ADMIN_PASSWORD` in the shell before running. Update `ansible/group_vars/unraid/unraid.yml` if you need to change the dedicated IP/domain. See `docs/services/gitea.md` for full architecture, DNS, and registry guidance.
 After deploying Gitea, run `ansible-playbook playbooks/services/update-gitea-proxy.yml` so the `code.klsll.com` and `registry.klsll.com` proxy hosts + DNS records are created via the npm role. Re-run the playbook whenever the endpoints or IPs change.
 
+### deploy-sprite-smith.yml
+
+Deploys the Sprite Smith web app on Unraid and points it at the ComfyUI backend on the Windows GPU host.
+
+```bash
+ansible-playbook playbooks/platform/deploy-sprite-smith.yml
+```
+
+**Target:** 192.168.20.14:3001
+**ComfyUI:** `http://spraycheese.lab.klsll.com:8188`
+
 ### 1Password item naming (avoid breakage)
 
 Playbooks and roles assume stable 1Password item names but only consume them via env or pre-populated vault values. Keep these items consistent so the sync helper can populate vault vars:

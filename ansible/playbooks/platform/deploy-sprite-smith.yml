@@ -1,0 +1,174 @@
+---
+# =============================================================================
+# Deploy Sprite Smith on Unraid
+# =============================================================================
+- name: Deploy Sprite Smith on Unraid
+  hosts: unraid
+  become: true
+  gather_facts: false
+  vars:
+    sprite_smith_dir: "/mnt/user/appdata/sprite-smith"
+    sprite_smith_app_dir: "{{ sprite_smith_dir }}/app"
+    compose_file: "{{ sprite_smith_dir }}/docker-compose.yml"
+    env_file: "{{ sprite_smith_dir }}/.env"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+    sprite_smith_source_dir: >-
+      {{ SPRITE_SMITH_SOURCE_DIR
+      | default('/home/james/projects/sprite-generator', true) }}
+    sprite_smith_port: 3001
+    sprite_smith_timezone: America/Phoenix
+    sprite_smith_webui_url: "http://192.168.20.14:3001"
+    sprite_smith_icon: >-
+      https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/palette.svg
+    sprite_smith_image_provider: "comfyui"
+    sprite_smith_comfyui_base_url: "http://spraycheese.lab.klsll.com:8188"
+    sprite_smith_comfyui_model: "sd_xl_base_1.0.safetensors"
+    sprite_smith_comfyui_edit_model: "sd_xl_base_1.0_inpainting_0.1.safetensors"
+    sprite_smith_comfyui_steps: 24
+    sprite_smith_comfyui_cfg: 6
+    sprite_smith_comfyui_sampler: euler
+    sprite_smith_comfyui_scheduler: normal
+    sprite_smith_comfyui_width: 512
+    sprite_smith_comfyui_height: 768
+    sprite_smith_comfyui_denoise: 1
+    sprite_smith_comfyui_img2img_denoise: 0.65
+    sprite_smith_comfyui_inpaint_denoise: 0.5
+    sprite_smith_comfyui_filename_prefix: sprite-smith
+    sprite_smith_comfyui_poll_interval_ms: 1000
+    sprite_smith_comfyui_timeout_ms: 120000
+  tasks:
+    - name: Ensure Sprite Smith directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ sprite_smith_dir }}"
+        - "{{ sprite_smith_app_dir }}"
+
+    - name: Check Sprite Smith source directory exists on control
+      stat:
+        path: "{{ sprite_smith_source_dir }}"
+      delegate_to: localhost
+      run_once: true
+      register: sprite_smith_source_stat
+
+    - name: Fail when Sprite Smith source directory is missing
+      fail:
+        msg: >-
+          Sprite Smith source directory not found at {{ sprite_smith_source_dir }}.
+          Set SPRITE_SMITH_SOURCE_DIR to the local repo path.
+      when: not sprite_smith_source_stat.stat.exists
+
+    - name: Sync Sprite Smith source to Unraid
+      synchronize:
+        src: "{{ sprite_smith_source_dir }}/"
+        dest: "{{ sprite_smith_app_dir }}/"
+        archive: true
+        delete: true
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=.next"
+          - "--exclude=.env"
+          - "--exclude=.env.*"
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ playbook_dir }}/../../files/sprite-smith/docker-compose.yml"
+        dest: "{{ compose_file }}"
+        mode: "0644"
+
+    - name: Render Sprite Smith env file
+      copy:
+        dest: "{{ env_file }}"
+        mode: "0600"
+        content: |
+          TZ={{ sprite_smith_timezone }}
+          SPRITE_SMITH_PORT={{ sprite_smith_port }}
+          SPRITE_SMITH_WEBUI_URL={{ sprite_smith_webui_url }}
+          SPRITE_SMITH_ICON={{ sprite_smith_icon }}
+          IMAGE_PROVIDER={{ sprite_smith_image_provider }}
+          COMFYUI_BASE_URL={{ sprite_smith_comfyui_base_url }}
+          COMFYUI_MODEL={{ sprite_smith_comfyui_model }}
+          COMFYUI_EDIT_MODEL={{ sprite_smith_comfyui_edit_model }}
+          COMFYUI_STEPS={{ sprite_smith_comfyui_steps }}
+          COMFYUI_CFG={{ sprite_smith_comfyui_cfg }}
+          COMFYUI_SAMPLER={{ sprite_smith_comfyui_sampler }}
+          COMFYUI_SCHEDULER={{ sprite_smith_comfyui_scheduler }}
+          COMFYUI_WIDTH={{ sprite_smith_comfyui_width }}
+          COMFYUI_HEIGHT={{ sprite_smith_comfyui_height }}
+          COMFYUI_DENOISE={{ sprite_smith_comfyui_denoise }}
+          COMFYUI_IMG2IMG_DENOISE={{ sprite_smith_comfyui_img2img_denoise }}
+          COMFYUI_INPAINT_DENOISE={{ sprite_smith_comfyui_inpaint_denoise }}
+          COMFYUI_FILENAME_PREFIX={{ sprite_smith_comfyui_filename_prefix }}
+          COMFYUI_POLL_INTERVAL_MS={{ sprite_smith_comfyui_poll_interval_ms }}
+          COMFYUI_TIMEOUT_MS={{ sprite_smith_comfyui_timeout_ms }}
+
+    - name: Check for docker compose plugin
+      raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      set_fact:
+        sprite_smith_compose_command: >-
+          {% if docker_compose_plugin.rc == 0 %}
+          docker compose
+          {% else %}
+          {{ compose_bin_path }}
+          {% endif %}
+
+    - name: Build and deploy Sprite Smith stack
+      raw: >-
+        cd {{ sprite_smith_dir }}
+        && {{ sprite_smith_compose_command }} up -d --build
+
+    - name: Wait for Sprite Smith to be reachable
+      uri:
+        url: "http://{{ ansible_host }}:{{ sprite_smith_port }}"
+        method: GET
+        timeout: 60
+      register: sprite_smith_health
+      until: sprite_smith_health.status == 200
+      retries: 10
+      delay: 10
+
+    - name: Display deployment info
+      debug:
+        msg: |
+          Sprite Smith deployed successfully!
+          Web UI: http://{{ ansible_host }}:{{ sprite_smith_port }}
+          Stack dir: {{ sprite_smith_dir }}
