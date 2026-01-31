@@ -1,0 +1,23 @@
+# Sprite Smith - Stardew Sprite Generator
+# Unraid deployment: build from synced repo
+
+services:
+  sprite-smith:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: sprite-smith:latest
+    container_name: sprite-smith
+    restart: unless-stopped
+    ports:
+      - "${SPRITE_SMITH_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+      - NEXT_TELEMETRY_DISABLED=1
+    labels:
+      - "net.unraid.docker.icon=${SPRITE_SMITH_ICON:-https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/palette.svg}"
+      - "net.unraid.docker.webui=${SPRITE_SMITH_WEBUI_URL:-http://192.168.20.14:3000}"
