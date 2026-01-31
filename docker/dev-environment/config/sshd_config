@@ -1,0 +1,45 @@
+# Dev Environment SSH Configuration
+# Key-only auth, no root login
+
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+
+# Authentication
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM no
+
+# Restrict to dev user
+AllowUsers james
+
+# Key files
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Connection settings
+MaxAuthTries 3
+MaxSessions 10
+ClientAliveInterval 60
+ClientAliveCountMax 3
+
+# Disable unused auth methods
+KerberosAuthentication no
+GSSAPIAuthentication no
+
+# Allow agent and X11 forwarding
+AllowAgentForwarding yes
+AllowTcpForwarding yes
+X11Forwarding no
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# SFTP
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Environment variables (allow API keys to be passed through)
+AcceptEnv LANG LC_* ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY

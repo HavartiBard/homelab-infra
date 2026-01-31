@@ -13,8 +13,14 @@
 .idea/
 ide_configs/
 
+# Agent/planner artifacts
+.sisyphus/
+
 # Config files with credentials
 docker/*-unraid.env
+
+# SSH authorized keys (contain public keys specific to each deployment)
+docker/dev-environment/config/authorized_keys
 
 # Python/Node junk (if needed later)
 __pycache__/

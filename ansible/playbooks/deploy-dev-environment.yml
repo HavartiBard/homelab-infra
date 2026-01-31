@@ -1,0 +1,190 @@
+---
+# =============================================================================
+# Deploy Dev Environment on Unraid
+# =============================================================================
+- name: Deploy Dev Environment Container on Unraid
+  hosts: unraid
+  become: true
+  vars:
+    dev_dir: "/mnt/user/appdata/dev-environment"
+    compose_src: "../../docker/dev-environment"
+    compose_file: "{{ dev_dir }}/docker-compose.yml"
+    env_file: "{{ dev_dir }}/.env"
+    dev_ip: "{{ lookup('env', 'DEV_IP') | default('192.168.20.60', true) }}"
+    dev_interface: "{{ lookup('env', 'DEV_INTERFACE') | default('br0', true) }}"
+
+  tasks:
+    # =========================================================================
+    # Directory setup
+    # =========================================================================
+    - name: Create dev environment directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ dev_dir }}"
+        - "{{ dev_dir }}/config"
+        - "{{ dev_dir }}/scripts"
+        - "{{ dev_dir }}/home"
+        - "{{ dev_dir }}/projects"
+
+    # =========================================================================
+    # Copy files
+    # =========================================================================
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ compose_src }}/docker-compose.yml"
+        dest: "{{ compose_file }}"
+        mode: '0644'
+
+    - name: Copy Dockerfile
+      copy:
+        src: "{{ compose_src }}/Dockerfile"
+        dest: "{{ dev_dir }}/Dockerfile"
+        mode: '0644'
+
+    - name: Copy sshd_config
+      copy:
+        src: "{{ compose_src }}/config/sshd_config"
+        dest: "{{ dev_dir }}/config/sshd_config"
+        mode: '0644'
+
+    - name: Copy entrypoint script
+      copy:
+        src: "{{ compose_src }}/scripts/entrypoint.sh"
+        dest: "{{ dev_dir }}/scripts/entrypoint.sh"
+        mode: '0755'
+
+    - name: Copy zshrc
+      copy:
+        src: "{{ compose_src }}/config/zshrc"
+        dest: "{{ dev_dir }}/config/zshrc"
+        mode: '0644'
+
+    - name: Copy OpenCode config
+      copy:
+        src: "{{ compose_src }}/config/opencode.json"
+        dest: "{{ dev_dir }}/config/opencode.json"
+        mode: '0644'
+
+    - name: Copy Codex config
+      copy:
+        src: "{{ compose_src }}/config/codex-config.toml"
+        dest: "{{ dev_dir }}/config/codex-config.toml"
+        mode: '0644'
+
+    # =========================================================================
+    # Environment configuration
+    # =========================================================================
+    - name: Check if .env exists
+      stat:
+        path: "{{ env_file }}"
+      register: env_stat
+
+    - name: Copy .env.example if .env doesn't exist
+      copy:
+        src: "{{ compose_src }}/.env.example"
+        dest: "{{ env_file }}"
+        mode: '0600'
+      when: not env_stat.stat.exists
+
+    # =========================================================================
+    # SSH authorized keys - deploy from controller
+    # =========================================================================
+    - name: Find SSH public keys on controller
+      find:
+        paths: "{{ lookup('env', 'HOME') }}/.ssh"
+        patterns: '*.pub'
+      delegate_to: localhost
+      become: false
+      register: ssh_pubkeys
+
+    - name: Read SSH public keys from controller
+      slurp:
+        src: "{{ item.path }}"
+      loop: "{{ ssh_pubkeys.files }}"
+      delegate_to: localhost
+      become: false
+      register: ssh_pubkey_contents
+
+    - name: Deploy authorized_keys with controller's public keys
+      copy:
+        content: |
+          # Managed by Ansible - deploy-dev-environment.yml
+          # Keys from {{ lookup('env', 'HOME') }}/.ssh/*.pub
+          {% for key in ssh_pubkey_contents.results %}
+          # {{ key.item.path | basename }}
+          {{ key.content | b64decode }}
+          {% endfor %}
+        dest: "{{ dev_dir }}/config/authorized_keys"
+        owner: '1000'
+        group: '1000'
+        mode: '0600'
+      when: ssh_pubkey_contents.results | length > 0
+
+    - name: Fail if no SSH public keys found
+      fail:
+        msg: >
+          No SSH public keys found in {{ lookup('env', 'HOME') }}/.ssh/*.pub.
+          Generate a key first: ssh-keygen -t ed25519 -C "james@dev-box"
+      when: ssh_pubkeys.files | length == 0
+
+    # =========================================================================
+    # Build and deploy
+    # =========================================================================
+    - name: Build dev environment image
+      command:
+        cmd: docker compose build
+        chdir: "{{ dev_dir }}"
+      register: build_result
+      changed_when: "'exporting' in build_result.stdout"
+
+    - name: Deploy dev environment stack
+      command:
+        cmd: docker compose up -d
+        chdir: "{{ dev_dir }}"
+      register: deploy_result
+      changed_when: "'Started' in deploy_result.stderr or 'Created' in deploy_result.stderr"
+
+    # =========================================================================
+    # macvlan shim for host <-> container communication
+    # =========================================================================
+    - name: Check if macvlan shim interface exists
+      command: ip link show dev macvlan-shim
+      register: shim_check
+      failed_when: false
+      changed_when: false
+
+    - name: Create macvlan shim interface on host
+      shell: |
+        ip link add macvlan-shim link {{ dev_interface }} type macvlan mode bridge
+        ip addr add 192.168.20.61/32 dev macvlan-shim
+        ip link set macvlan-shim up
+        ip route add {{ dev_ip }}/32 dev macvlan-shim
+      when: shim_check.rc != 0
+
+    # =========================================================================
+    # Verification
+    # =========================================================================
+    - name: Wait for SSH to be available
+      wait_for:
+        host: "{{ dev_ip }}"
+        port: 22
+        timeout: 120
+        state: started
+      register: ssh_wait
+
+    - name: Display deployment info
+      debug:
+        msg: |
+          Dev environment deployed successfully!
+          SSH: ssh james@{{ dev_ip }}
+          Container: dev-environment
+          Home: {{ dev_dir }}/home
+          Projects: {{ dev_dir }}/projects
+
+          VS Code Remote SSH config:
+            Host dev-box
+                HostName {{ dev_ip }}
+                User james

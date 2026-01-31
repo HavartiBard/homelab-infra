@@ -52,6 +52,12 @@ This document lists all ports used by homelab stacks with access requirements.
 | **Portainer Agent** | 9001 | TCP | 🔒 LAN-Only | Agent communication |
 | **Edge Agent** | (outbound) | TCP | 🔒 Outbound | Tunnels to Portainer :8000 |
 
+## Dev Environment (macvlan)
+
+| Service | Port | Protocol | Access | Description |
+|---------|------|----------|--------|-------------|
+| **Dev Environment** | 22 | TCP | 🔒 LAN-Only | SSH (key-only, macvlan IP 192.168.20.60) |
+
 ## Existing Services (Reference)
 
 | Service | Port | Protocol | Access | Description |
@@ -160,3 +166,4 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 | `chat.klsll.com` | <worker-ip>:8080 | Built-in | GPU worker |
 | `netbox.klsll.com` | <unraid-ip>:8001 | Built-in | Unraid |
 | `adguard.klsll.com` | <unraid-ip>:8053 | Built-in | Unraid |
+| `dev-box` | 192.168.20.60:22 | SSH key | Dev environment (macvlan) |

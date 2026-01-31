@@ -1,0 +1,73 @@
+# Dev Environment on Unraid
+# SSH-accessible dev container with its own LAN IP via macvlan on br0
+# - Claude Code, opencode, and full dev tooling
+# - Key-only SSH on standard port 22
+# - Docker socket for container management
+#
+# Prerequisites:
+#   - Copy .env.example to .env and configure
+#   - Add your SSH public key to config/authorized_keys
+#   - Ensure br0 bridge interface exists on host
+
+services:
+  # =============================================================================
+  # Dev Environment - SSH Development Container
+  # =============================================================================
+  dev-environment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dev-environment
+    hostname: dev-box
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/visual-studio-code.png
+      net.unraid.docker.webui: https://dev.klsll.com
+    volumes:
+      # Persistent home directory (shell history, git config, tool configs)
+      - ${APPDATA_PATH:-/mnt/user/appdata/dev-environment}/home:/home/${DEV_USER:-james}
+      # Project workspace
+      - ${APPDATA_PATH:-/mnt/user/appdata/dev-environment}/projects:/home/${DEV_USER:-james}/projects
+      # SSH authorized keys
+      - ./config/authorized_keys:/home/${DEV_USER:-james}/.ssh/authorized_keys:ro
+      # OpenCode global config
+      - ./config/opencode.json:/home/${DEV_USER:-james}/.config/opencode/opencode.json:ro
+      # Codex config
+      - ./config/codex-config.toml:/home/${DEV_USER:-james}/.codex/config.toml:ro
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 1Password SSH agent socket (from host)
+      - ${OP_SSH_AGENT_SOCK:-/home/james/.1password/agent.sock}:/home/${DEV_USER:-james}/.1password/agent.sock:ro
+    environment:
+      - TZ=${TZ:-America/Phoenix}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - LMSTUDIO_API_KEY=${LMSTUDIO_API_KEY:-}
+      - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN:-}
+      - NOTION_MCP_TOKEN=${NOTION_MCP_TOKEN:-}
+      - GITEA_TOKEN=${GITEA_TOKEN:-}
+      - CODEX_CONFIG_FILE=/home/${DEV_USER:-james}/.codex/config.toml
+      - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://spraycheese.lab.klsll.com:1234/v1}
+      - DEV_USER=${DEV_USER:-james}
+      - VSCODE_TUNNEL_NAME=${VSCODE_TUNNEL_NAME:-dev-box}
+    deploy:
+      resources:
+        limits:
+          memory: ${DEV_MEMORY_LIMIT:-8g}
+          cpus: "${DEV_CPU_LIMIT:-4.0}"
+    networks:
+      br0:
+        ipv4_address: ${DEV_IP:-192.168.20.60}
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "sshd"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  # Use the existing br0 macvlan network on Unraid
+  # This gives the container its own LAN IP - no port mapping needed
+  # Note: macvlan containers cannot talk to the host directly.
+  # Use the Ansible playbook's macvlan shim if host<->container comms are needed.
+  br0:
+    external: true
