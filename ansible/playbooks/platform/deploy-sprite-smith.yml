@@ -9,6 +9,7 @@
   vars:
     sprite_smith_dir: "/mnt/user/appdata/sprite-smith"
     sprite_smith_app_dir: "{{ sprite_smith_dir }}/app"
+    sprite_smith_workflows_dir: "{{ sprite_smith_dir }}/workflows"
     compose_file: "{{ sprite_smith_dir }}/docker-compose.yml"
     env_file: "{{ sprite_smith_dir }}/.env"
     compose_version: v2.27.0
@@ -22,12 +23,22 @@
     sprite_smith_port: 3001
     sprite_smith_timezone: America/Phoenix
     sprite_smith_webui_url: "http://192.168.20.14:3001"
-    sprite_smith_icon: >-
-      https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/palette.svg
+    sprite_smith_icon_path: "{{ sprite_smith_dir }}/icon.svg"
     sprite_smith_image_provider: "comfyui"
     sprite_smith_comfyui_base_url: "http://spraycheese.lab.klsll.com:8188"
     sprite_smith_comfyui_model: "sd_xl_base_1.0.safetensors"
     sprite_smith_comfyui_edit_model: "sd_xl_base_1.0_inpainting_0.1.safetensors"
+    sprite_smith_comfyui_portrait_workflow_path: "/workflows/portrait.json"
+    sprite_smith_comfyui_sprite_workflow_path: "/workflows/sprites.json"
+    sprite_smith_comfyui_allow_workflow_override: true
+    sprite_smith_comfyui_sprite_model: ""
+    sprite_smith_comfyui_sprite_width: 512
+    sprite_smith_comfyui_sprite_height: 1024
+    sprite_smith_comfyui_sprite_steps: 28
+    sprite_smith_comfyui_sprite_cfg: 7
+    sprite_smith_comfyui_sprite_reference_mode: "none"
+    sprite_smith_comfyui_sprite_lora: "Stardew_Valley_Sprites.safetensors"
+    sprite_smith_comfyui_sprite_lora_strength: 0.8
     sprite_smith_comfyui_steps: 24
     sprite_smith_comfyui_cfg: 6
     sprite_smith_comfyui_sampler: euler
@@ -49,6 +60,7 @@
       loop:
         - "{{ sprite_smith_dir }}"
         - "{{ sprite_smith_app_dir }}"
+        - "{{ sprite_smith_workflows_dir }}"
 
     - name: Check Sprite Smith source directory exists on control
       stat:
@@ -83,6 +95,21 @@
         dest: "{{ compose_file }}"
         mode: "0644"
 
+    - name: Copy Sprite Smith icon
+      copy:
+        src: "{{ playbook_dir }}/../../files/sprite-smith/icon.svg"
+        dest: "{{ sprite_smith_icon_path }}"
+        mode: "0644"
+
+    - name: Copy Sprite Smith workflow templates
+      copy:
+        src: "{{ playbook_dir }}/../../files/sprite-smith/workflows/{{ item }}"
+        dest: "{{ sprite_smith_workflows_dir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - portrait.json
+        - sprites.json
+
     - name: Render Sprite Smith env file
       copy:
         dest: "{{ env_file }}"
@@ -91,11 +118,22 @@
           TZ={{ sprite_smith_timezone }}
           SPRITE_SMITH_PORT={{ sprite_smith_port }}
           SPRITE_SMITH_WEBUI_URL={{ sprite_smith_webui_url }}
-          SPRITE_SMITH_ICON={{ sprite_smith_icon }}
+          SPRITE_SMITH_ICON={{ sprite_smith_icon_path }}
           IMAGE_PROVIDER={{ sprite_smith_image_provider }}
           COMFYUI_BASE_URL={{ sprite_smith_comfyui_base_url }}
           COMFYUI_MODEL={{ sprite_smith_comfyui_model }}
           COMFYUI_EDIT_MODEL={{ sprite_smith_comfyui_edit_model }}
+          COMFYUI_PORTRAIT_WORKFLOW_PATH={{ sprite_smith_comfyui_portrait_workflow_path }}
+          COMFYUI_SPRITE_WORKFLOW_PATH={{ sprite_smith_comfyui_sprite_workflow_path }}
+          COMFYUI_ALLOW_WORKFLOW_OVERRIDE={{ sprite_smith_comfyui_allow_workflow_override | lower }}
+          COMFYUI_SPRITE_MODEL={{ sprite_smith_comfyui_sprite_model }}
+          COMFYUI_SPRITE_WIDTH={{ sprite_smith_comfyui_sprite_width }}
+          COMFYUI_SPRITE_HEIGHT={{ sprite_smith_comfyui_sprite_height }}
+          COMFYUI_SPRITE_STEPS={{ sprite_smith_comfyui_sprite_steps }}
+          COMFYUI_SPRITE_CFG={{ sprite_smith_comfyui_sprite_cfg }}
+          COMFYUI_SPRITE_REFERENCE_MODE={{ sprite_smith_comfyui_sprite_reference_mode }}
+          COMFYUI_SPRITE_LORA={{ sprite_smith_comfyui_sprite_lora }}
+          COMFYUI_SPRITE_LORA_STRENGTH={{ sprite_smith_comfyui_sprite_lora_strength }}
           COMFYUI_STEPS={{ sprite_smith_comfyui_steps }}
           COMFYUI_CFG={{ sprite_smith_comfyui_cfg }}
           COMFYUI_SAMPLER={{ sprite_smith_comfyui_sampler }}
