@@ -10,6 +10,7 @@
     sprite_smith_dir: "/mnt/user/appdata/sprite-smith"
     sprite_smith_app_dir: "{{ sprite_smith_dir }}/app"
     sprite_smith_workflows_dir: "{{ sprite_smith_dir }}/workflows"
+    sprite_smith_workflows_ui_dir: "{{ sprite_smith_workflows_dir }}/ui"
     compose_file: "{{ sprite_smith_dir }}/docker-compose.yml"
     env_file: "{{ sprite_smith_dir }}/.env"
     compose_version: v2.27.0
@@ -31,6 +32,8 @@
     sprite_smith_comfyui_portrait_workflow_path: "/workflows/portrait.json"
     sprite_smith_comfyui_sprite_workflow_path: "/workflows/sprites.json"
     sprite_smith_comfyui_allow_workflow_override: true
+    sprite_smith_comfyui_portrait_lora: "stardew_valle_portraits_pony.safetensors"
+    sprite_smith_comfyui_portrait_lora_strength: 0.8
     sprite_smith_comfyui_sprite_model: ""
     sprite_smith_comfyui_sprite_width: 512
     sprite_smith_comfyui_sprite_height: 1024
@@ -61,6 +64,7 @@
         - "{{ sprite_smith_dir }}"
         - "{{ sprite_smith_app_dir }}"
         - "{{ sprite_smith_workflows_dir }}"
+        - "{{ sprite_smith_workflows_ui_dir }}"
 
     - name: Check Sprite Smith source directory exists on control
       stat:
@@ -110,6 +114,15 @@
         - portrait.json
         - sprites.json
 
+    - name: Copy Sprite Smith UI workflows
+      copy:
+        src: "{{ playbook_dir }}/../../files/sprite-smith/workflows/ui/{{ item }}"
+        dest: "{{ sprite_smith_workflows_ui_dir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - portrait-ui.json
+        - sprites-ui.json
+
     - name: Render Sprite Smith env file
       copy:
         dest: "{{ env_file }}"
@@ -126,6 +139,8 @@
           COMFYUI_PORTRAIT_WORKFLOW_PATH={{ sprite_smith_comfyui_portrait_workflow_path }}
           COMFYUI_SPRITE_WORKFLOW_PATH={{ sprite_smith_comfyui_sprite_workflow_path }}
           COMFYUI_ALLOW_WORKFLOW_OVERRIDE={{ sprite_smith_comfyui_allow_workflow_override | lower }}
+          COMFYUI_PORTRAIT_LORA={{ sprite_smith_comfyui_portrait_lora }}
+          COMFYUI_PORTRAIT_LORA_STRENGTH={{ sprite_smith_comfyui_portrait_lora_strength }}
           COMFYUI_SPRITE_MODEL={{ sprite_smith_comfyui_sprite_model }}
           COMFYUI_SPRITE_WIDTH={{ sprite_smith_comfyui_sprite_width }}
           COMFYUI_SPRITE_HEIGHT={{ sprite_smith_comfyui_sprite_height }}
