@@ -1,0 +1,167 @@
+---
+# =============================================================================
+# Deploy N8N on Unraid with macvlan + configure NPM + Technitium DNS
+# =============================================================================
+
+- name: Deploy N8N on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  vars: &n8n_vars
+    n8n_hostname: "n8n.home.local"
+    n8n_ip: "192.168.20.70"
+    n8n_port: 5678
+    n8n_protocol: "http"
+    n8n_webhook_url: "{{ n8n_protocol }}://{{ n8n_hostname }}"
+    n8n_editor_base_url: "{{ n8n_protocol }}://{{ n8n_hostname }}"
+    n8n_network_name: "br0"
+    n8n_macvlan_parent: "br0"
+    n8n_macvlan_subnet: "192.168.20.0/24"
+    n8n_macvlan_gateway: "192.168.20.1"
+
+    manage_npm_proxy: true
+    manage_dns_record: true
+
+    npm_api_url: "http://npm.home.local"
+    npm_api_identity: "{{ lookup('env', 'NPM_IDENTITY') }}"
+    npm_api_secret: "{{ lookup('env', 'NPM_SECRET') }}"
+    npm_verify_ssl: false
+    npm_proxy_force_ssl: false
+
+    technitium_api_url: "http://technitium.home.local:5380"
+    technitium_user: "{{ lookup('env', 'TECHNITIUM_USER') }}"
+    technitium_password: "{{ lookup('env', 'TECHNITIUM_PASSWORD') }}"
+    technitium_zone: "home.local"
+    technitium_ttl: 3600
+
+  pre_tasks:
+    - name: Verify NPM credentials are set when manage_npm_proxy is enabled
+      ansible.builtin.fail:
+        msg: "Set NPM_IDENTITY and NPM_SECRET environment variables to manage NPM proxy"
+      when:
+        - manage_npm_proxy | bool
+        - npm_api_identity | length == 0 or npm_api_secret | length == 0
+
+    - name: Verify Technitium credentials are set when manage_dns_record is enabled
+      ansible.builtin.fail:
+        msg: "Set TECHNITIUM_USER and TECHNITIUM_PASSWORD environment variables to manage DNS"
+      when:
+        - manage_dns_record | bool
+        - technitium_user | length == 0 or technitium_password | length == 0
+
+  roles:
+    - role: n8n-unraid
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          N8N deployed successfully!
+          URL: {{ n8n_protocol }}://{{ n8n_hostname }}
+          IP: {{ n8n_ip }}
+          Port: {{ n8n_port }}
+
+- name: Configure NPM proxy and Technitium DNS
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars: *n8n_vars
+
+  tasks:
+    - name: Login to NPM
+      ansible.builtin.uri:
+        url: "{{ npm_api_url }}/api/tokens"
+        method: POST
+        body_format: json
+        body:
+          identity: "{{ npm_api_identity }}"
+          secret: "{{ npm_api_secret }}"
+        status_code: 200
+        validate_certs: "{{ npm_verify_ssl | bool }}"
+      register: npm_login
+      when: manage_npm_proxy | bool
+
+    - name: Set NPM token
+      ansible.builtin.set_fact:
+        npm_token: "{{ npm_login.json.token }}"
+      when: manage_npm_proxy | bool
+
+    - name: Fetch existing NPM proxy hosts
+      ansible.builtin.uri:
+        url: "{{ npm_api_url }}/api/nginx/proxy-hosts"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ npm_token }}"
+        status_code: 200
+        validate_certs: "{{ npm_verify_ssl | bool }}"
+      register: npm_hosts
+      when: manage_npm_proxy | bool
+
+    - name: Find existing NPM proxy host
+      ansible.builtin.set_fact:
+        npm_existing_host: "{{ (npm_hosts.json | selectattr('domain_names', 'contains', n8n_hostname) | list | first) | default({}) }}"
+      when: manage_npm_proxy | bool
+
+    - name: Create NPM proxy host for N8N
+      ansible.builtin.uri:
+        url: "{{ npm_api_url }}/api/nginx/proxy-hosts"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ npm_token }}"
+        body_format: json
+        body:
+          domain_names:
+            - "{{ n8n_hostname }}"
+          forward_scheme: "http"
+          forward_host: "{{ n8n_ip }}"
+          forward_port: "{{ n8n_port }}"
+          access_list_id: "0"
+          certificate_id: 0
+          ssl_forced: "{{ npm_proxy_force_ssl | bool }}"
+          caching_enabled: false
+          block_exploits: true
+          allow_websocket_upgrade: true
+          advanced_config: ""
+          meta:
+            letsencrypt_agree: false
+            dns_challenge: false
+        status_code: [200, 201]
+        validate_certs: "{{ npm_verify_ssl | bool }}"
+      when:
+        - manage_npm_proxy | bool
+        - npm_existing_host | length == 0
+
+    - name: Login to Technitium
+      ansible.builtin.uri:
+        url: >-
+          {{ technitium_api_url }}/api/user/login?user={{ technitium_user }}&pass={{ technitium_password }}&includeInfo=true
+        method: GET
+        status_code: 200
+        validate_certs: false
+      register: technitium_login
+      when: manage_dns_record | bool
+
+    - name: Set Technitium token
+      ansible.builtin.set_fact:
+        technitium_token: "{{ technitium_login.json.token }}"
+      when: manage_dns_record | bool
+
+    - name: Create or update Technitium A record
+      ansible.builtin.uri:
+        url: >-
+          {{ technitium_api_url }}/api/zones/records/add?token={{ technitium_token }}&domain={{ n8n_hostname }}&zone={{ technitium_zone }}&type=A&ipAddress={{ n8n_ip }}&ttl={{ technitium_ttl }}&overwrite=true
+        method: GET
+        status_code: 200
+        validate_certs: false
+      register: technitium_record
+      failed_when: technitium_record.json.status != 'ok'
+      when: manage_dns_record | bool
+
+    - name: Logout of Technitium
+      ansible.builtin.uri:
+        url: "{{ technitium_api_url }}/api/user/logout?token={{ technitium_token }}"
+        method: GET
+        status_code: 200
+        validate_certs: false
+      when: manage_dns_record | bool

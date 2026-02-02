@@ -1,0 +1,88 @@
+---
+# Deploy N8N container on Unraid using macvlan
+# Uses raw commands since Unraid lacks Python
+
+- name: Check Docker daemon and network connectivity
+  ansible.builtin.raw: |
+    docker --version
+    echo "Testing connectivity to Docker Hub..."
+    timeout 10 curl -I https://registry-1.docker.io 2>/dev/null | head -1 || echo "Cannot reach Docker Hub"
+  register: connectivity_check
+  changed_when: false
+
+- name: Display connectivity check
+  ansible.builtin.debug:
+    msg: "{{ connectivity_check.stdout_lines }}"
+
+- name: Ensure N8N appdata directory exists
+  ansible.builtin.raw: |
+    mkdir -p {{ n8n_appdata_dir }}
+  changed_when: false
+
+- name: Ensure macvlan network exists
+  ansible.builtin.raw: |
+    docker network inspect {{ n8n_network_name }} >/dev/null 2>&1 || \
+      docker network create -d macvlan \
+        -o parent={{ n8n_macvlan_parent }} \
+        --subnet {{ n8n_macvlan_subnet }} \
+        --gateway {{ n8n_macvlan_gateway }} \
+        {{ n8n_network_name }}
+  register: network_result
+  changed_when: network_result.stdout is search('Created')
+
+- name: Pull container image
+  ansible.builtin.raw: |
+    timeout 120 docker pull {{ n8n_image }}
+  register: pull_result
+  changed_when: pull_result.stdout is search('Downloaded newer image') or pull_result.stdout is search('Pulling from') or pull_result.stdout is search('Image is up to date')
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ n8n_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ n8n_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy N8N container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ n8n_container_name }} \
+      --restart unless-stopped \
+      --network {{ n8n_network_name }} \
+      --ip {{ n8n_ip }} \
+      -e N8N_HOST='{{ n8n_hostname }}' \
+      -e N8N_PORT='{{ n8n_port }}' \
+      -e N8N_PROTOCOL='{{ n8n_protocol }}' \
+      -e N8N_EDITOR_BASE_URL='{{ n8n_editor_base_url }}' \
+      -e WEBHOOK_URL='{{ n8n_webhook_url }}' \
+      -e GENERIC_TIMEZONE='{{ timezone }}' \
+      -e TZ='{{ timezone }}' \
+      -v {{ n8n_appdata_dir }}:/home/node/.n8n \
+      {{ n8n_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 5
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ n8n_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: |
+    docker logs --tail 20 {{ n8n_container_name }} 2>&1
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"

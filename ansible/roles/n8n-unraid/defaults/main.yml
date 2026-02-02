@@ -1,0 +1,22 @@
+---
+# Defaults for N8N on Unraid
+
+n8n_image: "n8nio/n8n:latest"
+n8n_container_name: "n8n"
+n8n_appdata_dir: "/mnt/user/appdata/n8n"
+n8n_port: 5678
+
+# macvlan network settings
+n8n_network_name: "br0"
+n8n_macvlan_parent: "br0"
+n8n_macvlan_subnet: "192.168.20.0/24"
+n8n_macvlan_gateway: "192.168.20.1"
+n8n_ip: "192.168.20.70"
+
+# App configuration
+n8n_hostname: "n8n.home.local"
+n8n_protocol: "http"
+n8n_webhook_url: "{{ n8n_protocol }}://{{ n8n_hostname }}"
+n8n_editor_base_url: "{{ n8n_protocol }}://{{ n8n_hostname }}"
+
+timezone: "America/Chicago"

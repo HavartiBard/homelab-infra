@@ -132,6 +132,18 @@ export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge → credential>'
 ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
+### deploy-n8n.yml
+
+Deploys N8N on Unraid (macvlan) and optionally creates NPM + Technitium DNS entries.
+
+```bash
+export NPM_IDENTITY='<npm-email>'
+export NPM_SECRET='<npm-password>'
+export TECHNITIUM_USER='<technitium-user>'
+export TECHNITIUM_PASSWORD='<technitium-password>'
+ansible-playbook playbooks/deploy-n8n.yml
+```
+
 **Target:** 192.168.20.14:6970
 **Image:** ghcr.io/havartibard/unraid-mcp:latest
 **Last Updated:** 2026-01-06 (Tag: 1c13de8)
@@ -230,6 +242,7 @@ Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.templ
 | Role | Description | Config |
 |------|-------------|--------|
 | `homelab-mcp` | Orbi, NPM, Pi-hole MCP server | Jinja2 template |
+| `n8n-unraid` | N8N container on Unraid (macvlan) | Env vars + defaults |
 | `onepassword-mcp` | 1Password secrets MCP server | Env vars only |
 | `unraid-mcp` | Unraid GraphQL management MCP server | Env vars only |
 
