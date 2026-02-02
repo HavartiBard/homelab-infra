@@ -44,7 +44,7 @@
         "Node name for S&R": "CheckpointLoaderSimple"
       },
       "widgets_values": [
-        "sd_xl_base_1.0.safetensors"
+        "ponyDiffusionForAnime.safetensors"
       ]
     },
     {

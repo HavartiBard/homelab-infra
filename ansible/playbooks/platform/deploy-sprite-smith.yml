@@ -27,7 +27,7 @@
     sprite_smith_icon_path: "{{ sprite_smith_dir }}/icon.svg"
     sprite_smith_image_provider: "comfyui"
     sprite_smith_comfyui_base_url: "http://spraycheese.lab.klsll.com:8188"
-    sprite_smith_comfyui_model: "sd_xl_base_1.0.safetensors"
+    sprite_smith_comfyui_model: "ponyDiffusionForAnime.safetensors"
     sprite_smith_comfyui_edit_model: "sd_xl_base_1.0_inpainting_0.1.safetensors"
     sprite_smith_comfyui_portrait_workflow_path: "/workflows/portrait.json"
     sprite_smith_comfyui_sprite_workflow_path: "/workflows/sprites.json"
