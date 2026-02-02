@@ -18,6 +18,8 @@ services:
       - HOSTNAME=0.0.0.0
       - PORT=3000
       - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ./workflows:/workflows:ro
     labels:
       - "net.unraid.docker.icon=${SPRITE_SMITH_ICON:-https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/svg/palette.svg}"
       - "net.unraid.docker.webui=${SPRITE_SMITH_WEBUI_URL:-http://192.168.20.14:3000}"
