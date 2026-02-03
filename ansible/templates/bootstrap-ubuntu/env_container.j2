@@ -1,0 +1,6 @@
+# Ubuntu bootstrap environment file (managed by ansible bootstrap-ubuntu.yml)
+# Host: {{ inventory_hostname }}
+
+{% for key, value in (ubuntu_env_container_vars | default({})) | dictsort %}
+export {{ key }}={{ value | quote }}
+{% endfor %}
