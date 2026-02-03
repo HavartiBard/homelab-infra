@@ -1,0 +1,83 @@
+# Ubuntu bootstrap - Oh My Zsh + Pure prompt
+
+# =============================================================================
+# Oh My Zsh settings
+# =============================================================================
+export ZSH="{{ bootstrap_zsh_install_dir }}"
+export ZSH_CUSTOM="{{ bootstrap_zsh_install_dir }}/custom"
+
+ZSH_THEME="{{ bootstrap_zsh_theme }}"
+
+# Plugins
+plugins=(
+{% for plugin in bootstrap_zsh_plugins %}
+    {{ plugin }}
+{% endfor %}
+)
+
+# Disable auto-updates so oh-my-zsh stays in sync with the playbook
+zstyle ':omz:update' mode disabled
+
+source "$ZSH/oh-my-zsh.sh"
+
+# =============================================================================
+# History
+# =============================================================================
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+
+# =============================================================================
+# Aliases
+# =============================================================================
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Docker helpers
+alias d='docker'
+alias dc='docker compose'
+{% raw %}
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+{% endraw %}
+alias dlogs='docker logs -f'
+
+# =============================================================================
+# Environment
+# =============================================================================
+export EDITOR=vim
+export VISUAL=vim
+export PAGER=less
+
+# Go tooling
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:/usr/local/go/bin:$PATH"
+
+# Local binaries
+export PATH="$HOME/.local/bin:$PATH"
+
+# =============================================================================
+# Custom environment hooks
+# =============================================================================
+[ -f ~/.env_container ] && source ~/.env_container
+
+# =============================================================================
+# 1Password CLI helpers
+# =============================================================================
+if command -v op &> /dev/null; then
+    eval "$(op completion zsh)" 2>/dev/null
+    compdef _op op
+fi
+
+# =============================================================================
+# 1Password SSH agent detection
+# =============================================================================
+if [ -S "${OP_SSH_AUTH_SOCK:-$HOME/.1password/agent.sock}" ]; then
+    export SSH_AUTH_SOCK="${OP_SSH_AUTH_SOCK:-$HOME/.1password/agent.sock}"
+fi
