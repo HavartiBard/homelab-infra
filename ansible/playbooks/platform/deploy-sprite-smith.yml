@@ -20,7 +20,7 @@
       compose_version }}/docker-compose-linux-x86_64
     sprite_smith_source_dir: >-
       {{ SPRITE_SMITH_SOURCE_DIR
-      | default('/home/james/projects/sprite-generator', true) }}
+      | default('/home/james/projects/stardew-sprite-generator', true) }}
     sprite_smith_port: 3001
     sprite_smith_timezone: America/Phoenix
     sprite_smith_webui_url: "http://192.168.20.14:3001"
@@ -30,6 +30,8 @@
     sprite_smith_comfyui_model: "ponyDiffusionForAnime.safetensors"
     sprite_smith_comfyui_edit_model: "sd_xl_base_1.0_inpainting_0.1.safetensors"
     sprite_smith_comfyui_portrait_workflow_path: "/workflows/portrait.json"
+    sprite_smith_comfyui_inpaint_workflow_path: "/workflows/inpaint.json"
+    sprite_smith_comfyui_expression_workflow_path: "/workflows/expressions.json"
     sprite_smith_comfyui_sprite_workflow_path: "/workflows/sprites.json"
     sprite_smith_comfyui_allow_workflow_override: true
     sprite_smith_comfyui_portrait_lora: "stardew_valle_portraits_pony.safetensors"
@@ -112,6 +114,8 @@
         mode: "0644"
       loop:
         - portrait.json
+        - inpaint.json
+        - expressions.json
         - sprites.json
 
     - name: Copy Sprite Smith UI workflows
@@ -137,6 +141,8 @@
           COMFYUI_MODEL={{ sprite_smith_comfyui_model }}
           COMFYUI_EDIT_MODEL={{ sprite_smith_comfyui_edit_model }}
           COMFYUI_PORTRAIT_WORKFLOW_PATH={{ sprite_smith_comfyui_portrait_workflow_path }}
+          COMFYUI_INPAINT_WORKFLOW_PATH={{ sprite_smith_comfyui_inpaint_workflow_path }}
+          COMFYUI_EXPRESSION_WORKFLOW_PATH={{ sprite_smith_comfyui_expression_workflow_path }}
           COMFYUI_SPRITE_WORKFLOW_PATH={{ sprite_smith_comfyui_sprite_workflow_path }}
           COMFYUI_ALLOW_WORKFLOW_OVERRIDE={{ sprite_smith_comfyui_allow_workflow_override | lower }}
           COMFYUI_PORTRAIT_LORA={{ sprite_smith_comfyui_portrait_lora }}
