@@ -18,6 +18,7 @@ ide_configs/
 
 # Config files with credentials
 docker/*-unraid.env
+.vault-pass
 
 # SSH authorized keys (contain public keys specific to each deployment)
 docker/dev-environment/config/authorized_keys
