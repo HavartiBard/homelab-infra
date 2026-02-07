@@ -1,0 +1,7 @@
+---
+- name: Deploy TensorRT-LLM stack on Jetson Orin Nano
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  roles:
+    - jetson-trtllm

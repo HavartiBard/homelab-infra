@@ -1,0 +1,4 @@
+---
+trtllm_models_host_dir: /home/james/models/tensorrt_llm
+trtllm_cache_host_dir: /home/james/.cache/huggingface
+trtllm_app_dir: /opt/trtllm

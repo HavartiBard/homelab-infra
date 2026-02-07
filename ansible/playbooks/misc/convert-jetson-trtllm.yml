@@ -1,0 +1,10 @@
+---
+- name: Convert a model inside the Jetson TensorRT-LLM container
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    trtllm_conversion_model: meta-llama/Llama-3.2-3B-Instruct
+    trtllm_conversion_alias: llama-3.2-3b-instruct
+  roles:
+    - jetson-trtllm-convert

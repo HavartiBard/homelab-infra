@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  trtllm-dev:
+    image: {{ trtllm_image }}
+    container_name: {{ trtllm_container_name }}
+    network_mode: host
+    runtime: nvidia
+    shm_size: {{ trtllm_shm_size }}
+    stdin_open: true
+    tty: true
+    command: {{ trtllm_command }}
+    env_file:
+      - {{ trtllm_env_file }}
+    environment:
+      HF_HOME: {{ trtllm_cache_inside }}
+      TRANSFORMERS_CACHE: {{ trtllm_cache_inside }}
+      NVIDIA_DRIVER_CAPABILITIES: all
+    volumes:
+      - {{ trtllm_models_host_dir }}:{{ trtllm_models_inside }}
+      - {{ trtllm_cache_host_dir }}:{{ trtllm_cache_inside }}
+    restart: unless-stopped
