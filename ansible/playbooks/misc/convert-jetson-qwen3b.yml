@@ -4,8 +4,8 @@
   gather_facts: no
   become: true
   vars:
-    trtllm_conversion_model: EasierAI/Qwen-2.5-Coder-3B-Instruct
-    trtllm_conversion_alias: qwen-2.5-coder-3b-instruct
+    trtllm_conversion_model: EasierAI/Qwen-2.5-Coder-3B
+    trtllm_conversion_alias: qwen-2.5-coder-3b
     trtllm_conversion_dtype: float16
     trtllm_conversion_gemm: float16
     trtllm_conversion_max_batch_size: 1
