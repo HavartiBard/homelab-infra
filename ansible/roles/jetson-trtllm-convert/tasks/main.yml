@@ -1,0 +1,19 @@
+---
+- name: Ensure conversion output directory exists on host
+  ansible.builtin.file:
+    path: "{{ trtllm_models_host_dir }}/{{ trtllm_conversion_alias }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: docker
+    mode: '0755'
+
+- name: Download/convert model inside trtllm container
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ trtllm_app_dir }}"
+    MODEL_DIR=$({{ trtllm_docker_compose_command }} exec {{ trtllm_container_name }} /bin/bash -lc "huggingface-downloader '{{ trtllm_conversion_model }}'")
+    {{ trtllm_docker_compose_command }} exec {{ trtllm_container_name }} /bin/bash -lc "mkdir -p '{{ trtllm_models_inside }}/{{ trtllm_conversion_alias }}/checkpoint'"
+    {{ trtllm_docker_compose_command }} exec {{ trtllm_container_name }} /bin/bash -lc "python3 {{ trtllm_conversion_convert_script }} --model_dir \"$MODEL_DIR\" --output_dir '{{ trtllm_models_inside }}/{{ trtllm_conversion_alias }}/checkpoint' --dtype {{ trtllm_conversion_dtype }}"
+    {{ trtllm_docker_compose_command }} exec {{ trtllm_container_name }} /bin/bash -lc "trtllm-build --checkpoint_dir '{{ trtllm_models_inside }}/{{ trtllm_conversion_alias }}/checkpoint' --output_dir '{{ trtllm_models_inside }}/{{ trtllm_conversion_alias }}/engine' --gemm_plugin {{ trtllm_conversion_gemm }} --max_batch_size {{ trtllm_conversion_max_batch_size }} --max_input_len {{ trtllm_conversion_max_input_len }} --max_seq_len {{ trtllm_conversion_max_seq_len }}"
+  args:
+    executable: /bin/bash

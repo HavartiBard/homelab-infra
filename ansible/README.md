@@ -65,7 +65,7 @@ Hosts are defined in `inventory/hosts.yml`. Current hosts/groups:
 - **unraid**: `unraid-server` (192.168.20.14, root, key `~/.ssh/id_ed25519_homelab`)
 - **windows_gpu**: `spraycheese` (192.168.20.50, ssh as james)
 - **pve**: `pve-01` (192.168.20.100, root), `pve-02` (192.168.20.101, root)
-- **edge_devices**: `jetson` (192.168.20.5, james, ssh key)
+- **edge_devices**: `jetson.lab` (192.168.20.169, james, ssh key)
 - **tt**: `tt1` (192.168.20.2), `tt2` (192.168.20.3) — python3.12, sudo
 - **agh**: `agh1` (192.168.20.4), `agh2` (192.168.20.5) — python3.12, sudo
 

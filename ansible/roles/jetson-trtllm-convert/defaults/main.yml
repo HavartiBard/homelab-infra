@@ -1,0 +1,9 @@
+---
+trtllm_conversion_model: meta-llama/Llama-3.2-3B-Instruct
+trtllm_conversion_alias: llama-3.2-3b-instruct
+trtllm_conversion_dtype: float16
+trtllm_conversion_gemm: float16
+trtllm_conversion_max_batch_size: 1
+trtllm_conversion_max_input_len: 2048
+trtllm_conversion_max_seq_len: 8192
+trtllm_conversion_convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
