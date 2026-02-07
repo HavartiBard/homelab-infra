@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  reasoning-llm-dev:
+    image: {{ reasoning_llm_image }}
+    container_name: {{ reasoning_llm_container_name }}
+    network_mode: host
+    runtime: nvidia
+    shm_size: {{ reasoning_llm_shm_size }}
+    stdin_open: true
+    tty: true
+    command: {{ reasoning_llm_command }}
+    env_file:
+      - {{ reasoning_llm_env_file }}
+    environment:
+      HF_HOME: {{ reasoning_llm_cache_inside }}
+      TRANSFORMERS_CACHE: {{ reasoning_llm_cache_inside }}
+      NVIDIA_DRIVER_CAPABILITIES: all
+    volumes:
+      - {{ reasoning_llm_models_host_dir }}:{{ reasoning_llm_models_inside }}
+      - {{ reasoning_llm_cache_host_dir }}:{{ reasoning_llm_cache_inside }}
+    restart: unless-stopped

@@ -1,0 +1,15 @@
+---
+# Base deployment playbook for reasoning LLMs on Jetson Orin Nano
+# Prerequisites:
+#   - jetson.lab host configured in inventory
+#   - HUGGINGFACE_RO env var set with read-only HF token
+# Usage:
+#   ansible-playbook playbooks/jetson/deploy-reasoning-llm-base.yml \
+#     --limit jetson.lab -v
+
+- name: Deploy TensorRT-LLM stack on Jetson Orin Nano
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  roles:
+    - jetson-trtllm

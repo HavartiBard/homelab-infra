@@ -1,0 +1,124 @@
+---
+# Health check playbook for deployed reasoning LLM on Jetson
+# Verifies ongoing operational status:
+#   1. Container uptime and restart status
+#   2. GPU health (no errors, sufficient memory)
+#   3. Disk space for model persistence
+#   4. Log output for errors/warnings
+#
+# Usage:
+#   ansible-playbook playbooks/jetson/health-check-reasoning-llm.yml \
+#     --limit jetson.lab
+#
+# Run regularly (e.g., via cron) to monitor deployment health
+
+- name: Health check for reasoning LLM deployment
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    trtllm_container_name: trtllm-dev
+    trtllm_app_dir: /opt/trtllm
+    trtllm_models_host_dir: /home/james/models/tensorrt_llm
+
+  tasks:
+    - name: Check container running status
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker inspect -f {{ '{{.State.Running}}' }} {{ trtllm_container_name }}
+      register: container_running
+      failed_when: container_running.stdout | trim != 'true'
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Get container restart count
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker inspect -f {{ '{{.RestartCount}}' }} {{ trtllm_container_name }}
+      register: restart_count
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Get container uptime
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker inspect -f {{ '{{.State.StartedAt}}' }} {{ trtllm_container_name }}
+      register: started_at
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Check GPU health with nvidia-smi
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker exec {{ trtllm_container_name }} nvidia-smi \
+          --query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total \
+          --format=csv,noheader,nounits
+      register: gpu_health
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Check for GPU errors
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker exec {{ trtllm_container_name }} nvidia-smi --query-gpu=power.state,clocks.current.graphics,clocks.current.memory \
+          --format=csv,noheader
+      register: gpu_clocks
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Check host disk space for models
+      ansible.builtin.shell: |
+        set -euo pipefail
+        df -h "{{ trtllm_models_host_dir }}" | tail -1
+      register: disk_space
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Get container logs (last 20 lines for errors)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker logs --tail 20 {{ trtllm_container_name }} 2>&1 | grep -i "error\|warning" || echo "No errors/warnings found"
+      register: container_logs
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Check TensorRT-LLM version
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker exec {{ trtllm_container_name }} python3 -c "import tensorrt_llm; print(tensorrt_llm.__version__)"
+      register: trtllm_version
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Display health check summary
+      ansible.builtin.debug:
+        msg: |
+          ========== HEALTH CHECK SUMMARY ==========
+
+          Container Status:
+            Running: {{ container_running.stdout | trim }}
+            Restart Count: {{ restart_count.stdout | trim }}
+            Started At: {{ started_at.stdout | trim }}
+
+          GPU Status:
+            Temperature/Utilization/Memory: {{ gpu_health.stdout | trim }}
+            Clock States: {{ gpu_clocks.stdout | trim }}
+
+          Disk Space:
+            {{ disk_space.stdout | trim }}
+
+          TensorRT-LLM Version:
+            {{ trtllm_version.stdout | trim }}
+
+          Recent Errors/Warnings:
+            {{ container_logs.stdout | trim }}
+
+          ========== END SUMMARY ==========
