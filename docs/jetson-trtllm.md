@@ -46,7 +46,7 @@ ansible-playbook playbooks/misc/convert-jetson-trtllm.yml --limit jetson.lab
 The `convert-jetson-trtllm` playbook runs the same download/convert/build pipeline inside `trtllm-dev`, placing checkpoints at `/home/james/models/tensorrt_llm/llama-3.2-3b-instruct/checkpoint` and engines under `/home/james/models/tensorrt_llm/llama-3.2-3b-instruct/engine`.
 
 ### Qwen coder fallback
-For the Orin Nano’s 8 GB GPU, `EasierAI/Qwen-2.5-Coder-3B` is a fully open-source coder workload that fits in float16 and is accessible without gating. Run the dedicated playbook:
+For the Orin Nano’s 8 GB GPU, `EasierAI/Qwen-2.5-Coder-3B-Instruct` is a fully open-source coder workload that fits in float16 and is accessible without gating (the instruct variant matches what Jetson-LLM consumes). Run the dedicated playbook:
 
 ```
 ANSIBLE_SSH_ARGS='-o ControlMaster=no -o ControlPersist=0' \
