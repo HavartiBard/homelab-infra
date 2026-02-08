@@ -244,6 +244,62 @@ Stop and ask if:
 - Base branch: `main`
 - Do not force-push unless explicitly requested
 
+### Gitea MCP
+
+A Gitea MCP server is available and should be **preferred over raw `curl`/`gh` commands** for all Gitea interactions: listing/creating issues, creating PRs, managing labels, browsing repo contents, etc. Use the `mcp__gitea__*` tools directly. Fall back to `curl` or the Gitea API only if the MCP tool doesn't cover the operation.
+
+**Setup:** The project `.mcp.json` should auto-configure the Gitea MCP for Claude Code sessions. If the `mcp__gitea__*` tools are not available at session start:
+
+1. Verify the MCP server is reachable:
+   ```bash
+   curl -s http://192.168.20.14:6976/mcp -o /dev/null -w "%{http_code}"
+   ```
+2. For **Claude Code**, add to `~/.claude.json` under `mcpServers`:
+   ```json
+   {
+     "gitea": {
+       "type": "http",
+       "url": "http://192.168.20.14:6976/mcp"
+     }
+   }
+   ```
+3. For **other agents** (Codex, OpenCode), use the Gitea REST API directly with `$GITEA_TOKEN`:
+   ```bash
+   curl -s "https://code.klsll.com/api/v1/repos/Homelab/homelab-infra/issues" \
+     -H "Authorization: token $GITEA_TOKEN" -H "Accept: application/json"
+   ```
+
+If the MCP server is down, deploy it: `cd ansible && ansible-playbook playbooks/mcp/deploy-gitea-mcp.yml --limit unraid`
+
+### Never Commit Directly to Main
+
+**All work must happen on feature branches.** Do not commit directly to `main`.
+
+- Create a feature branch before starting work: `git checkout -b feature/<short-name>`
+- Use git worktrees (`git worktree add`) when you need isolation from the current workspace or when multiple streams of work are in progress
+- Push the feature branch and create a PR via the Gitea MCP (`mcp__gitea__create_pull_request`)
+- Merge through the PR process, not by pushing directly to `main`
+
+### Post-Merge Cleanup
+
+After a PR is merged, clean up the branch and any associated worktree:
+
+```bash
+# Delete the remote branch (or use Gitea's "delete branch after merge" option)
+git push origin --delete feature/<branch-name>
+
+# Delete the local branch
+git branch -d feature/<branch-name>
+
+# If a worktree was used, remove it
+git worktree remove <worktree-path>
+
+# Prune stale worktree references
+git worktree prune
+```
+
+Stale remote branches clutter the repo — always clean up after merge.
+
 ## Output Format
 
 When finishing a task, end with:
