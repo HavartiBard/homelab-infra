@@ -133,6 +133,11 @@ gitea_admin_password: >-
   {{ lookup('env', 'GITEA_ADMIN_PASSWORD')
   | default(lookup('pipe', 'op read "op://AI Wedge/Gitea Service Credentials/password" 2>/dev/null || echo ""'), true)
   | default('', true) }}
+gitea_mcp_token: >-
+  {{ lookup('env', 'GITEA_MCP_TOKEN')
+  | default(lookup('env', 'GITEA_TOKEN'), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea MCP Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
 
 # Gitea Git and registry service on Unraid
 gitea_ip: 192.168.20.52

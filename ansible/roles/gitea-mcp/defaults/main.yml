@@ -1,0 +1,24 @@
+---
+# Gitea MCP Server defaults (custom slim build)
+
+# Container settings
+gitea_mcp_image: "gitea-mcp-server:latest"
+gitea_mcp_container_name: "gitea-mcp"
+gitea_mcp_port: 6976
+gitea_mcp_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gitea.png
+gitea_mcp_webui_url: >-
+  http://{{ ansible_host }}:{{ gitea_mcp_port }}/mcp
+
+# Gitea instance settings
+gitea_mcp_host: "https://code.klsll.com"
+
+# Credentials (env var with 1Password fallback)
+gitea_mcp_token: >-
+  {{ lookup('env', 'GITEA_MCP_TOKEN')
+  | default(lookup('env', 'GITEA_TOKEN'), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea MCP Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+
+# Timezone
+timezone: "America/Phoenix"

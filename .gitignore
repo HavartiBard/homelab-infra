@@ -15,6 +15,7 @@ ide_configs/
 
 # Agent/planner artifacts
 .sisyphus/
+.claude/
 
 # Config files with credentials
 docker/*-unraid.env
