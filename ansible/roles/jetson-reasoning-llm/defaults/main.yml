@@ -1,0 +1,55 @@
+---
+# Defaults for the Jetson Reasoning LLM deployment role (DeepSeek-R1-Distill-Qwen).
+# Supports TensorRT-LLM inference on Jetson Orin Nano (8GB VRAM).
+
+# Container and deployment settings
+reasoning_llm_app_dir: /opt/reasoning-llm
+reasoning_llm_image: "dustynv/tensorrt_llm:0.12-r36.4.0"
+reasoning_llm_container_name: reasoning-llm-dev
+reasoning_llm_shm_size: 8gb
+reasoning_llm_command: sleep infinity
+
+# Model paths (host side)
+reasoning_llm_models_host_dir: /home/james/models/reasoning-llm
+reasoning_llm_cache_host_dir: /home/james/.cache/huggingface
+
+# Model paths (inside container)
+reasoning_llm_models_inside: /data/models/reasoning-llm
+reasoning_llm_cache_inside: /data/hf
+
+# Compose file and environment
+reasoning_llm_compose_file: "{{ reasoning_llm_app_dir }}/docker-compose.yml"
+reasoning_llm_env_file: "{{ reasoning_llm_app_dir }}/.env"
+reasoning_llm_docker_compose_command: "docker compose"
+
+# Docker packages and dependencies
+reasoning_llm_docker_packages:
+  - docker.io
+  - docker-compose-plugin
+  - nvidia-container-toolkit
+
+reasoning_llm_support_packages:
+  - curl
+  - gnupg
+  - lsb-release
+
+# Hugging Face authentication (required for model access)
+reasoning_llm_hf_token_env_var: HUGGINGFACE_RO
+reasoning_llm_hf_token: >-
+  {{ lookup('env', reasoning_llm_hf_token_env_var)
+  | default('', true) }}
+
+# Model specifications (DeepSeek-R1-Distill-Qwen-1.5B)
+reasoning_llm_model_name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+reasoning_llm_model_alias: "deepseek-r1-distill-qwen-1.5b"
+
+# Inference parameters
+reasoning_llm_max_batch_size: 1
+reasoning_llm_max_input_len: 2048
+reasoning_llm_max_seq_len: 8192
+reasoning_llm_dtype: float16
+reasoning_llm_gemm_plugin: float16
+
+# Health check settings
+reasoning_llm_health_check_interval: 10
+reasoning_llm_health_check_timeout: 30

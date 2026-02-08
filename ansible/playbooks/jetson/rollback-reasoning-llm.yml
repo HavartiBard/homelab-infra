@@ -1,0 +1,133 @@
+---
+# Rollback playbook for reasoning LLM deployment on Jetson
+# Safely removes a deployed model or entire TensorRT-LLM stack
+#
+# Modes:
+#   1. Remove single model: trtllm_rollback_mode=model
+#   2. Remove entire stack: trtllm_rollback_mode=all
+#
+# Prerequisites:
+#   - Container running (or stopped for full cleanup)
+#   - Root/sudo access
+#
+# Usage:
+#   # Remove single model
+#   ansible-playbook playbooks/jetson/rollback-reasoning-llm.yml \
+#     -e "trtllm_rollback_mode=model" \
+#     -e "trtllm_model_to_remove=qwen-qwq-1b" \
+#     --limit jetson.lab --check --diff
+#
+#   # Remove entire stack
+#   ansible-playbook playbooks/jetson/rollback-reasoning-llm.yml \
+#     -e "trtllm_rollback_mode=all" \
+#     --limit jetson.lab --check --diff
+
+- name: Rollback reasoning LLM deployment on Jetson
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    trtllm_rollback_mode: model  # Set to 'model' or 'all'
+    trtllm_model_to_remove: ""   # Model alias to remove (e.g., "qwen-qwq-1b")
+    trtllm_container_name: trtllm-dev
+    trtllm_app_dir: /opt/trtllm
+    trtllm_models_host_dir: /home/james/models/tensorrt_llm
+    trtllm_docker_compose_command: "docker compose"
+
+  tasks:
+    # === MODEL-LEVEL CLEANUP ===
+    - name: Validate model name is provided for model rollback
+      ansible.builtin.fail:
+        msg: "trtllm_model_to_remove is required when trtllm_rollback_mode=model"
+      when:
+        - trtllm_rollback_mode == 'model'
+        - trtllm_model_to_remove | length == 0
+
+    - name: Stop container (for full cleanup only)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd "{{ trtllm_app_dir }}"
+        {{ trtllm_docker_compose_command }} down
+      args:
+        executable: /bin/bash
+      when: trtllm_rollback_mode == 'all'
+      register: compose_down
+
+    - name: Remove model directory from host
+      ansible.builtin.file:
+        path: "{{ trtllm_models_host_dir }}/{{ trtllm_model_to_remove }}"
+        state: absent
+      when: trtllm_rollback_mode == 'model'
+      register: model_removed
+
+    - name: Report model removal
+      ansible.builtin.debug:
+        msg: "Model removed: {{ trtllm_models_host_dir }}/{{ trtllm_model_to_remove }}"
+      when:
+        - trtllm_rollback_mode == 'model'
+        - model_removed.changed
+
+    # === FULL STACK CLEANUP ===
+    - name: Report full stack cleanup
+      ansible.builtin.debug:
+        msg: |
+          Full stack cleanup initiated:
+          1. Container stopped and removed
+          2. Docker Compose files preserved (in {{ trtllm_app_dir }})
+          3. All model engines removed from {{ trtllm_models_host_dir }}
+          4. Hugging Face cache preserved at {{ trtllm_cache_host_dir }} for future use
+
+          To resume: Re-run deploy-reasoning-llm-base.yml
+      when: trtllm_rollback_mode == 'all'
+
+    - name: Remove all model directories (full cleanup)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        rm -rf "{{ trtllm_models_host_dir }}"/*
+      args:
+        executable: /bin/bash
+      when: trtllm_rollback_mode == 'all'
+      register: models_cleanup
+
+    - name: Verify model directory cleaned (full cleanup)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        ls -la "{{ trtllm_models_host_dir }}" | grep -v "^total" | grep -v "^d" || echo "Directory empty"
+      args:
+        executable: /bin/bash
+      when: trtllm_rollback_mode == 'all'
+      register: models_verify
+      changed_when: false
+
+    - name: Display cleanup verification
+      ansible.builtin.debug:
+        msg: "{{ models_verify.stdout_lines }}"
+      when: trtllm_rollback_mode == 'all'
+
+    # === FINAL STATUS ===
+    - name: Validate rollback completed for model
+      ansible.builtin.shell: |
+        set -euo pipefail
+        [ ! -d "{{ trtllm_models_host_dir }}/{{ trtllm_model_to_remove }}" ]
+      args:
+        executable: /bin/bash
+      when: trtllm_rollback_mode == 'model'
+      changed_when: false
+
+    - name: Display rollback completion status
+      ansible.builtin.debug:
+        msg: |
+          ========== ROLLBACK COMPLETE ==========
+          Mode: {{ trtllm_rollback_mode }}
+          {% if trtllm_rollback_mode == 'model' %}
+          Removed model: {{ trtllm_model_to_remove }}
+          Remaining models: (use ls -la {{ trtllm_models_host_dir }})
+          {% else %}
+          Removed: All model engines
+          Preserved: Docker Compose config, Hugging Face cache
+          {% endif %}
+
+          Recovery:
+          - Deploy: deploy-reasoning-llm-base.yml
+          - Convert: convert-reasoning-llm-template.yml
+          ========================================

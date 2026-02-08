@@ -1,0 +1,165 @@
+---
+- name: Fail when Hugging Face token is unavailable
+  ansible.builtin.fail:
+    msg: |
+      No Hugging Face token found for {{ reasoning_llm_container_name }}.
+      Export {{ reasoning_llm_hf_token_env_var }} or populate the
+      DeepSeek Reasoning LLM Hugging Face Token item in 1Password.
+  when: reasoning_llm_hf_token | length == 0
+
+- name: Ensure base tooling packages for the Jetson host
+  ansible.builtin.package:
+    name: "{{ reasoning_llm_support_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure NVIDIA container toolkit GPG keyring exists
+  ansible.builtin.shell: |
+    set -euo pipefail
+    mkdir -p /usr/share/keyrings
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+      gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+  args:
+    executable: /bin/bash
+    creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+- name: Add NVIDIA container toolkit apt source
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+      sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+      > /etc/apt/sources.list.d/nvidia-container-toolkit.list
+  args:
+    executable: /bin/bash
+    creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+- name: Ensure containerd packages that conflict with containerd.io are absent
+  ansible.builtin.apt:
+    name:
+      - containerd
+      - containerd.io
+    state: absent
+    purge: true
+    update_cache: true
+
+- name: Install Docker, Compose plugin, and NVIDIA runtime packages
+  ansible.builtin.package:
+    name: "{{ reasoning_llm_docker_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add user to docker group for non-sudo workflows
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Check Docker daemon configuration for NVIDIA runtime
+  ansible.builtin.shell: |
+    set -euo pipefail
+    grep -q '"nvidia"' /etc/docker/daemon.json
+  register: docker_daemon_nvidia
+  failed_when: false
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Configure NVIDIA container runtime for Docker
+  ansible.builtin.shell: |
+    set -euo pipefail
+    nvidia-ctk runtime configure --runtime=docker
+  register: nvidia_ctk_configure
+  changed_when: false
+  failed_when: nvidia_ctk_configure.rc != 0
+  when: docker_daemon_nvidia.rc != 0
+  args:
+    executable: /bin/bash
+
+- name: Restart Docker after NVIDIA runtime configuration
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  when: docker_daemon_nvidia.rc != 0
+
+- name: Ensure Jetson Reasoning LLM directory exists
+  ansible.builtin.file:
+    path: "{{ reasoning_llm_app_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure persistent model directory exists
+  ansible.builtin.file:
+    path: "{{ reasoning_llm_models_host_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: docker
+    mode: '0755'
+
+- name: Ensure Hugging Face cache directory exists
+  ansible.builtin.file:
+    path: "{{ reasoning_llm_cache_host_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: docker
+    mode: '0755'
+
+- name: Render .env for Reasoning LLM container
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ reasoning_llm_env_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Render Docker Compose definition
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ reasoning_llm_compose_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Deploy Reasoning LLM stack with Docker Compose
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ reasoning_llm_app_dir }}"
+    {{ reasoning_llm_docker_compose_command }} up -d
+  register: reasoning_llm_deploy
+  args:
+    executable: /bin/bash
+
+- name: Validate Reasoning LLM container is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker inspect -f {{ '{{.State.Running}}' }} {{ reasoning_llm_container_name }}
+  register: reasoning_llm_running
+  failed_when: reasoning_llm_running.stdout | trim != 'true'
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Check tensorrt_llm module version inside container
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker exec {{ reasoning_llm_container_name }} python3 -c "import tensorrt_llm; print(tensorrt_llm.__version__)"
+  register: reasoning_llm_version
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Validate Hugging Face authentication inside container
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker exec {{ reasoning_llm_container_name }} huggingface-cli whoami
+  register: reasoning_llm_hf_cli
+  changed_when: false
+  args:
+    executable: /bin/bash

@@ -45,6 +45,18 @@ ansible-playbook playbooks/misc/convert-jetson-trtllm.yml --limit jetson.lab
 
 The `convert-jetson-trtllm` playbook runs the same download/convert/build pipeline inside `trtllm-dev`, placing checkpoints at `/home/james/models/tensorrt_llm/llama-3.2-3b-instruct/checkpoint` and engines under `/home/james/models/tensorrt_llm/llama-3.2-3b-instruct/engine`.
 
+### Qwen coder fallback
+For the Orin Nano’s 8 GB GPU, `EasierAI/Qwen-2.5-Coder-3B` is a fully open-source coder workload that fits in float16 and is accessible without gating. Run the dedicated playbook (the role variables let you override the repo if an instruct variant becomes available):
+
+```
+ANSIBLE_SSH_ARGS='-o ControlMaster=no -o ControlPersist=0' \
+ANSIBLE_VAULT_PASSWORD_FILE="$ANSIBLE_VAULT_PASSWORD" \
+HUGGINGFACE_RO="$HUGGINGFACE_RO" \
+ansible-playbook playbooks/misc/convert-jetson-qwen3b.yml --limit jetson.lab
+```
+
+Check the engine output under `/home/james/models/tensorrt_llm/qwen-2.5-coder-3b/engine` and use the same runbook steps to serve it once the conversion finishes.
+
 ## Troubleshooting
 - If `huggingface-cli whoami` fails inside container, ensure `HUGGINGFACE_RO` grants model access and retry.
 - `huggingface-downloader` requires `HF_HOME` pointing to `/data/hf`; ensure this path has write permissions and enough space.

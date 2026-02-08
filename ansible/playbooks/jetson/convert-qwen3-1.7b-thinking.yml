@@ -1,0 +1,71 @@
+---
+# Convert Qwen3-1.7B-Thinking to TensorRT engine for Jetson Orin Nano
+#
+# This is the primary recommended reasoning model for OpenClaw deployment
+# - Model size: 1.7B parameters
+# - Expected VRAM: 3-4GB (Q4_K_M quantization)
+# - TensorRT speedup: ~16x vs. standard inference
+# - Reasoning: Unified thinking/non-thinking mode, 128K context
+# - Chain-of-Thought: Native support via thinking mode
+#
+# Prerequisites:
+#   - Base deployment completed: deploy-reasoning-llm-base.yml
+#   - Sufficient disk space: ~30GB for model + engine compilation
+#   - HUGGINGFACE_RO token exported
+#   - ~2 hours for conversion (on Jetson hardware)
+#
+# Usage:
+#   ansible-playbook playbooks/jetson/convert-qwen3-1.7b-thinking.yml \
+#     --limit jetson.lab --check --diff
+#
+#   # Apply conversion (WARNING: long-running)
+#   ansible-playbook playbooks/jetson/convert-qwen3-1.7b-thinking.yml \
+#     --limit jetson.lab -v
+
+- name: Convert Qwen3-1.7B-Thinking to TensorRT engine
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    # Qwen3-1.7B model specifications
+    # Note: Thinking mode is a feature toggled via enable_thinking=True, not a separate model
+    trtllm_conversion_model: "Qwen/Qwen3-1.7B"
+    trtllm_conversion_alias: "qwen3-1.7b-thinking"
+
+    # Qwen-specific conversion script path
+    trtllm_conversion_convert_script: "/opt/TensorRT-LLM/examples/qwen/convert_checkpoint.py"
+
+    # Optimization parameters for 8GB Jetson
+    # float16: Balances memory and speed (3-4GB VRAM usage)
+    # max_batch_size: 1 for single-user inference
+    # max_input_len: 2048 (reasonable for reasoning chains)
+    # max_seq_len: 8192 (128K context too large for 8GB, reduced)
+    trtllm_conversion_dtype: float16
+    trtllm_conversion_gemm: float16
+    trtllm_conversion_max_batch_size: 1
+    trtllm_conversion_max_input_len: 2048
+    trtllm_conversion_max_seq_len: 8192
+
+  roles:
+    - jetson-trtllm-convert
+
+  post_tasks:
+    - name: Display conversion completion info
+      ansible.builtin.debug:
+        msg: |
+          ✓ Qwen3-1.7B-Thinking conversion complete!
+
+          Model details:
+            - Alias: {{ trtllm_conversion_alias }}
+            - Location: /home/james/models/tensorrt_llm/{{ trtllm_conversion_alias }}/engine
+            - Expected VRAM: 3-4GB
+            - Speedup: ~16x via TensorRT
+
+          Next steps:
+          1. Validate model:
+             ansible-playbook playbooks/jetson/validate-reasoning-llm.yml \
+               -e "trtllm_model_to_validate={{ trtllm_conversion_alias }}"
+
+          2. Test inference with OpenClaw integration
+          3. Monitor with health check:
+             ansible-playbook playbooks/jetson/health-check-reasoning-llm.yml

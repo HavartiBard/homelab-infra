@@ -1,0 +1,36 @@
+---
+- name: Ensure conversion output directory exists on host
+  ansible.builtin.file:
+    path: "{{ reasoning_llm_models_host_dir }}/{{ reasoning_llm_conversion_alias }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    mode: '0755'
+
+- name: Download/convert model inside reasoning LLM container
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ reasoning_llm_app_dir }}"
+    MODEL_DIR=$({{ reasoning_llm_docker_compose_command }} exec {{ reasoning_llm_container_name }} /bin/bash -lc "huggingface-downloader '{{ reasoning_llm_conversion_model }}'")
+    {{ reasoning_llm_docker_compose_command }} exec {{ reasoning_llm_container_name }} /bin/bash -lc "mkdir -p '{{ reasoning_llm_models_inside }}/{{ reasoning_llm_conversion_alias }}/checkpoint'"
+    {{ reasoning_llm_docker_compose_command }} exec {{ reasoning_llm_container_name }} /bin/bash -lc "python3 {{ reasoning_llm_conversion_convert_script }} --model_dir \"$MODEL_DIR\" --output_dir '{{ reasoning_llm_models_inside }}/{{ reasoning_llm_conversion_alias }}/checkpoint' --dtype {{ reasoning_llm_conversion_dtype }}"
+    {{ reasoning_llm_docker_compose_command }} exec {{ reasoning_llm_container_name }} /bin/bash -lc "trtllm-build --checkpoint_dir '{{ reasoning_llm_models_inside }}/{{ reasoning_llm_conversion_alias }}/checkpoint' --output_dir '{{ reasoning_llm_models_inside }}/{{ reasoning_llm_conversion_alias }}/engine' --gemm_plugin {{ reasoning_llm_conversion_gemm }} --max_batch_size {{ reasoning_llm_conversion_max_batch_size }} --max_input_len {{ reasoning_llm_conversion_max_input_len }} --max_seq_len {{ reasoning_llm_conversion_max_seq_len }}"
+  args:
+    executable: /bin/bash
+
+- name: Verify TensorRT engine was built successfully
+  ansible.builtin.stat:
+    path: "{{ reasoning_llm_models_host_dir }}/{{ reasoning_llm_conversion_alias }}/engine"
+  register: engine_stat
+  failed_when: not engine_stat.stat.exists
+  changed_when: false
+
+- name: Transfer engine to Jetson for inference
+  ansible.builtin.shell: |
+    set -euo pipefail
+    rsync -avz --delete \
+      {{ reasoning_llm_models_host_dir }}/{{ reasoning_llm_conversion_alias }}/engine/ \
+      {{ reasoning_llm_jetson_user }}@{{ reasoning_llm_jetson_host }}:{{ reasoning_llm_models_host_dir }}/{{ reasoning_llm_conversion_alias }}/engine/
+  args:
+    executable: /bin/bash
+  register: engine_transfer
+  changed_when: "'transfer' in engine_transfer.stdout or 'delete' in engine_transfer.stdout"

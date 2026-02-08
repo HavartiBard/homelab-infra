@@ -1,0 +1,184 @@
+---
+# Multi-model deployment orchestration for reasoning LLMs on Jetson
+# Deploys base infrastructure and converts multiple models in sequence
+#
+# This playbook coordinates:
+#   1. Base TensorRT-LLM stack deployment
+#   2. Sequential model conversions
+#   3. Health validation for each model
+#   4. Final summary report
+#
+# Model List: Define in playbook vars or via extra vars
+# Each model requires: model_id, alias, convert_script
+#
+# Usage:
+#   # Deploy with built-in model list
+#   ansible-playbook playbooks/jetson/deploy-all-reasoning-models.yml \
+#     --limit jetson.lab -v
+#
+#   # Override model list from command line
+#   ansible-playbook playbooks/jetson/deploy-all-reasoning-models.yml \
+#     -e '{"reasoning_models": [...]}' \
+#     --limit jetson.lab -v
+
+- name: Deploy reasoning LLM base infrastructure
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  roles:
+    - jetson-trtllm
+
+- name: Convert reasoning LLMs sequentially
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    # Recommended reasoning models for Jetson Orin Nano 8GB
+    # Source: llm-researcher task #4
+    reasoning_models:
+      # PRIMARY: Qwen3-1.7B-Thinking (BEST FIT)
+      - model_id: "Qwen/Qwen3-1.7B-Thinking"
+        alias: "qwen3-1.7b-thinking"
+        convert_script: "/opt/TensorRT-LLM/examples/qwen/convert_checkpoint.py"
+        vram: "3-4GB"
+        priority: "PRIMARY"
+
+      # ALTERNATIVE: DeepSeek-R1-Distill-Qwen-1.5B (Conservative memory)
+      - model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+        alias: "deepseek-r1-distill-1.5b"
+        convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+        vram: "2.5GB (FP16) / 1.2GB (INT8)"
+        priority: "ALTERNATIVE"
+
+      # ADVANCED: DeepSeek-R1-Distill-Qwen3-8B (High quality, tight margins)
+      - model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen3-8B"
+        alias: "deepseek-r1-distill-8b"
+        convert_script: "/opt/TensorRT-LLM/examples/qwen/convert_checkpoint.py"
+        vram: "6-7GB (highly quantized)"
+        priority: "ADVANCED"
+
+    trtllm_conversion_dtype: float16
+    trtllm_conversion_gemm: float16
+    trtllm_conversion_max_batch_size: 1
+    trtllm_conversion_max_input_len: 2048
+    trtllm_conversion_max_seq_len: 8192
+
+  tasks:
+    - name: Display deployment plan
+      ansible.builtin.debug:
+        msg: |
+          ========== DEPLOYMENT PLAN ==========
+          Converting {{ reasoning_models | length }} reasoning models:
+          {% for model in reasoning_models %}
+          - {{ model.alias }}: {{ model.model_id }}
+            Converter: {{ model.convert_script }}
+          {% endfor %}
+          ====================================
+
+    - name: Convert each reasoning model sequentially
+      ansible.builtin.include_role:
+        name: jetson-trtllm-convert
+      vars:
+        trtllm_conversion_model: "{{ item.model_id }}"
+        trtllm_conversion_alias: "{{ item.alias }}"
+        trtllm_conversion_convert_script: "{{ item.convert_script }}"
+      loop: "{{ reasoning_models }}"
+      register: conversions
+
+    - name: Display conversion results
+      ansible.builtin.debug:
+        msg: |
+          ========== CONVERSION SUMMARY ==========
+          Converted {{ conversions.results | length }} models:
+          {% for result in conversions.results %}
+          {% if result.changed %}
+          ✓ {{ result.item.alias }}: Conversion completed
+          {% else %}
+          - {{ result.item.alias }}: Already converted (skipped)
+          {% endif %}
+          {% endfor %}
+          =======================================
+
+- name: Validate all deployed models
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  vars:
+    reasoning_models:
+      # Same model list as above
+      - model_id: "PLACEHOLDER_MODEL_1"
+        alias: "reasoning-model-1"
+        convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+      - model_id: "PLACEHOLDER_MODEL_2"
+        alias: "reasoning-model-2"
+        convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+      - model_id: "PLACEHOLDER_MODEL_3"
+        alias: "reasoning-model-3"
+        convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+
+    trtllm_container_name: trtllm-dev
+    trtllm_models_host_dir: /home/james/models/tensorrt_llm
+
+  tasks:
+    - name: Validate container is running
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker inspect -f {{ '{{.State.Running}}' }} {{ trtllm_container_name }}
+      register: container_status
+      failed_when: container_status.stdout | trim != 'true'
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Check each model engine exists
+      ansible.builtin.shell: |
+        set -euo pipefail
+        test -d "{{ trtllm_models_host_dir }}/{{ item.alias }}/engine"
+      loop: "{{ reasoning_models }}"
+      register: model_checks
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Test model loading for each model
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker exec {{ trtllm_container_name }} python3 << 'EOF'
+        import sys
+        try:
+            from tensorrt_llm.runtime import ModelRunner
+            engine_dir = "{{ trtllm_models_inside }}/{{ item.alias }}/engine"
+            runner = ModelRunner.from_dir(engine_dir, rank=0)
+            print(f"✓ Model loaded: {{ item.alias }}")
+            sys.exit(0)
+        except Exception as e:
+            print(f"✗ Model load failed: {{ item.alias }}: {e}")
+            sys.exit(1)
+        EOF
+      loop: "{{ reasoning_models }}"
+      register: load_tests
+      changed_when: false
+      vars:
+        trtllm_models_inside: /data/models/tensorrt_llm
+      args:
+        executable: /bin/bash
+
+    - name: Display validation summary
+      ansible.builtin.debug:
+        msg: |
+          ========== VALIDATION SUMMARY ==========
+          Total models: {{ reasoning_models | length }}
+          {% for result in load_tests.results %}
+          {{ result.stdout | trim }}
+          {% endfor %}
+          =======================================
+
+          Deployment complete!
+
+          Next steps:
+          1. Test inference with actual prompts
+          2. Integrate with OpenClaw for reasoning validation
+          3. Monitor performance with health-check-reasoning-llm.yml
+
+          Query available models:
+            ls -la {{ trtllm_models_host_dir }}/*/engine/

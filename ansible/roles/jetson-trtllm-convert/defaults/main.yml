@@ -7,3 +7,8 @@ trtllm_conversion_max_batch_size: 1
 trtllm_conversion_max_input_len: 2048
 trtllm_conversion_max_seq_len: 8192
 trtllm_conversion_convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+trtllm_app_dir: /opt/trtllm
+trtllm_container_name: trtllm-dev
+trtllm_models_host_dir: /home/james/models/tensorrt_llm
+trtllm_models_inside: /data/models/tensorrt_llm
+trtllm_docker_compose_command: "docker compose"

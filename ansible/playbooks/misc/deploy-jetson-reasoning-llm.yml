@@ -1,0 +1,23 @@
+---
+# Deploy DeepSeek-R1-Distill-Qwen-1.5B Reasoning LLM to Jetson Orin Nano via TensorRT
+#
+# This playbook deploys a persistent TensorRT-LLM container for DeepSeek-R1-Distill-Qwen-1.5B
+# reasoning model inference on Jetson Nano, ready for OpenClaw integration.
+#
+# Required environment variables:
+#   - HUGGINGFACE_RO: HuggingFace read-only token for model access
+#   - ANSIBLE_VAULT_PASSWORD_FILE or OP_SERVICE_ACCOUNT_TOKEN (for vault decryption)
+#
+# Usage:
+#   HUGGINGFACE_RO=$TOKEN ansible-playbook playbooks/misc/deploy-jetson-reasoning-llm.yml --limit jetson.lab
+#
+# Verify deployment:
+#   ansible jetson.lab -m shell -a "docker ps | grep reasoning"
+#   docker compose -f /opt/reasoning-llm/docker-compose.yml logs -f
+
+- name: Deploy DeepSeek-R1-Distill-Qwen-1.5B Reasoning LLM to Jetson Nano
+  hosts: jetson.lab
+  gather_facts: no
+  become: true
+  roles:
+    - jetson-reasoning-llm
