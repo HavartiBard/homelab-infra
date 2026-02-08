@@ -1,0 +1,78 @@
+- name: Deploy OpenClaw gateway on Jetson
+  hosts: jetson.lab
+  gather_facts: true
+  become: true
+  vars:
+    jetson_openclaw_env_path: "{{ jetson_openclaw_deploy_dir }}/.env"
+    jetson_openclaw_config_dir: "{{ jetson_openclaw_deploy_dir }}/config"
+
+  tasks:
+    - name: Ensure OpenClaw base directory exists
+      ansible.builtin.file:
+        path: "{{ jetson_openclaw_deploy_dir }}"
+        state: directory
+        owner: james
+        group: james
+        mode: '0755'
+
+    - name: Ensure OpenClaw config directory exists
+      ansible.builtin.file:
+        path: "{{ jetson_openclaw_config_dir }}"
+        state: directory
+        owner: james
+        group: james
+        mode: '0755'
+
+    - name: Ensure OpenClaw state directory exists
+      ansible.builtin.file:
+        path: "{{ jetson_openclaw_state_dir }}"
+        state: directory
+        owner: james
+        group: james
+        mode: '0755'
+
+    - name: Deploy OpenClaw configuration
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/config/openclaw.json.j2"
+        dest: "{{ jetson_openclaw_config_dir }}/openclaw.json"
+        owner: james
+        group: james
+        mode: '0644'
+
+    - name: Mirror OpenClaw configuration to state dir
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/config/openclaw.json.j2"
+        dest: "{{ jetson_openclaw_state_dir }}/openclaw.json"
+        owner: james
+        group: james
+        mode: '0644'
+
+    - name: Deploy OpenClaw docker compose definition
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/docker-compose.yml"
+        dest: "{{ jetson_openclaw_deploy_dir }}/docker-compose.yml"
+        owner: james
+        group: james
+        mode: '0644'
+
+    - name: Render OpenClaw environment file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/.env.j2"
+        dest: "{{ jetson_openclaw_env_path }}"
+        owner: james
+        group: james
+        mode: '0600'
+
+    - name: Pull OpenClaw compose images
+      ansible.builtin.command:
+        cmd: docker compose pull
+        chdir: "{{ jetson_openclaw_deploy_dir }}"
+      environment:
+        DOCKER_BUILDKIT: "1"
+
+    - name: Start OpenClaw gateway stack
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: "{{ jetson_openclaw_deploy_dir }}"
+      environment:
+        DOCKER_BUILDKIT: "1"

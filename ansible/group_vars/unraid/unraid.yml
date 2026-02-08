@@ -25,6 +25,10 @@ npm_proxy_config_dir: "{{ playbook_dir | dirname }}/../files/npm/services"
 npm_proxy_config_paths: []
 npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
 
+# OpenClaw gateway session token (redirects the UI tokenized link)
+openclaw_session_token: >-
+  {{ lookup('env', 'OPENCLAW_SESSION_TOKEN')
+  | default('CHANGEME_OPENCLAW_SESSION_TOKEN', true) }}
 
 op_vault: "{{ lookup('env', 'OP_VAULT') | default('AI Wedge', true) }}"
 npm_op_item: "Nginx Proxy Manager Admin"

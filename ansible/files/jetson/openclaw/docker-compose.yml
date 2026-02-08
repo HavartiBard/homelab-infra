@@ -1,0 +1,46 @@
+services:
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    network_mode: host
+    working_dir: /app
+    entrypoint: []
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--port",
+        "18789",
+        "--bind",
+        "lan"
+      ]
+    volumes:
+      - /home/james/.openclaw:/home/node/.openclaw
+    env_file:
+      - .env
+    environment:
+      - OPENCLAW_STATE_DIR=/home/node/.openclaw
+    depends_on:
+      - llama-server
+
+  llama-server:
+    image: dustynv/llama_cpp:b5283-r36.4-cu128-24.04
+    container_name: llama-server
+    runtime: nvidia
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /home/james/models:/models
+    command: >
+      llama-server
+      -m /models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+      -c 4096
+      -ngl 99
+      --host 0.0.0.0
+      --port 1234
+      --jinja
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
