@@ -1,0 +1,77 @@
+---
+# Deploy custom slim Gitea MCP Server container
+# Uses raw commands since Unraid lacks Python
+# Source files: docker/gitea-mcp/ in repo root
+
+- name: Create build directory
+  ansible.builtin.raw: |
+    mkdir -p /tmp/gitea-mcp-build
+  changed_when: false
+
+- name: Copy build files to remote
+  ansible.builtin.raw: |
+    echo '{{ lookup("file", role_path + "/../../../docker/gitea-mcp/" + item) | b64encode }}' | base64 -d > /tmp/gitea-mcp-build/{{ item }}
+  loop:
+    - Dockerfile
+    - requirements.txt
+    - server.py
+  changed_when: false
+
+- name: Build gitea-mcp image
+  ansible.builtin.raw: |
+    cd /tmp/gitea-mcp-build && docker build -t {{ gitea_mcp_image }} .
+  register: build_result
+  changed_when: build_result.rc == 0
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ gitea_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ gitea_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy gitea-mcp container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ gitea_mcp_container_name }} \
+      --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ gitea_mcp_icon }}' \
+      --label net.unraid.docker.webui='{{ gitea_mcp_webui_url }}' \
+      -p {{ gitea_mcp_port }}:{{ gitea_mcp_port }} \
+      -e GITEA_HOST='{{ gitea_mcp_host }}' \
+      -e GITEA_ACCESS_TOKEN='{{ gitea_mcp_token }}' \
+      -e MCP_PORT='{{ gitea_mcp_port }}' \
+      -e TZ='{{ timezone }}' \
+      {{ gitea_mcp_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 5
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ gitea_mcp_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: |
+    docker logs --tail 10 {{ gitea_mcp_container_name }} 2>&1
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"
+
+- name: Clean up build directory
+  ansible.builtin.raw: |
+    rm -rf /tmp/gitea-mcp-build
+  changed_when: false

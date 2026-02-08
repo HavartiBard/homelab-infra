@@ -1,0 +1,6 @@
+---
+# Handlers for gitea-mcp role
+
+- name: Restart gitea-mcp container
+  ansible.builtin.raw: |
+    docker restart {{ gitea_mcp_container_name }}
