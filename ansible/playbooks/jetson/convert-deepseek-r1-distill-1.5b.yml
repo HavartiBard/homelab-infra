@@ -32,8 +32,8 @@
     trtllm_conversion_model: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
     trtllm_conversion_alias: "deepseek-r1-distill-1.5b"
 
-    # Llama-family conversion script (compatible with Qwen architecture)
-    trtllm_conversion_convert_script: "/opt/TensorRT-LLM/examples/llama/convert_checkpoint.py"
+    # Qwen2 conversion script (DeepSeek-R1-Distill uses qwen2 architecture)
+    trtllm_conversion_convert_script: "/opt/TensorRT-LLM/examples/qwen/convert_checkpoint.py"
 
     # Optimization parameters for 8GB Jetson
     # float16: Balances memory (2.5GB) and speed

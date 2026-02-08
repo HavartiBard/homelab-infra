@@ -28,7 +28,8 @@
   become: true
   vars:
     # Qwen3-1.7B model specifications
-    trtllm_conversion_model: "Qwen/Qwen3-1.7B-Thinking"
+    # Note: Thinking mode is a feature toggled via enable_thinking=True, not a separate model
+    trtllm_conversion_model: "Qwen/Qwen3-1.7B"
     trtllm_conversion_alias: "qwen3-1.7b-thinking"
 
     # Qwen-specific conversion script path
