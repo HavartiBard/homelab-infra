@@ -300,9 +300,54 @@ Measured on Jetson Orin Nano with DeepSeek-R1-Distill-Qwen-1.5B:
 | **VRAM Usage** | 2.5GB model + 1-2GB KV cache = ~3.5GB active |
 | **Available Headroom** | ~4.5GB free for system/OpenClaw |
 
+## Deployment History
+
+### 2026-02-08: Ollama GGUF Production Deployment
+
+**Deployment Method:** Validated existing Ollama infrastructure
+**Status:** ✅ SUCCESSFUL
+**Duration:** 4 hours (including TensorRT investigation)
+
+**Models Deployed:**
+- Llama 3.1 8B Instruct (Q4_K_M) - 4.9 GB
+- Qwen 2.5 Coder 7B Instruct (Q4_K_M) - 4.7 GB
+
+**Actual Metrics:**
+- Performance: 9-12 tokens/sec (measured)
+- VRAM Usage: ~5GB per model (8GB total unified memory)
+- Latency: 15-25s per reasoning chain with gateway overhead
+- Quality: Production-grade reasoning and code generation
+
+**TensorRT-LLM Investigation:**
+- Attempted: Qwen3-1.7B, DeepSeek-R1-Distill-1.5B
+- Outcome: OOM failures during engine compilation (exit code 137)
+- Root cause: Insufficient RAM on Jetson for on-device builds (7.4GB available vs 11.3GB required)
+- Conclusion: Cross-compilation from host required, deferred to future work
+
+**Deviation from Plan:**
+- Original: Deploy TensorRT-LLM with optimized engines
+- Actual: Validated working Ollama deployment
+- Justification: TensorRT OOM blockers, Ollama meets performance requirements
+
+**Lessons Learned:**
+- Jetson Orin Nano RAM insufficient for TensorRT engine builds
+- GGUF models via Ollama provide viable production path within memory constraints
+- 9-12 tokens/sec adequate for non-real-time agent loops
+- Cross-compilation workflow needed for future TensorRT optimization
+
+**Integration Status:**
+- OpenClaw: Ready for configuration
+- Remote API: Requires `OLLAMA_HOST=0.0.0.0:11434` configuration
+- Endpoint: jetson.lab:11434 (192.168.20.169)
+
+**Documentation:**
+- Validation report: `docs/jetson-ollama-validation.md` (417 lines)
+- Integration guidance: See validation report section "OpenClaw Integration Recommendations"
+
 ## See Also
 
 - `/home/james/projects/homelab-infra/ansible/roles/jetson-reasoning-llm/` — Role source
 - `/home/james/projects/homelab-infra/ansible/roles/jetson-reasoning-llm-convert/` — Build role
+- `docs/jetson-ollama-validation.md` — Production deployment validation
 - [TensorRT-LLM Jetson Support](https://collabnix.com/running-llms-with-tensorrt-llm-on-nvidia-jetson-orin-nano-super/)
 - [DeepSeek-R1-Distill on HuggingFace](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B)
