@@ -2,3 +2,20 @@
 trtllm_models_host_dir: /home/james/models/tensorrt_llm
 trtllm_cache_host_dir: /home/james/.cache/huggingface
 trtllm_app_dir: /opt/trtllm
+jetson_openclaw_deploy_dir: /home/james/docker/openclaw
+jetson_openclaw_state_dir: /home/james/.openclaw
+jetson_openclaw_env:
+  LMSTUDIO_API_KEY: >-
+    {{ lookup('env', 'LMSTUDIO_API_KEY') | default('CHANGEME_LMSTUDIO_API_KEY', true) }}
+  LMSTUDIO_BASE_URL: >-
+    {{ lookup('env', 'LMSTUDIO_BASE_URL') | default('http://spraycheese.lab.klsll.com:1234/v1', true) }}
+  OLLAMA_BASE_URL: >-
+    {{ lookup('env', 'OLLAMA_BASE_URL') | default('http://192.168.20.169:11434/v1', true) }}
+  OLLAMA_API_KEY: >-
+    {{ lookup('env', 'OLLAMA_API_KEY') | default('ollama', true) }}
+  OPENCLAW_GATEWAY_MODE: local
+  OPENCLAW_GATEWAY_BIND: lan
+  OPENCLAW_GATEWAY_TOKEN: >-
+    {{ lookup('env', 'OPENCLAW_GATEWAY_TOKEN')
+    | default(lookup('env', 'OPENCLAW_SESSION_TOKEN'), true)
+    | default('CHANGEME_OPENCLAW_SESSION_TOKEN', true) }}

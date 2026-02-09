@@ -29,6 +29,19 @@
         - "{{ dev_dir }}/home"
         - "{{ dev_dir }}/projects"
 
+    - name: Create dev home config directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+        owner: '1000'
+        group: '1000'
+      loop:
+        - "{{ dev_dir }}/home/.ssh"
+        - "{{ dev_dir }}/home/.config"
+        - "{{ dev_dir }}/home/.config/opencode"
+        - "{{ dev_dir }}/home/.codex"
+
     # =========================================================================
     # Copy files
     # =========================================================================
@@ -65,14 +78,18 @@
     - name: Copy OpenCode config
       copy:
         src: "{{ compose_src }}/config/opencode.json"
-        dest: "{{ dev_dir }}/config/opencode.json"
+        dest: "{{ dev_dir }}/home/.config/opencode/opencode.json"
         mode: '0644'
+        owner: '1000'
+        group: '1000'
 
     - name: Copy Codex config
       copy:
         src: "{{ compose_src }}/config/codex-config.toml"
-        dest: "{{ dev_dir }}/config/codex-config.toml"
+        dest: "{{ dev_dir }}/home/.codex/config.toml"
         mode: '0644'
+        owner: '1000'
+        group: '1000'
 
     # =========================================================================
     # Environment configuration
@@ -117,7 +134,7 @@
           # {{ key.item.path | basename }}
           {{ key.content | b64decode }}
           {% endfor %}
-        dest: "{{ dev_dir }}/config/authorized_keys"
+        dest: "{{ dev_dir }}/home/.ssh/authorized_keys"
         owner: '1000'
         group: '1000'
         mode: '0600'

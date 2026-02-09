@@ -64,6 +64,7 @@ This document lists all ports used by homelab stacks with access requirements.
 |---------|------|----------|--------|-------------|
 | **NetBox** | 8001 | TCP | 🌐 Proxied | DCIM/IPAM |
 | **1Password MCP** | 6975 | TCP | 🔒 LAN-Only | MCP server |
+| **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
 | **Homelab MCP** | 6971 | TCP | 🔒 LAN-Only | MCP server (Orbi, NPM, etc.) |
 | **AdGuard Home** | 53 | UDP/TCP | 🔒 LAN-Only | DNS queries |
 | AdGuard Home | 3080 | TCP | 🔒⚠️ LAN-Only | Initial setup UI |
@@ -164,6 +165,7 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 | `prometheus.klsll.com` | http://prometheus:9090 | NPM Access List | Reserve; Prometheus not deployed yet |
 | `ollama.klsll.com` | <worker-ip>:11434 | NPM Access List | GPU worker |
 | `chat.klsll.com` | <worker-ip>:8080 | Built-in | GPU worker |
+| `openclaw.klsll.com` | http://192.168.20.169:18789 | Built-in | Jetson OpenClaw Control UI (NPM adds the configured session token). |
 | `netbox.klsll.com` | <unraid-ip>:8001 | Built-in | Unraid |
 | `adguard.klsll.com` | <unraid-ip>:8053 | Built-in | Unraid |
 | `dev-box` | 192.168.20.60:22 | SSH key | Dev environment (macvlan) |

@@ -143,6 +143,17 @@ python scripts/openclaw_jetson_example.py --task auto
 ```
 
 ---
+### 5. Deploy OpenClaw Gateway via Ansible
+
+```bash
+cd /home/james/projects/homelab-infra/ansible
+
+# Supply LMStudio/Slack credentials via env or vault before running.
+ansible-playbook playbooks/jetson/deploy-openclaw.yml \
+  --limit jetson.lab
+```
+
+This playbook copies the upstream `docker-compose.yml`, renders `.env` with the current `OLLAMA_*`, `LMSTUDIO_*`, and Slack variables, and starts `openclaw-gateway` together with its `llama-server` companion. The gateway is now configured to prefer the local Ollama endpoint (`ollama/llama3.1` and `ollama/qwen2.5`) for reasoning/coder workloads while keeping the heavier LMStudio models as fallbacks. Once the stack is up, the Jetson host listens on port 18789 and `openclaw.klsll.com` can reach it through the proxy we set earlier.
 
 ## Model Selection Strategy
 
