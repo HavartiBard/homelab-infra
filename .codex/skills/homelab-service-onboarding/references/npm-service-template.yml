@@ -1,0 +1,19 @@
+---
+proxy_hosts:
+  - name: <service-name>
+    domains:
+      - <service>.klsll.com
+    forward_host: <service-lan-ip>
+    forward_port: <service-port>
+    scheme: http
+    websocket: true
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: <service>.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600

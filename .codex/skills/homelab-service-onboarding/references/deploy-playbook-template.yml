@@ -1,0 +1,88 @@
+---
+- name: Deploy <ServiceName> on <target-group>
+  hosts: <target-group>
+  gather_facts: false
+  become: true
+  vars:
+    service_dir: "/mnt/user/appdata/<service>"
+    compose_file: "{{ service_dir }}/docker-compose.yml"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+
+  pre_tasks:
+    - name: Validate required secrets/vars
+      ansible.builtin.assert:
+        that:
+          - (lookup('env', 'CHANGEME_REQUIRED_ENV') | default('', true)) | length > 0
+        fail_msg: "Set CHANGEME_REQUIRED_ENV before running."
+
+  tasks:
+    - name: Ensure service directory exists
+      ansible.builtin.raw: "mkdir -p {{ service_dir }}"
+      changed_when: false
+
+    - name: Deploy compose file
+      ansible.builtin.copy:
+        src: ../files/<service>/docker-compose.yml
+        dest: "{{ compose_file }}"
+        mode: "0644"
+
+    - name: Check for docker compose plugin
+      ansible.builtin.raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      ansible.builtin.raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      ansible.builtin.raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      ansible.builtin.set_fact:
+        service_compose_command: >-
+          {{ 'docker compose'
+          if docker_compose_plugin.rc == 0
+          else compose_bin_path }}
+
+    - name: Deploy service stack
+      ansible.builtin.raw: |
+        set -euo pipefail
+        cd {{ service_dir }}
+        {{ service_compose_command }} pull
+        {{ service_compose_command }} up -d
+
+    - name: Validate service health endpoint
+      ansible.builtin.uri:
+        url: "http://<service-ip>:<health-port>/<health-path>"
+        method: GET
+        timeout: 30
+      register: service_health
+      until: service_health.status == 200
+      retries: 10
+      delay: 6

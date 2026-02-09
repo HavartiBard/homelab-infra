@@ -83,9 +83,14 @@ Playbooks are grouped by service area inside `ansible/playbooks/` to keep the ro
 - `ansible/playbooks/dns/` – DNS and DHCP provisioning plus AdGuard/Technitium config (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`).
 - `ansible/playbooks/services/` – Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`).
 - `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, and OpenHands.
+- `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, OpenHands, and Director.
 - `ansible/playbooks/misc/` – Utility helpers (e.g., `deploy-ssh-keys.yml`).
 
 See `ansible/playbooks/README.md` for more detail on each playbook.
+
+Recent additions:
+- `ansible/playbooks/platform/deploy-director.yml`
+- `ansible/playbooks/services/update-director-proxy.yml`
 
 ## Key Principles
 
@@ -100,6 +105,7 @@ See `ansible/playbooks/README.md` for more detail on each playbook.
 - [**Plan**](docs/plan.md) - Architecture decisions and design
 - [**Network Ports**](docs/network-ports.md) - Port reference and firewall rules
 - [**Checklist**](docs/checklist.md) - Deployment verification and smoke tests
+- [**Director Service**](docs/services/director.md) - Director deployment, proxy, DNS, verify, rollback
 
 ## Deploy a Stack
 
