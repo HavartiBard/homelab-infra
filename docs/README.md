@@ -7,6 +7,8 @@
 | [**runbook.md**](runbook.md) | Complete step-by-step deployment guide from zero to working |
 | [**plan.md**](plan.md) | Architecture design and implementation phases |
 | [**network-ports.md**](network-ports.md) | Port reference, firewall rules, reverse proxy config |
+| [**services/director.md**](services/director.md) | Director service deployment and operations runbook |
+| [**services/gitea.md**](services/gitea.md) | Gitea service deployment and operations runbook |
 
 ## Quick Links
 
