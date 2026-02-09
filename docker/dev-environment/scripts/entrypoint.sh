@@ -41,7 +41,7 @@ mkdir -p "$HOME_DIR/projects"
 chown "$DEV_USER:$DEV_USER" "$HOME_DIR/projects"
 
 # =============================================================================
-# Ensure config directories exist (config files are bind-mounted)
+# Ensure config directories exist
 # =============================================================================
 mkdir -p "$HOME_DIR/.config/opencode"
 mkdir -p "$HOME_DIR/.cache/opencode"

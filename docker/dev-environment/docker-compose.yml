@@ -28,12 +28,6 @@ services:
       - ${APPDATA_PATH:-/mnt/user/appdata/dev-environment}/home:/home/${DEV_USER:-james}
       # Project workspace
       - ${APPDATA_PATH:-/mnt/user/appdata/dev-environment}/projects:/home/${DEV_USER:-james}/projects
-      # SSH authorized keys
-      - ./config/authorized_keys:/home/${DEV_USER:-james}/.ssh/authorized_keys:ro
-      # OpenCode global config
-      - ./config/opencode.json:/home/${DEV_USER:-james}/.config/opencode/opencode.json:ro
-      # Codex config
-      - ./config/codex-config.toml:/home/${DEV_USER:-james}/.codex/config.toml:ro
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock
       # 1Password SSH agent socket (from host)
