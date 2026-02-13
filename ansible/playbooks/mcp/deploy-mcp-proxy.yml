@@ -1,0 +1,29 @@
+---
+# Deploy mcp-proxy (stdio-to-HTTP bridge) to Unraid
+- name: Deploy mcp-proxy
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - mcp-proxy
+
+  post_tasks:
+    - name: Display access information
+      ansible.builtin.debug:
+        msg: |
+          mcp-proxy deployed successfully!
+
+          SoulLayer MCP URL: http://{{ ansible_host }}:6980/servers/soullayer/sse
+          Transport: SSE (Server-Sent Events)
+
+          Configure your IDE with:
+          {
+            "mcpServers": {
+              "soullayer": {
+                "url": "http://{{ ansible_host }}:6980/servers/soullayer/sse"
+              }
+            }
+          }
+
+          Test endpoint:
+          curl -v http://{{ ansible_host }}:6980/servers/soullayer/sse
