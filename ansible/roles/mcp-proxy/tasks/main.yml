@@ -1,1 +1,74 @@
-# Placeholder - will be implemented in Task 2
+---
+# Using raw/shell commands since Unraid lacks Python
+
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ mcp_proxy_appdata_dir }}
+  changed_when: false
+
+- name: Create config directory
+  ansible.builtin.raw: mkdir -p {{ mcp_proxy_appdata_dir }}/config
+  changed_when: false
+
+- name: Template servers.json locally
+  ansible.builtin.template:
+    src: servers.json.j2
+    dest: /tmp/mcp-proxy-servers.json
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Copy servers.json to Unraid via heredoc
+  ansible.builtin.raw: |
+    cat > {{ mcp_proxy_appdata_dir }}/config/servers.json <<'EOFCONFIG'
+    {{ lookup('file', '/tmp/mcp-proxy-servers.json') }}
+    EOFCONFIG
+  changed_when: true
+
+- name: Pull container image
+  ansible.builtin.raw: docker pull {{ mcp_proxy_image }}
+  register: pull_result
+  changed_when: "'Downloaded newer image' in pull_result.stdout or 'Pull complete' in pull_result.stdout"
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: docker stop {{ mcp_proxy_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: docker rm {{ mcp_proxy_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy mcp-proxy container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ mcp_proxy_container_name }} \
+      --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ mcp_proxy_icon }}' \
+      --label net.unraid.docker.webui='{{ mcp_proxy_webui_url }}' \
+      -p {{ mcp_proxy_port }}:{{ mcp_proxy_port }} \
+      -v {{ mcp_proxy_appdata_dir }}/config/servers.json:/config/servers.json:ro \
+      -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -e TZ={{ timezone }} \
+      {{ mcp_proxy_image }} \
+      --port={{ mcp_proxy_port }} \
+      --host={{ mcp_proxy_host }} \
+      --named-server-config=/config/servers.json
+  register: deploy_result
+  changed_when: true
+
+- name: Wait for container to start
+  ansible.builtin.raw: sleep 5
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: docker ps --filter "name={{ mcp_proxy_container_name }}" --filter "status=running" -q
+  register: container_check
+  failed_when: container_check.stdout | trim == ""
+  changed_when: false
+
+- name: Get container logs
+  ansible.builtin.raw: docker logs --tail 20 {{ mcp_proxy_container_name }}
+  register: container_logs
+  changed_when: false
+
+- name: Display container logs
+  ansible.builtin.debug:
+    msg: "{{ container_logs.stdout_lines }}"
