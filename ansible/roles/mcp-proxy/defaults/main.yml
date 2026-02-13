@@ -1,0 +1,32 @@
+---
+# mcp-proxy default variables
+
+# Container settings
+mcp_proxy_image: "ghcr.io/sparfenyuk/mcp-proxy:v0.3.2-alpine"
+mcp_proxy_container_name: "mcp-proxy"
+mcp_proxy_port: 6980
+mcp_proxy_icon: >-
+  https://raw.githubusercontent.com/sparfenyuk/mcp-proxy/main/icon.png
+mcp_proxy_webui_url: >-
+  http://{{ ansible_host }}:{{ mcp_proxy_port }}/servers/soullayer/sse
+
+# Paths
+mcp_proxy_appdata_dir: "/mnt/user/appdata/mcp-proxy"
+
+# Server settings
+mcp_proxy_host: "0.0.0.0"
+
+# MCP servers to expose
+mcp_proxy_servers:
+  - name: soullayer
+    command: docker
+    args:
+      - exec
+      - -i
+      - soullayer
+      - soullayer
+      - serve
+    transport_type: stdio
+
+# Timezone
+timezone: "America/Phoenix"

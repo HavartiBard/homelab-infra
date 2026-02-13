@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+{% for server in mcp_proxy_servers %}
+    "{{ server.name }}": {
+      "command": "{{ server.command }}",
+      "args": {{ server.args | to_json }},
+      "transportType": "{{ server.transport_type }}"
+    }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+  }
+}
