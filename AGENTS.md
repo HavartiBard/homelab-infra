@@ -49,6 +49,19 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 - **AdGuard Home** (agh1/agh2): Client-facing DNS with filtering, hands off local zones to Technitium
 - **Technitium** (tt1/tt2): Authoritative for `klsll.com` subdomains, DHCP server (primary on tt1)
 
+## Key Services
+
+| Service | Host | Port | URL | Health Check |
+|---------|------|------|-----|-------------|
+| Portainer | Platform VM | 9443 | `portainer.klsll.com` | `curl -k https://localhost:9443/api/system/status` |
+| NPM | Platform VM | 80/443/81 | `npm.klsll.com` (admin) | `curl http://localhost:81/api/` |
+| Uptime Kuma | Platform VM | 3001 | `status.klsll.com` | `curl http://localhost:3001/api/info` |
+| mcp-proxy | Unraid | 6980 | - | stdio-to-HTTP MCP bridge |
+| SoulLayer | Unraid | 6980 | `http://192.168.20.14:6980/servers/soullayer/sse` | MCP personality/memory (via mcp-proxy) |
+| Gitea MCP | Unraid | 6976 | - | LAN-only |
+| Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://localhost:11434/api/tags` |
+| Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
+
 ## Directory Structure
 
 ```
@@ -236,6 +249,47 @@ Stop and ask if:
 - A step would expose services broadly on the LAN/WAN
 - Secrets are required and not provided
 - You're about to modify multiple repos and aren't sure that's intended
+
+## Common Troubleshooting
+
+### Service Health Checks
+```bash
+# Portainer
+curl -k https://localhost:9443/api/system/status
+
+# NPM admin
+curl http://localhost:81/api/
+
+# Ollama
+curl http://spraycheese:11434/api/tags
+
+# Container status
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# Container logs
+docker compose logs -f <service>
+```
+
+### mcp-proxy Not Responding
+```bash
+# Check container status
+docker ps | grep mcp-proxy
+
+# Check logs
+docker logs mcp-proxy -f
+
+# Verify servers.json
+docker exec mcp-proxy cat /config/servers.json
+
+# Test endpoint
+curl -v http://localhost:6980/servers/soullayer/sse
+```
+
+### Port Conflicts
+```bash
+sudo lsof -i :<port>
+sudo netstat -tulpn | grep <port>
+```
 
 ## Git Workflow
 
