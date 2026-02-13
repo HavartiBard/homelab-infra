@@ -2,7 +2,7 @@
 # mcp-proxy default variables
 
 # Container settings
-mcp_proxy_image: "ghcr.io/sparfenyuk/mcp-proxy:v0.3.2-alpine"
+mcp_proxy_image: "ghcr.io/sparfenyuk/mcp-proxy:v0.11.0"
 mcp_proxy_container_name: "mcp-proxy"
 mcp_proxy_port: 6980
 mcp_proxy_icon: >-
