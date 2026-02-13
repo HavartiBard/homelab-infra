@@ -1,0 +1,184 @@
+---
+- name: Deploy SoulLayer MCP Server on Unraid
+  hosts: unraid
+  become: true
+  gather_facts: false
+  vars:
+    soullayer_dir: "/mnt/user/appdata/soullayer"
+    soullayer_build_dir: "/tmp/soullayer-build"
+    compose_file: "{{ soullayer_dir }}/docker-compose.yml"
+    dockerfile: "{{ soullayer_dir }}/Dockerfile"
+    env_file: "{{ soullayer_dir }}/.env"
+    ssh_key_path: "/root/.ssh/ai-agents_ed25519"
+    ssh_config_path: "/root/.ssh/config"
+    compose_version: v2.27.0
+    compose_bin_path: /usr/local/bin/docker-compose
+    compose_download_url: >-
+      https://github.com/docker/compose/releases/download/{{
+      compose_version }}/docker-compose-linux-x86_64
+  tasks:
+    - name: Create SoulLayer directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ soullayer_dir }}"
+        - "{{ soullayer_dir }}/data"
+
+    - name: Ensure .ssh directory exists
+      ansible.builtin.file:
+        path: /root/.ssh
+        state: directory
+        mode: "0700"
+
+    - name: Deploy AI-Agents SSH private key from 1Password
+      ansible.builtin.raw: |
+        op read "op://AI Wedge/ai-agents-gitea-ssh/private key" > {{ ssh_key_path }}
+        chmod 600 {{ ssh_key_path }}
+      environment:
+        OP_SERVICE_ACCOUNT_TOKEN: "{{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN') }}"
+
+    - name: Configure SSH to use AI-Agents key for Gitea
+      ansible.builtin.blockinfile:
+        path: "{{ ssh_config_path }}"
+        create: yes
+        mode: "0600"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - AI-Agents Gitea"
+        block: |
+          Host gitea.klsll.com
+            HostName gitea.klsll.com
+            User git
+            IdentityFile {{ ssh_key_path }}
+            IdentitiesOnly yes
+
+    - name: Test SSH connection to Gitea
+      ansible.builtin.raw: |
+        ssh -T git@gitea.klsll.com -o StrictHostKeyChecking=no 2>&1 | head -5
+      register: ssh_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Show SSH test result
+      ansible.builtin.debug:
+        msg: "{{ ssh_test.stdout_lines }}"
+
+    - name: Copy SoulLayer Dockerfile
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/soullayer/Dockerfile"
+        dest: "{{ dockerfile }}"
+        mode: "0644"
+
+    - name: Copy SoulLayer docker-compose.yml
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/soullayer/docker-compose.yml"
+        dest: "{{ compose_file }}"
+        mode: "0644"
+
+    - name: Check if soullayer-config repo exists
+      ansible.builtin.stat:
+        path: "{{ soullayer_dir }}/.git"
+      register: soullayer_repo_stat
+
+    - name: Clone soullayer-config repository
+      ansible.builtin.raw: |
+        cd {{ soullayer_dir }}
+        git clone git@gitea.klsll.com:HavartiBard/soullayer-config.git temp-clone
+        mv temp-clone/* temp-clone/.git* .
+        rmdir temp-clone
+        git config user.name "SoulLayer"
+        git config user.email "soullayer@agents.klsll.com"
+      when: not soullayer_repo_stat.stat.exists
+
+    - name: Pull latest soullayer-config changes
+      ansible.builtin.raw: |
+        cd {{ soullayer_dir }}
+        git pull origin main || git pull origin master
+      when: soullayer_repo_stat.stat.exists
+      ignore_errors: true
+
+    - name: Check if SoulLayer .env exists
+      ansible.builtin.stat:
+        path: "{{ env_file }}"
+      register: soullayer_env_stat
+
+    - name: Copy SoulLayer .env.example when .env is missing
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/soullayer/.env.example"
+        dest: "{{ env_file }}"
+        mode: "0600"
+      when: not soullayer_env_stat.stat.exists
+
+
+    - name: Check for docker compose plugin
+      ansible.builtin.raw: |
+        if docker compose version >/dev/null 2>&1; then
+          echo "docker_compose=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_plugin
+      changed_when: false
+      ignore_errors: true
+
+    - name: Check for legacy docker-compose
+      ansible.builtin.raw: |
+        if {{ compose_bin_path }} version >/dev/null 2>&1; then
+          echo "docker_compose_legacy=1"
+        else
+          exit 1
+        fi
+      register: docker_compose_legacy
+      changed_when: false
+      ignore_errors: true
+
+    - name: Install docker-compose binary when missing
+      ansible.builtin.raw: |
+        set -euo pipefail
+        if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+          curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+          chmod +x {{ compose_bin_path }}
+        fi
+      when:
+        - docker_compose_plugin.rc != 0
+        - docker_compose_legacy.rc != 0
+
+    - name: Select compose command
+      ansible.builtin.set_fact:
+        soullayer_compose_command: >-
+          {% if docker_compose_plugin.rc == 0 %}
+          docker compose
+          {% else %}
+          {{ compose_bin_path }}
+          {% endif %}
+
+    - name: Build and deploy SoulLayer stack
+      ansible.builtin.raw: "cd {{ soullayer_dir }} && {{ soullayer_compose_command }} up -d --build"
+
+    - name: Wait for SoulLayer container to be healthy
+      ansible.builtin.raw: |
+        for i in {1..30}; do
+          if docker ps | grep -q 'soullayer.*Up'; then
+            echo "Container is running"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "Container failed to start" >&2
+        exit 1
+      register: soullayer_health
+      retries: 3
+      delay: 5
+
+    - name: Show deployment info
+      ansible.builtin.debug:
+        msg: |
+          SoulLayer MCP Server deployed successfully.
+          Directory: {{ soullayer_dir }}
+          Container: soullayer
+          MCP Port: 6980 (stdio transport for MCP)
+
+          Next steps:
+          1. Edit {{ soullayer_dir }}/data/soul.md to define your AI's personality
+          2. Add to Director MCP servers or client configs
+          3. Monitor logs: docker logs soullayer -f
