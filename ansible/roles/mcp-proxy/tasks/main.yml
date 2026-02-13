@@ -46,6 +46,7 @@
       -p {{ mcp_proxy_port }}:{{ mcp_proxy_port }} \
       -v {{ mcp_proxy_appdata_dir }}/config/servers.json:/config/servers.json:ro \
       -v /var/run/docker.sock:/var/run/docker.sock:ro \
+      -v /usr/bin/docker:/usr/bin/docker:ro \
       -e TZ={{ timezone }} \
       {{ mcp_proxy_image }} \
       --port={{ mcp_proxy_port }} \
