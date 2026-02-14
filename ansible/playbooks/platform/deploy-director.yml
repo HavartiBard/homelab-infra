@@ -6,6 +6,7 @@
   vars:
     director_dir: "/mnt/user/appdata/director"
     director_data_dir: "{{ director_dir }}/data"
+    director_config_dir: "{{ director_dir }}/config"
     compose_file: "{{ director_dir }}/docker-compose.yml"
     env_file: "{{ director_dir }}/.env"
     compose_version: v2.27.0
@@ -22,6 +23,7 @@
       loop:
         - "{{ director_dir }}"
         - "{{ director_data_dir }}"
+        - "{{ director_config_dir }}"
 
     - name: Copy Director docker-compose.yml
       ansible.builtin.copy:
