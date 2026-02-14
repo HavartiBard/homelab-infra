@@ -1,20 +1,22 @@
 FROM node:20-alpine
 
+# Install git (needed to clone repo)
+RUN apk add --no-cache git
+
 WORKDIR /app
 
-# Install soullayer globally
-RUN npm install -g soullayer@latest
+# Clone SoulLayer from GitHub and build
+RUN git clone https://github.com/phoenix0700/soullayer.git . && \
+    npm install && \
+    npm run build && \
+    npm link
 
-# Create directory for soul files and database
-RUN mkdir -p /data/.soullayer
-
+# Create data directory
 WORKDIR /data
-
-# Initialize soullayer (creates soullayer.json and soul.md)
-RUN npx soullayer init
+RUN mkdir -p .soullayer
 
 # Expose MCP server port (if using SSE transport)
 EXPOSE 3100
 
 # Run the MCP server
-CMD ["npx", "soullayer", "serve"]
+CMD ["soullayer", "serve"]

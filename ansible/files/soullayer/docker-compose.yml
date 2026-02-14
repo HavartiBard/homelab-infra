@@ -4,13 +4,12 @@ services:
   soullayer:
     build: .
     container_name: soullayer
+    command: sleep infinity
     environment:
       - TZ=${TZ:-America/Phoenix}
     volumes:
       - ${SOULLAYER_DATA_DIR:-./data}:/data
       - ${SOULLAYER_SOUL_FILE:-./soul.md}:/data/soul.md
-    ports:
-      - "${SOULLAYER_PORT:-6980}:3100"
     labels:
       - net.unraid.docker.icon=${SOULLAYER_ICON:-https://raw.githubusercontent.com/phoenix0700/soullayer/main/docs/icon.png}
       - net.unraid.docker.webui=http://[IP]:[PORT:6980]
