@@ -234,3 +234,23 @@ Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.templ
 | `unraid-mcp` | Unraid GraphQL management MCP server | Env vars only |
 
 **Note:** Uses `raw` commands since Unraid lacks Python.
+
+## Director Fragment Export
+
+Export MCP endpoints from homelab-infra role defaults into the
+`director-playbooks` repo as a generated fragment:
+
+```bash
+ansible/scripts/export-director-mcp-fragment.py
+```
+
+Default output:
+- `../director-playbooks/director/config/fragments/15-homelab-mcps.generated.yaml`
+
+Useful overrides:
+
+```bash
+ansible/scripts/export-director-mcp-fragment.py \\
+  --output /path/to/director-playbooks/director/config/fragments/15-homelab-mcps.generated.yaml \\
+  --unraid-host 192.168.20.14
+```
