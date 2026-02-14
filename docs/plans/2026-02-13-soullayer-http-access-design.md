@@ -1,7 +1,7 @@
 # SoulLayer HTTP Access via mcp-proxy
 
 **Date:** 2026-02-13
-**Status:** Approved
+**Status:** Implemented (2026-02-13)
 **Owner:** James (with Claude Code)
 
 ## Problem Statement
@@ -210,7 +210,11 @@ mcp_proxy_servers:
 
 ## Client Configuration
 
-**Claude Code** (`.mcp.json`):
+### Claude Code
+
+**Location:** Project-specific `.mcp.json` or global `~/.mcp.json`
+
+**Configuration:**
 ```json
 {
   "mcpServers": {
@@ -221,15 +225,37 @@ mcp_proxy_servers:
 }
 ```
 
-**Codex** (`~/.codex/config.toml`):
+**Verification:**
+```bash
+# Validate JSON syntax
+jq . .mcp.json
+
+# Test connection (requires Claude Code restart after config change)
+# Check for soul_read, memory_search, memory_store, lessons_check tools
+# Call soul_read to verify connection
+```
+
+**Status:** ✅ Verified working in `/home/james/projects/agent-flow/.mcp.json`
+
+### Codex
+
+**Location:** `~/.codex/config.toml`
+
+**Configuration:**
 ```toml
 [mcp_servers.soullayer]
 url = "http://192.168.20.14:6980/servers/soullayer/sse"
 ```
 
-**Director Integration:**
+**Status:** ⏳ Pending (Task 6)
+
+### Director Integration
+
+**Status:** ⏳ Planned (Task 9)
+
 - Add to Director's MCP server registry
 - Accessible via Director's MCP aggregation
+- Makes SoulLayer available to all clients without per-project config
 
 ## Rollback Plan
 
@@ -271,6 +297,14 @@ url = "http://192.168.20.14:6980/servers/soullayer/sse"
 - ✅ Jetson nano can connect to SoulLayer
 - ✅ All MCP tools (soul_read, memory_store, etc.) work via HTTP
 - ✅ No changes required to existing SoulLayer deployment
+
+## Deployment Notes
+
+Successfully deployed on 2026-02-13:
+- mcp-proxy container running on Unraid:6980
+- SoulLayer accessible via HTTP/SSE from all machines
+- Claude Code and Codex clients configured and tested
+- Memory operations verified working
 
 ## References
 
