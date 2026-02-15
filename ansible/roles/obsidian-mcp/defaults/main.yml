@@ -1,5 +1,5 @@
 ---
-obsidian_mcp_image: "code.klsll.com/havartibard/obsidian-mcp:latest"
+obsidian_mcp_image: "ghcr.io/havartibard/obsidian-mcp:latest"
 obsidian_mcp_container_name: "obsidian-mcp"
 obsidian_mcp_port: 6977
 obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
