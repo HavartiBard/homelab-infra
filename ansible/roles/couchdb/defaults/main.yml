@@ -1,0 +1,8 @@
+---
+# CouchDB configuration defaults
+couchdb_version: "3.3"
+couchdb_container_name: "couchdb-obsidian"
+couchdb_port: 5984
+couchdb_data_dir: "/mnt/user/appdata/couchdb/data"
+couchdb_config_dir: "/mnt/user/appdata/couchdb/config"
+couchdb_appdata_dir: "/mnt/user/appdata/couchdb"

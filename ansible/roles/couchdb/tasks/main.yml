@@ -1,0 +1,36 @@
+---
+- name: Create CouchDB appdata directory
+  raw: mkdir -p {{ couchdb_appdata_dir }}
+  changed_when: false
+
+- name: Create CouchDB data directory
+  raw: mkdir -p {{ couchdb_data_dir }}
+  changed_when: false
+
+- name: Create CouchDB config directory
+  raw: mkdir -p {{ couchdb_config_dir }}
+  changed_when: false
+
+- name: Copy Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ couchdb_appdata_dir }}/docker-compose.yml"
+
+- name: Start CouchDB container
+  raw: set -euo pipefail && cd {{ couchdb_appdata_dir }} && docker compose up -d
+
+- name: Wait for CouchDB to be ready
+  raw: |
+    set -euo pipefail
+    for i in {1..30}; do
+      if curl -sf http://localhost:{{ couchdb_port }}/_up >/dev/null 2>&1; then
+        echo "CouchDB is ready"
+        exit 0
+      fi
+      echo "Waiting for CouchDB... attempt $i/30"
+      sleep 2
+    done
+    echo "ERROR: CouchDB failed to start"
+    exit 1
+  register: couchdb_health
+  changed_when: false
