@@ -31,7 +31,7 @@
   raw: |
     set -euo pipefail
     for i in {1..30}; do
-      if docker inspect {{ obsidian_mcp_container_name }} --format='{{{{.State.Status}}}}' 2>/dev/null | grep -q running; then
+      if docker inspect {{ obsidian_mcp_container_name }} --format='{% raw %}{{.State.Status}}{% endraw %}' 2>/dev/null | grep -q running; then
         echo "Container {{ obsidian_mcp_container_name }} is running"
         exit 0
       fi
