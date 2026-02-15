@@ -6,8 +6,11 @@ services:
     container_name: {{ obsidian_mcp_container_name }}
     environment:
       - VAULT_PATH=/vault
+      - TZ={{ timezone | default('America/Phoenix') }}
     volumes:
       - {{ obsidian_vault_path }}:/vault
+    ports:
+      - "{{ obsidian_mcp_port }}:{{ obsidian_mcp_port }}"
     restart: unless-stopped
     networks:
       - homelab
