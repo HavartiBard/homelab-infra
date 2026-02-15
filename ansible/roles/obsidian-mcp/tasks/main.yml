@@ -1,0 +1,26 @@
+---
+- name: Create Obsidian vault directory
+  raw: mkdir -p {{ obsidian_vault_path }}
+
+- name: Create vault subdirectories
+  raw: mkdir -p {{ obsidian_vault_path }}/{services,templates,.obsidian}
+
+- name: Set vault ownership
+  raw: chown -R nobody:users {{ obsidian_vault_path }}
+
+- name: Set vault permissions
+  raw: chmod -R 775 {{ obsidian_vault_path }}
+
+- name: Create MCP server appdata directory
+  raw: mkdir -p {{ obsidian_mcp_appdata_dir }}
+
+- name: Copy Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ obsidian_mcp_appdata_dir }}/docker-compose.yml"
+
+- name: Start Obsidian MCP container
+  raw: cd {{ obsidian_mcp_appdata_dir }} && docker compose up -d
+
+- name: Wait for container to be ready
+  raw: sleep 3 && docker ps | grep {{ obsidian_mcp_container_name }}

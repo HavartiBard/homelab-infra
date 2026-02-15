@@ -7,3 +7,7 @@
     - name: Deploy CouchDB
       include_role:
         name: couchdb
+
+    - name: Deploy Obsidian MCP Server
+      include_role:
+        name: obsidian-mcp

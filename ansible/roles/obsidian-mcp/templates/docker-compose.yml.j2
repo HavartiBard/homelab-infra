@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  obsidian-mcp:
+    image: {{ obsidian_mcp_image }}
+    container_name: {{ obsidian_mcp_container_name }}
+    environment:
+      - VAULT_PATH=/vault
+    volumes:
+      - {{ obsidian_vault_path }}:/vault
+    restart: unless-stopped
+    networks:
+      - homelab
+    stdin_open: true
+    tty: true
+
+networks:
+  homelab:
+    external: true
