@@ -1,9 +1,21 @@
 ---
 # Obsidian stack configuration
-couchdb_admin_user: "{{ lookup('env', 'COUCHDB_ADMIN_USER') | default(vault_couchdb_admin_user, true) }}"
-couchdb_admin_password: "{{ lookup('env', 'COUCHDB_ADMIN_PASSWORD') | default(vault_couchdb_admin_password, true) }}"
-couchdb_sync_user: "{{ lookup('env', 'COUCHDB_SYNC_USER') | default(vault_couchdb_sync_user, true) }}"
-couchdb_sync_password: "{{ lookup('env', 'COUCHDB_SYNC_PASSWORD') | default(vault_couchdb_sync_password, true) }}"
+couchdb_admin_user: >-
+  {{ lookup('env', 'COUCHDB_ADMIN_USER')
+  | default(lookup('pipe', 'op read "op://AI Wedge/CouchDB Obsidian Admin/username" 2>/dev/null || echo ""'), true)
+  | default('obsidian_admin') }}
+couchdb_admin_password: >-
+  {{ lookup('env', 'COUCHDB_ADMIN_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/CouchDB Obsidian Admin/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+couchdb_sync_user: >-
+  {{ lookup('env', 'COUCHDB_SYNC_USER')
+  | default(lookup('pipe', 'op read "op://AI Wedge/CouchDB Obsidian Sync User/username" 2>/dev/null || echo ""'), true)
+  | default('obsidian_sync') }}
+couchdb_sync_password: >-
+  {{ lookup('env', 'COUCHDB_SYNC_PASSWORD')
+  | default(lookup('pipe', 'op read "op://AI Wedge/CouchDB Obsidian Sync User/password" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
 
 obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
 obsidian_mcp_port: 6977
