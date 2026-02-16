@@ -4,3 +4,4 @@ obsidian_mcp_container_name: "obsidian-mcp"
 obsidian_mcp_port: 6977
 obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
 obsidian_mcp_appdata_dir: "/mnt/user/appdata/obsidian-mcp"
+obsidian_mcp_transport_mode: "http"

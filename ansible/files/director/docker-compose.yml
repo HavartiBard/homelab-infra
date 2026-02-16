@@ -13,6 +13,7 @@ services:
       - ${DIRECTOR_DATA_DIR:-./data}:/root/.director
       - /mnt/user/appdata/director:/mnt/user/appdata/director
       - /mnt/user/appdata/director/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - net.unraid.docker.icon=${DIRECTOR_ICON}
       - net.unraid.docker.webui=${DIRECTOR_WEBUI_URL}

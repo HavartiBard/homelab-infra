@@ -7,6 +7,8 @@ services:
     environment:
       - VAULT_PATH=/vault
       - TZ={{ timezone | default('America/Phoenix') }}
+      - TRANSPORT_MODE={{ obsidian_mcp_transport_mode | default('stdio') }}
+      - PORT={{ obsidian_mcp_port }}
     volumes:
       - {{ obsidian_vault_path }}:/vault
     ports:
