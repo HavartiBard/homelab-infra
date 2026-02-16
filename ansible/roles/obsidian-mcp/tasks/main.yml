@@ -1,0 +1,44 @@
+---
+- name: Create Obsidian vault directory
+  raw: mkdir -p {{ obsidian_vault_path }}
+  changed_when: false
+
+- name: Create vault subdirectories
+  raw: mkdir -p {{ obsidian_vault_path }}/{services,templates,.obsidian}
+  changed_when: false
+
+- name: Set vault ownership
+  raw: chown -R nobody:users {{ obsidian_vault_path }}
+  changed_when: false
+
+- name: Set vault permissions
+  raw: chmod -R 775 {{ obsidian_vault_path }}
+  changed_when: false
+
+- name: Create MCP server appdata directory
+  raw: mkdir -p {{ obsidian_mcp_appdata_dir }}
+  changed_when: false
+
+- name: Copy Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ obsidian_mcp_appdata_dir }}/docker-compose.yml"
+
+- name: Start Obsidian MCP container
+  raw: set -euo pipefail && cd {{ obsidian_mcp_appdata_dir }} && docker compose up -d
+
+- name: Wait for container to be ready
+  raw: |
+    set -euo pipefail
+    for i in {1..30}; do
+      if docker inspect {{ obsidian_mcp_container_name }} --format='{% raw %}{{.State.Status}}{% endraw %}' 2>/dev/null | grep -q running; then
+        echo "Container {{ obsidian_mcp_container_name }} is running"
+        exit 0
+      fi
+      echo "Waiting for container... attempt $i/30"
+      sleep 2
+    done
+    echo "ERROR: Container {{ obsidian_mcp_container_name }} failed to start"
+    exit 1
+  register: obsidian_mcp_health
+  changed_when: false

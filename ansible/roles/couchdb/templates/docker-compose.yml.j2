@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  couchdb:
+    image: couchdb:{{ couchdb_version }}
+    container_name: {{ couchdb_container_name }}
+    environment:
+      - TZ={{ timezone | default('America/Phoenix') }}
+      - COUCHDB_USER={{ couchdb_admin_user }}
+      - COUCHDB_PASSWORD={{ couchdb_admin_password }}
+    ports:
+      - "{{ couchdb_port }}:5984"
+    volumes:
+      - {{ couchdb_data_dir }}:/opt/couchdb/data
+      - {{ couchdb_config_dir }}:/opt/couchdb/etc/local.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

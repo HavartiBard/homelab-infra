@@ -59,6 +59,8 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 | mcp-proxy | Unraid | 6980 | - | stdio-to-HTTP MCP bridge |
 | SoulLayer | Unraid | 6980 | `http://192.168.20.14:6980/servers/soullayer/sse` | MCP personality/memory (via mcp-proxy) |
 | Gitea MCP | Unraid | 6976 | - | LAN-only |
+| CouchDB | Unraid | 5984 | - | Obsidian sync backend (LAN-only) |
+| Obsidian MCP | Unraid | 6977 | - | Service catalog HTTP MCP (LAN-only) |
 | Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://localhost:11434/api/tags` |
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
 
@@ -79,7 +81,7 @@ homelab-infra/
 │   ├── gpu-worker/         # Ollama + Open WebUI
 │   └── monitoring/         # Prometheus, Grafana
 ├── docker/                 # Custom Dockerfiles only
-│   ├── notion-mcp-server/  # Notion MCP custom build
+│   ├── obsidian-mcp-server/ # Obsidian MCP HTTP server
 │   └── portainer-mcp/      # Portainer MCP custom build
 └── docs/                   # Documentation
 ```
@@ -192,7 +194,7 @@ Claude Code and AI agents can read credentials directly from 1Password using the
 
 ```bash
 # Read a credential via op read
-op read "op://AI Wedge/Notion MCP Integration/credential"
+op read "op://AI Wedge/CouchDB Admin/credential"
 
 # Example in Python
 import subprocess
@@ -249,6 +251,73 @@ Stop and ask if:
 - A step would expose services broadly on the LAN/WAN
 - Secrets are required and not provided
 - You're about to modify multiple repos and aren't sure that's intended
+
+## Service Catalog Workflow
+
+The homelab service catalog is maintained in **Obsidian**, synced via **CouchDB**, and accessible to AI agents via the **Obsidian MCP server**.
+
+### Architecture
+
+```
+Obsidian Desktop (LiveSync) ←→ CouchDB (192.168.20.14:5984) ←→ Obsidian MCP (HTTP :6977)
+                                                                      ↓
+                                                            Director MCP (pending)
+                                                                      ↓
+                                                            AI Agents (Claude Code, etc.)
+```
+
+### Vault Location
+
+- Path: `/mnt/user/appdata/obsidian/vaults/homelab/`
+- Service docs: `services/*.md` (one file per service)
+- Templates: `templates/service-catalog.md`
+
+### Agent Usage
+
+**Creating/updating service entries:**
+
+Use the Obsidian MCP tools (via Director when integration is complete):
+- `obsidian_write_note` - Create or update a service entry
+- `obsidian_read_note` - Read existing service documentation
+- `obsidian_search_notes` - Search across the service catalog
+- `obsidian_list_notes` - List all service entries
+
+**Template structure** (`templates/service-catalog.md`):
+```markdown
+---
+service: <service-name>
+type: <service-type>
+host: <hostname>
+ports: [<port-list>]
+status: <active|deprecated>
+---
+
+# <Service Name>
+
+## Overview
+Brief description of the service.
+
+## Configuration
+Key configuration details, file locations, etc.
+
+## Deployment
+How the service is deployed (Ansible playbook, Portainer stack, etc.)
+
+## Health Check
+```bash
+# Health check command
+```
+
+## Troubleshooting
+Common issues and solutions.
+```
+
+**Desktop access:**
+- Obsidian app with Obsidian LiveSync plugin
+- CouchDB endpoint: `http://192.168.20.14:5984`
+- Credentials: In 1Password "AI Wedge" vault ("CouchDB Admin")
+
+**Note:** Director MCP integration for Obsidian is pending due to a connection issue. Until resolved, access the Obsidian MCP via direct HTTP at `http://192.168.20.14:6977/mcp`.
 
 ## Common Troubleshooting
 

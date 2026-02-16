@@ -1,0 +1,13 @@
+---
+- name: Deploy Obsidian Stack (CouchDB + MCP Server)
+  hosts: unraid
+  gather_facts: false
+
+  tasks:
+    - name: Deploy CouchDB
+      include_role:
+        name: couchdb
+
+    - name: Deploy Obsidian MCP Server
+      include_role:
+        name: obsidian-mcp

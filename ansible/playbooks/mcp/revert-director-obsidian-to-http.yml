@@ -1,0 +1,212 @@
+---
+- name: Revert Director Config for Obsidian MCP to HTTP transport
+  hosts: unraid
+  gather_facts: false
+  vars:
+    director_container: "director"
+    director_config_path: "/root/.director/director.config.yaml"
+
+  tasks:
+    - name: Check if Director container exists
+      ansible.builtin.raw: docker inspect {{ director_container }} >/dev/null 2>&1
+      register: director_exists
+      failed_when: false
+      changed_when: false
+
+    - name: Fail if Director container does not exist
+      ansible.builtin.fail:
+        msg: "Director container '{{ director_container }}' does not exist. Deploy Director first."
+      when: director_exists.rc != 0
+
+    - name: Read current Director config
+      ansible.builtin.raw: docker exec {{ director_container }} cat {{ director_config_path }}
+      register: current_config
+      changed_when: false
+
+    - name: Revert Obsidian MCP to HTTP transport in Director config
+      ansible.builtin.raw: |
+        docker exec {{ director_container }} sh -c '
+        cat > {{ director_config_path }} << "EOF"
+        playbooks:
+          - id: dev-core
+            name: dev-core
+            description: Development-focused playbook with minimal, reversible change bias.
+            prompts:
+              - name: guardrails-readonly-first
+                title: Guardrails Readonly First
+                body: Prefer read-only actions first. Confirm with the user before destructive
+                  operations (delete, reset, force-stop, irreversible writes).
+              - name: dev-mode-minimal-diff
+                title: Dev Mode Minimal Diff
+                body: Prefer minimal diffs and reversible changes. Avoid broad refactors unless
+                  explicitly requested.
+            servers:
+              - name: unraid-mcp
+                type: http
+                url: http://192.168.20.14:6970/mcp
+              - name: homelab-mcp
+                type: http
+                url: http://192.168.20.14:6971/mcp
+              - name: onepassword-mcp
+                type: http
+                url: http://192.168.20.14:6975/mcp
+              - name: portainer-mcp
+                type: http
+                url: http://192.168.20.14:6972/mcp
+              - name: proxmox-mcp
+                type: http
+                url: http://192.168.20.14:6974/mcp
+              - name: gitea-mcp
+                type: http
+                url: http://192.168.20.14:6976/mcp
+              - name: notion-mcp-public
+                type: http
+                url: http://192.168.20.14:3000/mcp
+          - id: global-core
+            name: global-core
+            description: Shared baseline prompt and safety guardrails for all playbooks.
+            prompts:
+              - name: guardrails-readonly-first
+                title: Global
+                description: Global Homelab Agent
+                body: >-
+                  # Global Core Homelab Agent
+
+                    You are an AI agent with access to homelab infrastructure through Director'\''s MCP aggregation.
+
+                    ## Available Tools
+
+                    **SoulLayer MCP** - Personality, memory, and lessons
+                    - `soul_read` - Read the soul.md (personality, preferences, homelab context)
+                    - `memory_search` - Search past decisions, architecture, debugging discoveries
+                    - `memory_store` - Save new knowledge for future sessions
+                    - `lessons_check` - Check for past mistakes and patterns
+                    - `lessons_add` - Log new lessons learned
+
+                    **1Password MCP** - Secrets management
+                    - Retrieve credentials, API keys, tokens
+                    - Read from "AI Wedge" vault (Ansible-tagged items)
+
+                    ## Critical Rules
+                    **ALWAYS check SoulLayer memory before homelab work:**
+                    1. SEARCH → memory_search for relevant context
+                    2. CHECK → lessons_check for related mistakes/patterns
+                    3. IMPLEMENT → Do the work with full context
+                    4. STORE → memory_store new knowledge
+                    5. LEARN → lessons_add from mistakes or discoveries
+
+                    **Search memory for:**
+                    - Infrastructure questions ("How does X connect to Y?")
+                    - Deployment patterns ("What'\''s the Ansible pattern for Z?")
+                    - Architecture decisions ("Why did we choose A over B?")
+                    - Debugging discoveries ("What fixed this issue before?")
+                    - User preferences ("Does user prefer X or Y workflow?")
+
+                    **Store in memory:**
+                    - Infrastructure facts (IPs, ports, service dependencies)
+                    - Architecture decisions and reasoning
+                    - Deployment patterns that work
+                    - Network topology details
+                    - User preferences about tools and workflows
+
+                    **Log as lessons:**
+                    - Mistakes made (with fix)
+                    - Best practices discovered
+                    - Anti-patterns to avoid
+                    - Trade-offs accepted
+
+                    ## Workflow Example
+
+                    User: "How do I deploy a new MCP server?"
+
+                    Your actions:
+                    1. memory_search(query="MCP deployment Ansible patterns")
+                    2. lessons_check(category="deployment", tags=["mcp", "ansible"])
+                    3. Read relevant docs/code with context from memory
+                    4. Implement solution
+                    5. memory_store(new facts about deployment)
+                    6. lessons_add(any new patterns or gotchas)
+
+                    ## Integration
+
+                    These MCPs work together:
+                    - SoulLayer provides **context** (what we'\''ve done, what works, preferences)
+                    - 1Password provides **credentials** (API keys, tokens, passwords)
+                    - Your role is to **execute** with full awareness of past work
+
+                    Never repeat work. Never repeat mistakes. Always build on what'\''s been learned.
+            servers:
+              - name: gitea-mcp
+                prompts:
+                  include: []
+                disabled: false
+                url: http://192.168.20.14:6976/mcp
+                headers: {}
+                type: http
+              - name: notion
+                prompts:
+                  include: []
+                disabled: true
+                url: https://mcp.notion.com/mcp
+                headers: {}
+                type: http
+              - name: memory
+                prompts:
+                  include: []
+                disabled: true
+                command: npx
+                args:
+                  - -y
+                  - "@modelcontextprotocol/server-memory"
+                env: {}
+                type: stdio
+              - name: context-7
+                prompts:
+                  include: []
+                disabled: true
+                command: npx
+                args:
+                  - -y
+                  - "@upstash/context7-mcp"
+                env: {}
+                type: stdio
+              - name: soullayer
+                prompts:
+                  include: []
+                disabled: false
+                url: http://192.168.20.14:6980/servers/soullayer/sse
+                headers: {}
+                type: http
+              - name: onepass
+                prompts:
+                  include: []
+                disabled: false
+                url: http://192.168.20.14:6975/mcp
+                headers: {}
+                type: http
+              - name: obsidian-mcp
+                prompts:
+                  include: []
+                disabled: false
+                url: http://192.168.20.14:6977/mcp
+                headers: {}
+                type: http
+        EOF
+        '
+      register: config_update
+
+    - name: Restart Director container
+      ansible.builtin.raw: docker restart {{ director_container }}
+      when: config_update.changed
+
+    - name: Wait for Director to be ready
+      ansible.builtin.raw: sleep 5
+
+    - name: Verify Director is running
+      ansible.builtin.raw: docker ps | grep {{ director_container }}
+      register: director_status
+      changed_when: false
+
+    - name: Show Director status
+      ansible.builtin.debug:
+        msg: "Director is {{ 'running' if director_status.rc == 0 else 'not running' }}"
