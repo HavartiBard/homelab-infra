@@ -32,6 +32,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # 1Password SSH agent socket (from host)
       - ${OP_SSH_AGENT_SOCK:-/home/james/.1password/agent.sock}:/home/${DEV_USER:-james}/.1password/agent.sock:ro
+      # Obsidian vault from Unraid via NFS (read-only)
+      - obsidian-vault:/mnt/obsidian:ro
     environment:
       - TZ=${TZ:-America/Phoenix}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
@@ -65,3 +67,13 @@ networks:
   # Use the Ansible playbook's macvlan shim if host<->container comms are needed.
   br0:
     external: true
+
+volumes:
+  # Obsidian vault from local NFS export
+  # Since this is running ON Unraid, mount the local export
+  obsidian-vault:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=127.0.0.1,nfsvers=4,ro,nolock
+      device: ":/mnt/user/appdata/obsidian/vaults/homelab"
