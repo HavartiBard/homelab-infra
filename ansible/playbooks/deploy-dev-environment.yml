@@ -12,6 +12,8 @@
     env_file: "{{ dev_dir }}/.env"
     dev_ip: "{{ lookup('env', 'DEV_IP') | default('192.168.20.60', true) }}"
     dev_interface: "{{ lookup('env', 'DEV_INTERFACE') | default('br0', true) }}"
+    dev_safe_mode: "{{ lookup('env', 'DEV_SAFE_MODE') | default('true', true) | bool }}"
+    dev_manage_home_configs: "{{ lookup('env', 'DEV_MANAGE_HOME_CONFIGS') | default('false', true) | bool }}"
 
   tasks:
     # =========================================================================
@@ -41,6 +43,7 @@
         - "{{ dev_dir }}/home/.config"
         - "{{ dev_dir }}/home/.config/opencode"
         - "{{ dev_dir }}/home/.codex"
+      when: dev_manage_home_configs
 
     # =========================================================================
     # Copy files
@@ -82,6 +85,7 @@
         mode: '0644'
         owner: '1000'
         group: '1000'
+      when: dev_manage_home_configs
 
     - name: Copy Codex config
       copy:
@@ -90,6 +94,7 @@
         mode: '0644'
         owner: '1000'
         group: '1000'
+      when: dev_manage_home_configs
 
     # =========================================================================
     # Environment configuration
@@ -116,6 +121,7 @@
       delegate_to: localhost
       become: false
       register: ssh_pubkeys
+      when: dev_manage_home_configs
 
     - name: Read SSH public keys from controller
       slurp:
@@ -124,6 +130,7 @@
       delegate_to: localhost
       become: false
       register: ssh_pubkey_contents
+      when: dev_manage_home_configs
 
     - name: Deploy authorized_keys with controller's public keys
       copy:
@@ -138,14 +145,18 @@
         owner: '1000'
         group: '1000'
         mode: '0600'
-      when: ssh_pubkey_contents.results | length > 0
+      when:
+        - dev_manage_home_configs
+        - ssh_pubkey_contents.results | length > 0
 
     - name: Fail if no SSH public keys found
       fail:
         msg: >
           No SSH public keys found in {{ lookup('env', 'HOME') }}/.ssh/*.pub.
           Generate a key first: ssh-keygen -t ed25519 -C "james@dev-box"
-      when: ssh_pubkeys.files | length == 0
+      when:
+        - dev_manage_home_configs
+        - ssh_pubkeys.files | length == 0
 
     # =========================================================================
     # Build and deploy
@@ -154,6 +165,9 @@
       command:
         cmd: docker compose build
         chdir: "{{ dev_dir }}"
+      environment:
+        DEV_SAFE_MODE: "{{ dev_safe_mode | ternary('true', 'false') }}"
+        DEV_MANAGE_HOME_CONFIGS: "{{ dev_manage_home_configs | ternary('true', 'false') }}"
       register: build_result
       changed_when: "'exporting' in build_result.stdout"
 
@@ -161,6 +175,9 @@
       command:
         cmd: docker compose up -d
         chdir: "{{ dev_dir }}"
+      environment:
+        DEV_SAFE_MODE: "{{ dev_safe_mode | ternary('true', 'false') }}"
+        DEV_MANAGE_HOME_CONFIGS: "{{ dev_manage_home_configs | ternary('true', 'false') }}"
       register: deploy_result
       changed_when: "'Started' in deploy_result.stderr or 'Created' in deploy_result.stderr"
 
@@ -200,6 +217,8 @@
           Container: dev-environment
           Home: {{ dev_dir }}/home
           Projects: {{ dev_dir }}/projects
+          Safe mode: {{ dev_safe_mode }}
+          Manage home configs: {{ dev_manage_home_configs }}
 
           VS Code Remote SSH config:
             Host dev-box
