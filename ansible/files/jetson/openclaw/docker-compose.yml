@@ -13,9 +13,9 @@ services:
       - --bind
       - lan
     volumes:
-      - /home/james/.openclaw:/root/.openclaw
+      - /home/james/.openclaw:/home/node/.openclaw
       - /home/james/bots/raclette:/workspace
     env_file:
       - .env
     environment:
-      - OPENCLAW_STATE_DIR=/root/.openclaw
+      - OPENCLAW_STATE_DIR=/home/node/.openclaw

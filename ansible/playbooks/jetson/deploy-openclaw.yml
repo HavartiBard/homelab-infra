@@ -74,6 +74,7 @@
 
     - block:
         - name: Backup live openclaw.json before deploy
+          become: true
           ansible.builtin.copy:
             src: "{{ jetson_openclaw_state_dir }}/openclaw.json"
             dest: "{{ jetson_openclaw_state_dir }}/openclaw.json.bak.{{ backup_timestamp.stdout }}"
