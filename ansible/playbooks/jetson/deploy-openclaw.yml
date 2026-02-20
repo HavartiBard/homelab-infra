@@ -1,23 +1,29 @@
+---
+# Deploy or upgrade OpenClaw gateway on Jetson.
+#
+# Required env vars on the Ansible controller (sourced from ~/.env_container or 1Password):
+#   OPENCLAW_GATEWAY_TOKEN, SLACK_BOT_TOKEN, SLACK_APP_TOKEN, LMSTUDIO_API_KEY
+#
+# Usage:
+#   Full upgrade (pull image + restart):
+#     ansible-playbook playbooks/jetson/deploy-openclaw.yml --limit jetson.lab -v
+#
+#   Config update only (no image pull):
+#     ansible-playbook playbooks/jetson/deploy-openclaw.yml --limit jetson.lab --skip-tags image -v
+#
+#   Force seed config overwrite (e.g. after config corruption or fresh install):
+#     ansible-playbook playbooks/jetson/deploy-openclaw.yml --limit jetson.lab -e force_config=true -v
+
 - name: Deploy OpenClaw gateway on Jetson
-  hosts: jetson.lab
-  gather_facts: true
-  become: true
+  hosts: edge_devices
+  gather_facts: false
   vars:
-    jetson_openclaw_env_path: "{{ jetson_openclaw_deploy_dir }}/.env"
-    jetson_openclaw_config_dir: "{{ jetson_openclaw_deploy_dir }}/config"
+    force_config: false
 
   tasks:
-    - name: Ensure OpenClaw base directory exists
+    - name: Ensure OpenClaw deploy directory exists
       ansible.builtin.file:
         path: "{{ jetson_openclaw_deploy_dir }}"
-        state: directory
-        owner: james
-        group: james
-        mode: '0755'
-
-    - name: Ensure OpenClaw config directory exists
-      ansible.builtin.file:
-        path: "{{ jetson_openclaw_config_dir }}"
         state: directory
         owner: james
         group: james
@@ -31,23 +37,15 @@
         group: james
         mode: '0755'
 
-    - name: Deploy OpenClaw configuration
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/../../files/jetson/openclaw/config/openclaw.json.j2"
-        dest: "{{ jetson_openclaw_config_dir }}/openclaw.json"
+    - name: Ensure OpenClaw workspace directory exists
+      ansible.builtin.file:
+        path: "{{ jetson_openclaw_workspace_dir }}"
+        state: directory
         owner: james
         group: james
-        mode: '0644'
+        mode: '0755'
 
-    - name: Mirror OpenClaw configuration to state dir
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/../../files/jetson/openclaw/config/openclaw.json.j2"
-        dest: "{{ jetson_openclaw_state_dir }}/openclaw.json"
-        owner: james
-        group: james
-        mode: '0644'
-
-    - name: Deploy OpenClaw docker compose definition
+    - name: Deploy docker-compose.yml
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../files/jetson/openclaw/docker-compose.yml"
         dest: "{{ jetson_openclaw_deploy_dir }}/docker-compose.yml"
@@ -55,24 +53,72 @@
         group: james
         mode: '0644'
 
-    - name: Render OpenClaw environment file
+    - name: Deploy .env file
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../../files/jetson/openclaw/.env.j2"
-        dest: "{{ jetson_openclaw_env_path }}"
+        dest: "{{ jetson_openclaw_deploy_dir }}/.env"
         owner: james
         group: james
         mode: '0600'
 
-    - name: Pull OpenClaw compose images
+    - name: Check if live openclaw.json exists
+      ansible.builtin.stat:
+        path: "{{ jetson_openclaw_state_dir }}/openclaw.json"
+      register: openclaw_config_stat
+
+    - name: Get timestamp for config backup
+      ansible.builtin.command: date +%s
+      register: backup_timestamp
+      changed_when: false
+      when: openclaw_config_stat.stat.exists
+
+    - name: Backup live openclaw.json before deploy
+      ansible.builtin.copy:
+        src: "{{ jetson_openclaw_state_dir }}/openclaw.json"
+        dest: "{{ jetson_openclaw_state_dir }}/openclaw.json.bak.{{ backup_timestamp.stdout }}"
+        remote_src: true
+        owner: james
+        group: james
+        mode: '0600'
+      when: openclaw_config_stat.stat.exists
+
+    - name: Deploy seed openclaw.json (only if absent or force_config=true)
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/config/openclaw.json.j2"
+        dest: "{{ jetson_openclaw_state_dir }}/openclaw.json"
+        owner: james
+        group: james
+        mode: '0600'
+      when: not openclaw_config_stat.stat.exists or (force_config | bool)
+
+    - name: Pull OpenClaw image
       ansible.builtin.command:
         cmd: docker compose pull
         chdir: "{{ jetson_openclaw_deploy_dir }}"
-      environment:
-        DOCKER_BUILDKIT: "1"
+      tags: [image]
 
-    - name: Start OpenClaw gateway stack
+    - name: Start or restart OpenClaw stack
       ansible.builtin.command:
-        cmd: docker compose up -d
+        cmd: docker compose up -d --remove-orphans
         chdir: "{{ jetson_openclaw_deploy_dir }}"
-      environment:
-        DOCKER_BUILDKIT: "1"
+      tags: [image]
+
+    - name: Wait for OpenClaw gateway to become available
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ jetson_openclaw_port }}"
+        status_code: [200, 401, 403, 404]
+      register: openclaw_health
+      retries: 10
+      delay: 3
+      until: openclaw_health.status in [200, 401, 403, 404]
+      tags: [image]
+
+    - name: Report OpenClaw container status
+      ansible.builtin.command:
+        cmd: "docker ps --filter name=openclaw --format {% raw %}'table {{.Names}}\t{{.Status}}\t{{.Image}}'{% endraw %}"
+      register: container_status
+      changed_when: false
+
+    - name: Show container status
+      ansible.builtin.debug:
+        msg: "{{ container_status.stdout_lines }}"
