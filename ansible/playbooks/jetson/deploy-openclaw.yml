@@ -193,6 +193,43 @@
       when: _container_zsh.rc != 0
       changed_when: true
 
+    - name: Render .env_container for container to temp file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../templates/bootstrap-ubuntu/env_container.j2"
+        dest: /tmp/.openclaw-env_container
+        mode: '0600'
+      vars:
+        ubuntu_env_container_vars: "{{ jetson_env_container_vars | default({}) }}"
+
+    - name: Copy container-zshrc to temp file on Jetson
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/container-zshrc"
+        dest: /tmp/.openclaw-zshrc
+        mode: '0644'
+
+    - name: Copy .zshrc into container
+      ansible.builtin.command:
+        cmd: docker cp /tmp/.openclaw-zshrc openclaw:/home/node/.zshrc
+      changed_when: false
+
+    - name: Copy .env_container into container
+      ansible.builtin.command:
+        cmd: docker cp /tmp/.openclaw-env_container openclaw:/home/node/.env_container
+      changed_when: false
+
+    - name: Fix ownership of shell config files in container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw chown node:node /home/node/.zshrc /home/node/.env_container
+      changed_when: false
+
+    - name: Remove temp shell config files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/.openclaw-zshrc
+        - /tmp/.openclaw-env_container
+
     - name: Deploy oc wrapper script
       become: true
       ansible.builtin.copy:
