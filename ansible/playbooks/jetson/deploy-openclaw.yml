@@ -204,7 +204,10 @@
           #!/bin/bash
           # Wrapper for OpenClaw CLI inside the openclaw container.
           # Usage: oc <command> [args...]   e.g. oc tui, oc devices list
-          if [ -t 0 ] && [ -t 1 ]; then
+          #        oc shell                 drop into a zsh shell as node user
+          if [ "${1}" = "shell" ]; then
+            exec docker exec -u node -it openclaw zsh
+          elif [ -t 0 ] && [ -t 1 ]; then
             exec docker exec -u node -it openclaw node dist/index.js "$@"
           else
             exec docker exec -u node openclaw node dist/index.js "$@"
