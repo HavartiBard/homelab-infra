@@ -72,14 +72,19 @@
       changed_when: false
       when: openclaw_config_stat.stat.exists
 
-    - name: Backup live openclaw.json before deploy
-      ansible.builtin.copy:
-        src: "{{ jetson_openclaw_state_dir }}/openclaw.json"
-        dest: "{{ jetson_openclaw_state_dir }}/openclaw.json.bak.{{ backup_timestamp.stdout }}"
-        remote_src: true
-        owner: james
-        group: james
-        mode: '0600'
+    - block:
+        - name: Backup live openclaw.json before deploy
+          ansible.builtin.copy:
+            src: "{{ jetson_openclaw_state_dir }}/openclaw.json"
+            dest: "{{ jetson_openclaw_state_dir }}/openclaw.json.bak.{{ backup_timestamp.stdout }}"
+            remote_src: true
+            owner: james
+            group: james
+            mode: '0600'
+      rescue:
+        - name: Abort — backup failed before config deploy
+          ansible.builtin.fail:
+            msg: "Could not back up {{ jetson_openclaw_state_dir }}/openclaw.json. Aborting to protect live config. Check disk space on the Jetson."
       when: openclaw_config_stat.stat.exists
 
     - name: Deploy seed openclaw.json (only if absent or force_config=true)
@@ -95,12 +100,18 @@
       ansible.builtin.command:
         cmd: docker compose pull
         chdir: "{{ jetson_openclaw_deploy_dir }}"
+      changed_when: false
       tags: [image]
 
     - name: Start or restart OpenClaw stack
       ansible.builtin.command:
         cmd: docker compose up -d --remove-orphans
         chdir: "{{ jetson_openclaw_deploy_dir }}"
+      register: result_up
+      changed_when: >
+        'Started' in result_up.stdout or
+        'Recreated' in result_up.stdout or
+        'Created' in result_up.stdout
       tags: [image]
 
     - name: Wait for OpenClaw gateway to become available
@@ -108,8 +119,8 @@
         url: "http://127.0.0.1:{{ jetson_openclaw_port }}"
         status_code: [200, 401, 403, 404]
       register: openclaw_health
-      retries: 10
-      delay: 3
+      retries: 20
+      delay: 5
       until: openclaw_health.status in [200, 401, 403, 404]
       tags: [image]
 
