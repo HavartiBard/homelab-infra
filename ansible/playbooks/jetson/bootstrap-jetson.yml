@@ -1,0 +1,384 @@
+---
+# Bootstrap a Jetson Orin Nano from bare Ubuntu 22.04 (aarch64) to fully operational.
+#
+# Covers: base packages, 1Password CLI, Docker CE, NVIDIA Container Toolkit,
+#         Oh My Zsh + Pure theme, SSH authorized key, timezone, standard
+#         directories, CUDA PATH in shell rc files, and .env_container.
+#
+# Idempotent — safe to re-run on an already-configured Jetson.
+# Does NOT touch vLLM, OpenClaw, or any running containers.
+# After bootstrap, run deploy-openclaw.yml to deploy the OpenClaw stack.
+#
+# Usage:
+#   ansible-playbook playbooks/jetson/bootstrap-jetson.yml \
+#     -e target_hosts=jetson.lab --limit jetson.lab -v
+
+- name: Bootstrap Jetson Orin Nano
+  hosts: edge_devices
+  gather_facts: true
+  become: true
+  vars:
+    bootstrap_user: james
+    bootstrap_user_home: "/home/{{ bootstrap_user }}"
+    bootstrap_timezone: America/Phoenix
+    bootstrap_public_key: "{{ lookup('env','HOME') }}/.ssh/id_ed25519_homelab.pub"
+    bootstrap_zsh_install_dir: /opt/oh-my-zsh
+    bootstrap_zsh_theme: pure
+    bootstrap_zsh_plugins:
+      - git
+      - docker
+      - docker-compose
+      - sudo
+      - zsh-autosuggestions
+      - zsh-syntax-highlighting
+    bootstrap_packages:
+      - git
+      - zsh
+      - curl
+      - wget
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - software-properties-common
+      - openssh-server
+      - python3-pip
+      - htop
+      - vim
+      - jq
+    bootstrap_dirs:
+      - "{{ bootstrap_user_home }}/docker"
+      - "{{ bootstrap_user_home }}/models"
+      - "{{ bootstrap_user_home }}/bots"
+      - "{{ bootstrap_user_home }}/.openclaw"
+      - "{{ bootstrap_user_home }}/projects"
+      - "{{ bootstrap_user_home }}/.cache/oh-my-zsh"
+    # Maps jetson vault var to the existing env_container template variable name
+    ubuntu_env_container_vars: "{{ jetson_env_container_vars | default({}) }}"
+
+  pre_tasks:
+    - name: Require target_hosts safety guard
+      ansible.builtin.assert:
+        that:
+          - target_hosts is defined
+          - inventory_hostname in (target_hosts | regex_replace('\\s+', '') | split(','))
+        fail_msg: |
+          target_hosts is not set or does not include {{ inventory_hostname }}.
+          Run with: -e target_hosts=jetson.lab
+
+    - name: Verify Ubuntu aarch64
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_architecture == 'aarch64'
+        fail_msg: "Expected Ubuntu aarch64, got {{ ansible_distribution }} {{ ansible_architecture }}"
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+
+  tasks:
+    # ── Base packages ──────────────────────────────────────────────────────────
+
+    - name: Refresh apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      ansible.builtin.apt:
+        name: "{{ bootstrap_packages }}"
+        state: present
+
+    - name: Determine dpkg architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: dpkg_arch
+      changed_when: false
+
+    # ── 1Password CLI ──────────────────────────────────────────────────────────
+
+    - name: Ensure 1Password keyring directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /usr/share/keyrings
+        - /etc/debsig/policies/AC2D62742012EA22
+        - /usr/share/debsig/keyrings/AC2D62742012EA22
+
+    - name: Download 1Password public key
+      ansible.builtin.get_url:
+        url: https://downloads.1password.com/linux/keys/1password.asc
+        dest: /tmp/1password.asc
+        mode: '0644'
+
+    - name: Create 1Password apt keyring
+      ansible.builtin.command: >
+        gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg /tmp/1password.asc
+      args:
+        creates: /usr/share/keyrings/1password-archive-keyring.gpg
+
+    - name: Install 1Password debsig policy
+      ansible.builtin.get_url:
+        url: https://downloads.1password.com/linux/debian/debsig/1password.pol
+        dest: /etc/debsig/policies/AC2D62742012EA22/1password.pol
+        mode: '0644'
+
+    - name: Create 1Password debsig keyring
+      ansible.builtin.command: >
+        gpg --dearmor -o /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg /tmp/1password.asc
+      args:
+        creates: /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg
+
+    - name: Add 1Password apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ dpkg_arch.stdout }} signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/{{ dpkg_arch.stdout }} stable main"
+        filename: 1password
+        state: present
+
+    - name: Install 1Password CLI
+      ansible.builtin.apt:
+        name: 1password-cli
+        state: present
+        update_cache: true
+
+    - name: Remove temporary 1Password key material
+      ansible.builtin.file:
+        path: /tmp/1password.asc
+        state: absent
+
+    # ── Docker CE ──────────────────────────────────────────────────────────────
+
+    - name: Ensure Docker keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        filename: docker
+        state: present
+
+    - name: Install Docker CE packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Add {{ bootstrap_user }} to docker group
+      ansible.builtin.user:
+        name: "{{ bootstrap_user }}"
+        groups: docker
+        append: true
+
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    # ── NVIDIA Container Toolkit ───────────────────────────────────────────────
+
+    - name: Download NVIDIA container toolkit GPG key
+      ansible.builtin.get_url:
+        url: https://nvidia.github.io/libnvidia-container/gpgkey
+        dest: /tmp/nvidia-ctk.gpg.asc
+        mode: '0644'
+
+    - name: Create NVIDIA container toolkit keyring
+      ansible.builtin.command: >
+        gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg /tmp/nvidia-ctk.gpg.asc
+      args:
+        creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+    - name: Add NVIDIA container toolkit apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/deb/{{ dpkg_arch.stdout }} /"
+        filename: nvidia-container-toolkit
+        state: present
+
+    - name: Install NVIDIA container toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+        update_cache: true
+
+    - name: Configure Docker to use nvidia runtime as default
+      ansible.builtin.command:
+        cmd: nvidia-ctk runtime configure --runtime=docker --set-as-default
+      register: nvidia_ctk_result
+      changed_when: "'already' not in nvidia_ctk_result.stdout | lower"
+      notify: Restart Docker
+
+    - name: Remove temporary NVIDIA GPG key
+      ansible.builtin.file:
+        path: /tmp/nvidia-ctk.gpg.asc
+        state: absent
+
+    # ── User, SSH, timezone ────────────────────────────────────────────────────
+
+    - name: Ensure bootstrap user exists with zsh shell
+      ansible.builtin.user:
+        name: "{{ bootstrap_user }}"
+        shell: /bin/zsh
+        home: "{{ bootstrap_user_home }}"
+        create_home: true
+        groups: sudo
+        append: true
+
+    - name: Ensure SSH directory exists
+      ansible.builtin.file:
+        path: "{{ bootstrap_user_home }}/.ssh"
+        state: directory
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0700'
+
+    - name: Deploy authorized SSH key
+      ansible.posix.authorized_key:
+        user: "{{ bootstrap_user }}"
+        key: "{{ lookup('file', bootstrap_public_key) }}"
+        manage_dir: true
+        state: present
+
+    - name: Ensure SSH service is running and enabled
+      ansible.builtin.service:
+        name: ssh
+        state: started
+        enabled: true
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ bootstrap_timezone }}"
+
+    # ── Standard directories ───────────────────────────────────────────────────
+
+    - name: Ensure standard directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0755'
+      loop: "{{ bootstrap_dirs }}"
+
+    # ── Oh My Zsh ─────────────────────────────────────────────────────────────
+
+    - name: Ensure Oh My Zsh base repository is present
+      ansible.builtin.git:
+        repo: https://github.com/ohmyzsh/ohmyzsh.git
+        dest: "{{ bootstrap_zsh_install_dir }}"
+        depth: 1
+        update: true
+        force: false
+
+    - name: Ensure custom directories under Oh My Zsh exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "{{ bootstrap_zsh_install_dir }}/custom"
+        - "{{ bootstrap_zsh_install_dir }}/custom/themes"
+        - "{{ bootstrap_zsh_install_dir }}/custom/plugins"
+
+    - name: Deploy Pure theme
+      ansible.builtin.git:
+        repo: https://github.com/sindresorhus/pure.git
+        dest: "{{ bootstrap_zsh_install_dir }}/custom/themes/pure"
+        depth: 1
+        update: true
+
+    - name: Link Pure theme file
+      ansible.builtin.file:
+        src: "{{ bootstrap_zsh_install_dir }}/custom/themes/pure/pure.zsh"
+        dest: "{{ bootstrap_zsh_install_dir }}/custom/themes/pure.zsh-theme"
+        state: link
+
+    - name: Link Pure async helper
+      ansible.builtin.file:
+        src: "{{ bootstrap_zsh_install_dir }}/custom/themes/pure/async.zsh"
+        dest: "{{ bootstrap_zsh_install_dir }}/custom/async.zsh"
+        state: link
+
+    - name: Clone zsh-autosuggestions
+      ansible.builtin.git:
+        repo: https://github.com/zsh-users/zsh-autosuggestions
+        dest: "{{ bootstrap_zsh_install_dir }}/custom/plugins/zsh-autosuggestions"
+        depth: 1
+        update: true
+
+    - name: Clone zsh-syntax-highlighting
+      ansible.builtin.git:
+        repo: https://github.com/zsh-users/zsh-syntax-highlighting
+        dest: "{{ bootstrap_zsh_install_dir }}/custom/plugins/zsh-syntax-highlighting"
+        depth: 1
+        update: true
+
+    - name: Deploy zshrc from template
+      ansible.builtin.template:
+        src: ../../templates/bootstrap-ubuntu/zshrc.j2
+        dest: "{{ bootstrap_user_home }}/.zshrc"
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0644'
+
+    # ── CUDA PATH ─────────────────────────────────────────────────────────────
+
+    - name: Ensure CUDA paths are in .bashrc
+      ansible.builtin.blockinfile:
+        path: "{{ bootstrap_user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED - CUDA paths"
+        block: |
+          export PATH=/usr/local/cuda/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+        create: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0644'
+
+    - name: Ensure CUDA paths are in .zshrc
+      ansible.builtin.blockinfile:
+        path: "{{ bootstrap_user_home }}/.zshrc"
+        marker: "# {mark} ANSIBLE MANAGED - CUDA paths"
+        block: |
+          export PATH=/usr/local/cuda/bin:$PATH
+          export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+    # ── .env_container ────────────────────────────────────────────────────────
+
+    - name: Deploy .env_container from template
+      ansible.builtin.template:
+        src: ../../templates/bootstrap-ubuntu/env_container.j2
+        dest: "{{ bootstrap_user_home }}/.env_container"
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0600'
+
+    - name: Ensure .bashrc sources .env_container
+      ansible.builtin.blockinfile:
+        path: "{{ bootstrap_user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED - env_container"
+        block: |
+          [ -f ~/.env_container ] && source ~/.env_container
+        create: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0644'
