@@ -178,6 +178,38 @@
       until: openclaw_health.status in [200, 401, 403, 404]
       tags: [image]
 
+    # ── Container convenience tools ────────────────────────────────────────────
+
+    - name: Check if zsh is installed in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec openclaw which zsh
+      register: _container_zsh
+      changed_when: false
+      failed_when: false
+
+    - name: Install zsh in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y zsh"
+      when: _container_zsh.rc != 0
+      changed_when: true
+
+    - name: Deploy oc wrapper script
+      become: true
+      ansible.builtin.copy:
+        dest: /usr/local/bin/oc
+        mode: '0755'
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          # Wrapper for OpenClaw CLI inside the openclaw container.
+          # Usage: oc <command> [args...]   e.g. oc tui, oc devices list
+          if [ -t 0 ] && [ -t 1 ]; then
+            exec docker exec -u node -it openclaw node dist/index.js "$@"
+          else
+            exec docker exec -u node openclaw node dist/index.js "$@"
+          fi
+
     - name: Report OpenClaw container status
       ansible.builtin.command:
         cmd: "docker ps --filter name=openclaw --format {% raw %}'table {{.Names}}\t{{.Status}}\t{{.Image}}'{% endraw %}"
