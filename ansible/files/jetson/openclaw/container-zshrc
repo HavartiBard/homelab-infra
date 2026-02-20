@@ -26,8 +26,8 @@ alias l='ls -CF'
 alias ..='cd ..'
 alias ...='cd ../..'
 
-# OpenClaw shortcut (workdir is /app)
-alias oc='node /app/dist/index.js'
+# OpenClaw shortcut
+alias oc='openclaw'
 
 # =============================================================================
 # Environment

@@ -187,6 +187,11 @@
       changed_when: false
       failed_when: false
 
+    - name: Symlink openclaw onto PATH in container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw ln -sf /app/openclaw.mjs /usr/local/bin/openclaw
+      changed_when: false
+
     - name: Install zsh in OpenClaw container
       ansible.builtin.command:
         cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y zsh"
