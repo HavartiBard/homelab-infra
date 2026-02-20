@@ -115,6 +115,59 @@
         'Created' in result_up.stdout
       tags: [image]
 
+    # ── Device auth token remediation ─────────────────────────────────────────
+    # When the container is recreated (e.g. image pull + restart), OpenClaw
+    # initialises identity/device-auth.json with empty tokens.  The gateway's
+    # device registry (devices/paired.json) retains the valid operator token,
+    # so we can reconstruct device-auth.json automatically to avoid a manual
+    # token-rotation step after every deploy.
+
+    - name: Check if device-auth.json exists
+      ansible.builtin.stat:
+        path: "{{ jetson_openclaw_state_dir }}/identity/device-auth.json"
+      register: _device_auth_stat
+      tags: [image]
+
+    - name: Read device-auth.json
+      ansible.builtin.slurp:
+        src: "{{ jetson_openclaw_state_dir }}/identity/device-auth.json"
+      register: _device_auth_raw
+      when: _device_auth_stat.stat.exists
+      tags: [image]
+
+    - name: Recover operator token when device-auth.json tokens are empty
+      when:
+        - _device_auth_stat.stat.exists
+        - (_device_auth_raw.content | b64decode | from_json).tokens | default({}) | length == 0
+      tags: [image]
+      block:
+        - name: Read paired.json to recover operator token
+          ansible.builtin.slurp:
+            src: "{{ jetson_openclaw_state_dir }}/devices/paired.json"
+          register: _paired_raw
+
+        - name: Parse device auth and paired device facts
+          ansible.builtin.set_fact:
+            _device_auth: "{{ _device_auth_raw.content | b64decode | from_json }}"
+            _paired: "{{ _paired_raw.content | b64decode | from_json }}"
+
+        - name: Reconstruct device-auth.json with operator token from paired.json
+          ansible.builtin.copy:
+            content: "{{ _device_auth | combine({'tokens': {'operator': _paired[_device_auth.deviceId].tokens.operator.token}}) | to_nice_json }}\n"
+            dest: "{{ jetson_openclaw_state_dir }}/identity/device-auth.json"
+            owner: james
+            group: james
+            mode: '0600'
+          when: _device_auth.deviceId in _paired
+          register: _device_auth_reconstructed
+
+        - name: Restart OpenClaw to apply recovered device auth
+          ansible.builtin.command:
+            cmd: docker compose restart openclaw
+            chdir: "{{ jetson_openclaw_deploy_dir }}"
+          when: _device_auth_reconstructed is changed
+          changed_when: true
+
     - name: Wait for OpenClaw gateway to become available
       ansible.builtin.uri:
         url: "http://127.0.0.1:{{ jetson_openclaw_port }}"
