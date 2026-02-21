@@ -1,0 +1,83 @@
+---
+# Deploy IronClaw AI assistant on Unraid
+#
+# Prerequisites:
+#   - 1Password items in "AI Wedge" vault:
+#       "IronClaw Postgres Password"    (credential field)
+#       "IronClaw HTTP Webhook Secret"  (credential field)
+#       "IronClaw Slack Bot Token"      (credential field) -- xoxb-...
+#       "IronClaw Slack App Token"      (credential field) -- xapp-...
+#       "IronClaw Slack Signing Secret" (credential field)
+#   - Ollama model available on spraycheese:
+#       curl http://192.168.20.50:11434/api/tags
+#   - OP_SERVICE_ACCOUNT_TOKEN set in environment (or op CLI signed in)
+#
+# First-time build takes ~5-15 minutes (Rust multi-stage compilation).
+# Subsequent runs use Docker layer cache and are fast.
+#
+# After deployment, access IronClaw at:
+#   http://192.168.20.14:8090         (direct)
+#   https://ironclaw.klsll.com        (via NPM — must be configured manually)
+
+- name: Deploy IronClaw AI assistant
+  hosts: unraid
+  gather_facts: false
+
+  pre_tasks:
+    - name: Fetch Postgres password from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw Postgres Password/credential"
+      register: _ironclaw_pg_pw
+      no_log: true
+      changed_when: false
+
+    - name: Fetch HTTP webhook secret from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw HTTP Webhook Secret/credential"
+      register: _ironclaw_webhook_secret
+      no_log: true
+      changed_when: false
+
+    - name: Fetch Slack bot token from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw Slack Bot Token/credential"
+      register: _ironclaw_slack_bot
+      no_log: true
+      changed_when: false
+
+    - name: Fetch Slack app token from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw Slack App Token/credential"
+      register: _ironclaw_slack_app
+      no_log: true
+      changed_when: false
+
+    - name: Fetch Slack signing secret from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw Slack Signing Secret/credential"
+      register: _ironclaw_slack_sign
+      no_log: true
+      changed_when: false
+
+    - name: Set secret facts
+      ansible.builtin.set_fact:
+        ironclaw_pg_password: "{{ _ironclaw_pg_pw.stdout | trim }}"
+        ironclaw_http_webhook_secret: "{{ _ironclaw_webhook_secret.stdout | trim }}"
+        ironclaw_slack_bot_token: "{{ _ironclaw_slack_bot.stdout | trim }}"
+        ironclaw_slack_app_token: "{{ _ironclaw_slack_app.stdout | trim }}"
+        ironclaw_slack_signing_secret: "{{ _ironclaw_slack_sign.stdout | trim }}"
+      no_log: true
+
+  roles:
+    - role: ironclaw
+
+  post_tasks:
+    - name: Deployment summary
+      ansible.builtin.debug:
+        msg: |
+          IronClaw deployed successfully!
+          Web UI:     http://{{ ansible_host }}:8090
+          NPM proxy:  https://ironclaw.klsll.com (configure NPM manually if not done)
+          Logs:       docker logs ironclaw -f
+          Restart:    cd /opt/docker/ironclaw && docker compose restart
+          Rebuild:    Re-run playbook with -e ironclaw_force_rebuild=true
