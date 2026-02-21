@@ -56,6 +56,7 @@ This document lists all ports used by homelab stacks with access requirements.
 | **1Password MCP** | 6975 | TCP | 🔒 LAN-Only | MCP server |
 | **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
 | **Homelab MCP** | 6971 | TCP | 🔒 LAN-Only | MCP server (Orbi, NPM, etc.) |
+| **SearXNG MCP** | 6978 | HTTP | 🔒 LAN-Only | MCP server — privacy-respecting metasearch |
 | **AdGuard Home** | 53 | UDP/TCP | 🔒 LAN-Only | DNS queries |
 | AdGuard Home | 3080 | TCP | 🔒⚠️ LAN-Only | Initial setup UI |
 | AdGuard Home | 8053 | TCP | 🔒⚠️ LAN-Only | Web UI (HTTP) |

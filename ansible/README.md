@@ -228,6 +228,7 @@ Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.templ
 | `homelab-mcp` | Orbi, NPM, Pi-hole MCP server | Jinja2 template |
 | `onepassword-mcp` | 1Password secrets MCP server | Env vars only |
 | `unraid-mcp` | Unraid GraphQL management MCP server | Env vars only |
+| `searxng-mcp` | Deploy SearXNG metasearch engine + MCP adapter | unraid |
 
 **Note:** Uses `raw` commands since Unraid lacks Python.
 

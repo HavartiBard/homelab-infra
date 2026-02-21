@@ -4,7 +4,7 @@ Playbooks are organized by service domain to keep the root directory uncluttered
 
 | Directory | Description |
 |-----------|-------------|
-| `mcp/` | MCP deployments (Proxmox, OnePassword, Homelab aggregator, Obsidian, etc.) |
+| `mcp/` | MCP deployments (Proxmox, OnePassword, Homelab aggregator, Obsidian, SearXNG, etc.) |
 | `dns/` | DNS/DHCP provisioning and AdGuard/Technitium config |
 | `services/` | Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`) |
 | `platform/` | Platform VM services such as Nginx Proxy Manager, Ollama, OpenHands, Director, and Sprite Smith |
