@@ -41,7 +41,7 @@ See `references/class-rules.md` for full rules and decision guidance.
 - [ ] Port not already in `docs/network-ports.md`
 - [ ] Role name unique: `ls ansible/roles/`
 - [ ] Class rules satisfied — see `references/class-rules.md`
-- [ ] Docker image tag resolvable
+- [ ] Docker image tag resolvable: `docker manifest inspect <image>:<tag>`
 - [ ] If `transport: stdio`: verify mcp-proxy is healthy — `curl -s http://192.168.20.14:6980/servers`
 
 ## Phase 3 — Generate
@@ -55,7 +55,8 @@ See `references/artifact-checklist.md` for per-class file list.
 - [ ] `ansible/playbooks/<group>/deploy-<name>.yml`
 
 **mcp additionally:**
-- [ ] If `mcp_proxy.enabled`: update mcp-proxy servers config, redeploy, verify before Director wiring
+- [ ] If `mcp_proxy.enabled`: update mcp-proxy servers config in `ansible/roles/mcp-proxy/defaults/main.yml`
+- [ ] If `mcp_proxy.enabled`: redeploy mcp-proxy and verify it lists the new server (do this before Phase 5 Director wiring, not after)
 - [ ] Add to `ROLE_MAP` in `ansible/scripts/export-director-mcp-fragment.py`
 
 **first-class additionally:**
@@ -74,7 +75,7 @@ See `references/artifact-checklist.md` for per-class file list.
 - [ ] Write Obsidian catalog entry via MCP (`obsidian_write_note`) or vault directly at `/mnt/user/appdata/obsidian/vaults/homelab/services/<name>.md`
 - [ ] Update `ansible/README.md` roles table
 - [ ] Update `ansible/playbooks/README.md`
-- [ ] If first-class: confirm homepage card added
+- [ ] If first-class: verify homepage card is present in `stacks/platform/homepage/config/services.yaml` (generated in Phase 3)
 
 ## Phase 5 — Deploy
 
@@ -87,11 +88,11 @@ ansible-playbook playbooks/<group>/deploy-<name>.yml --diff --limit <host> -v
 
 - [ ] Verify: container running, port responding
 - [ ] For mcp: `curl -s http://192.168.20.14:<port>/mcp` returns valid response
-- [ ] Idempotence: rerun `--check`, expect `changed=0`
+- [ ] Idempotence check (see `references/standards.md`)
 - [ ] Open PR via `mcp__gitea__create_pull_request`, link to issue
-- [ ] Merge, delete branch
+- [ ] Merge via Gitea MCP (`mcp__gitea__*`) or UI; delete branches: `git push origin --delete feature/deploy-<name> && git branch -d feature/deploy-<name>`
 
-## Phase 6 — Monitor *(placeholder — blocked on issue #30)*
+## Phase 6 — Monitor
 
 - [ ] Add to Obsidian catalog entry: "Uptime Kuma monitor pending — see issue #30"
 
@@ -109,3 +110,4 @@ See `references/standards.md` — applies to all classes.
 - NPM service template: `references/npm-service-template.yml`
 - Proxy playbook template: `references/update-proxy-playbook-template.yml`
 - Deploy playbook template: `references/deploy-playbook-template.yml`
+- All `<name>` placeholders correspond to the `name` field in `service-manifest-schema.yml`

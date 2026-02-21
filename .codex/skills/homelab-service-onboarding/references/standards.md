@@ -1,3 +1,4 @@
+<!-- This file defines constraints and rules, not a full procedure. See SKILL.md for the complete phase sequence. -->
 # Homelab Service Standards (all classes)
 
 These standards apply to every service regardless of class.
