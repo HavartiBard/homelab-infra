@@ -26,6 +26,33 @@ Present the issues as a numbered list and ask which one to work on. If the user 
 3. User instructions in the current chat/task
 4. Tool/extension constraints
 
+## Agent Skills Governance
+
+Use the AgentSkills framework (https://agentskills.io/) for any skill design.
+
+### When a skill should be **repo-specific**
+- Depends on this repo’s layout, conventions, or tooling (Ansible layout, Portainer stacks, playbooks)
+- Encodes domain knowledge unique to this repo (service topology, naming, deployment flow)
+- Requires repo-local assets/scripts/templates or inventory/config schemas
+- Changes frequently alongside this repo
+- Has security boundaries tied to this repo (internal URLs, secrets access patterns)
+
+### When a skill should be **global**
+- Applies across multiple repos or is an org-wide standard
+- Is tool-centric rather than repo-centric (e.g., Gitea MCP workflows)
+- Encodes stable best practices that rarely change
+- Does not rely on repo files or layout
+
+### Escalation rule
+If a repo-specific skill becomes useful in ≥2 repos or >70% reusable, split it into:
+- A global skill for shared core
+- A repo-specific skill for repo deltas/overrides
+
+### Authoring rules (AgentSkills-aligned)
+- Keep SKILL.md lean; put deep detail in `references/`
+- Bundle deterministic logic in `scripts/`
+- Avoid extra docs inside skills (no README/installation guides)
+
 ## Repository Overview
 
 This is an Ansible-managed Docker infrastructure for a hybrid homelab spanning Unraid, Proxmox VMs/LXCs, and WSL2 GPU workers. Ansible is the primary deployment mechanism for services requiring dynamic configuration (MCP servers, DNS infrastructure). Docker Compose stacks in `stacks/` serve as reference deployments for simpler services.
