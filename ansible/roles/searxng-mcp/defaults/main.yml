@@ -3,4 +3,4 @@ searxng_mcp_port: 6978
 searxng_mcp_appdata: "/mnt/user/appdata/searxng-mcp"
 searxng_mcp_compose_dir: "/opt/docker/searxng-mcp"
 searxng_image: "searxng/searxng:2026.2.20-93ac6ceb3"
-searxng_mcp_image: "isokoliuk/mcp-searxng:latest"
+searxng_mcp_image: "isokoliuk/mcp-searxng:0.9.0"

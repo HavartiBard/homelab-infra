@@ -47,3 +47,23 @@
     done
     echo "timeout waiting for searxng-mcp" >&2; exit 1
   changed_when: false
+
+- name: Ensure SearXNG JSON format is enabled
+  ansible.builtin.raw: |
+    settings="{{ searxng_mcp_appdata }}/searxng/settings.yml"
+    if [ -f "$settings" ] && ! grep -q "^\s*- json" "$settings"; then
+      sed -i 's/^    - html$/    - html\n    - json/' "$settings"
+      echo "changed"
+    else
+      echo "ok"
+    fi
+  register: searxng_fmt
+  changed_when: "'changed' in searxng_fmt.stdout"
+
+- name: Restart searxng to apply format change
+  ansible.builtin.raw: docker restart searxng
+  when: searxng_fmt.changed
+
+- name: Display mcp-searxng container logs
+  ansible.builtin.raw: "docker logs mcp-searxng --tail 10"
+  changed_when: false
