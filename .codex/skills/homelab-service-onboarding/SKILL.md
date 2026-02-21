@@ -66,6 +66,7 @@ See `references/artifact-checklist.md` for per-class file list.
 
 **agent additionally:**
 - [ ] Bootstrap tasks: zsh + oh-my-zsh, op, tea, homebrew, `.env_container`, SSH key
+- [ ] macvlan IP assigned and documented in `ansible/inventory/host_vars/<name>.yml`
 
 ## Phase 4 — Document
 
@@ -94,19 +95,9 @@ ansible-playbook playbooks/<group>/deploy-<name>.yml --diff --limit <host> -v
 
 - [ ] Add to Obsidian catalog entry: "Uptime Kuma monitor pending — see issue #30"
 
-## Standards (all classes)
+## Standards
 
-- Run from a feature branch — never `main`
-- Never hardcode secrets — use `op read "op://AI Wedge/<item>/<field>"` in `defaults/main.yml`
-- Set `TZ: America/Phoenix` in compose env
-- Use `restart: unless-stopped`
-- For Unraid targets: use `ansible.builtin.raw` (no Python available)
-- Stateful volumes at `/mnt/user/appdata/<name>` (Unraid default until issue #31 resolved)
-- Unraid icon: set `net.unraid.docker.icon` label — source from `https://dashboardicons.com/`
-- Resource limits: always set `deploy.resources.limits` in compose
-- Idempotence gate: rerun `--check --diff` expecting `changed=0`
-- Security gate: no plaintext secrets; placeholders use `CHANGEME_*`
-- Rollback: document exact rollback command in Obsidian catalog entry
+See `references/standards.md` — applies to all classes.
 
 ## References
 
