@@ -1,0 +1,49 @@
+---
+# Using raw commands throughout — Unraid has no Python
+
+- name: Ensure appdata/searxng directory exists
+  ansible.builtin.raw: mkdir -p {{ searxng_mcp_appdata }}/searxng
+  changed_when: false
+
+- name: Ensure compose directory exists
+  ansible.builtin.raw: mkdir -p {{ searxng_mcp_compose_dir }}
+  changed_when: false
+
+- name: Generate docker-compose.yml content
+  ansible.builtin.set_fact:
+    compose_content: "{{ lookup('template', '../files/searxng-mcp/docker-compose.yml') }}"
+
+- name: Write docker-compose.yml
+  ansible.builtin.raw: |
+    cat > {{ searxng_mcp_compose_dir }}/docker-compose.yml << 'EOFCOMPOSE'
+    {{ compose_content }}
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Pull searxng image
+  ansible.builtin.raw: docker pull {{ searxng_image }}
+  register: pull_searxng
+  changed_when: "'Downloaded newer image' in pull_searxng.stdout or 'Pull complete' in pull_searxng.stdout"
+  tags: [image]
+
+- name: Pull mcp-searxng image
+  ansible.builtin.raw: docker pull {{ searxng_mcp_image }}
+  register: pull_mcp
+  changed_when: "'Downloaded newer image' in pull_mcp.stdout or 'Pull complete' in pull_mcp.stdout"
+  tags: [image]
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ searxng_mcp_compose_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Wait for mcp-searxng to be healthy
+  ansible.builtin.raw: |
+    for i in $(seq 1 12); do
+      if curl -sf http://localhost:{{ searxng_mcp_port }}/ > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for searxng-mcp" >&2; exit 1
+  changed_when: false

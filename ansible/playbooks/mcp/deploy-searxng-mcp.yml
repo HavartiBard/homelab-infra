@@ -1,0 +1,6 @@
+---
+- name: Deploy SearXNG MCP
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - role: searxng-mcp
