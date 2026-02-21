@@ -44,9 +44,9 @@
   when: "'missing' in (ironclaw_image_check.stdout | default('')) or (ironclaw_force_rebuild | default(false))"
   changed_when: true
 
-- name: Patch Dockerfile to copy tests/ directory
+- name: Patch Dockerfile to copy build.rs and tests/ (upstream omits both)
   ansible.builtin.raw: |
-    sed -i 's/^RUN cargo build --release --bin ironclaw/COPY tests\/ tests\/\nRUN cargo build --release --bin ironclaw/' {{ ironclaw_source_tmp }}/Dockerfile
+    sed -i 's/^RUN cargo build --release --bin ironclaw/COPY build.rs .\/\nCOPY tests\/ tests\/\nRUN cargo build --release --bin ironclaw/' {{ ironclaw_source_tmp }}/Dockerfile
   when: "'missing' in (ironclaw_image_check.stdout | default('')) or (ironclaw_force_rebuild | default(false))"
   changed_when: true
 
