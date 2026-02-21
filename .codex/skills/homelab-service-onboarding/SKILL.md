@@ -1,83 +1,120 @@
 ---
 name: homelab-service-onboarding
-description: Use this skill when adding a new service to this homelab repo and you need end-to-end Ansible deployment, Technitium DNS records, and Nginx Proxy Manager proxy config that uses the klsll.com wildcard certificate.
+description: >
+  Use when adding any new service to this homelab. Covers all service classes
+  (first-class, mcp, utility, agent) via a manifest-driven six-phase pipeline.
+  Supports two entry points: full run (Phase 1-6) or execution-only (Phase 2-6)
+  when a manifest already exists on the feature branch.
 ---
 
 # Homelab Service Onboarding
 
-Use this skill for new services that must be deployed via Ansible and exposed through NPM + Technitium DNS.
+## Entry Points
 
-## Outcomes
+**Full run (Phase 1 → 6):** Start from a service description. Produce the manifest, then execute all phases.
 
-Produce all of these in one change set:
-- Service deployment playbook in `ansible/playbooks/<group>/deploy-<service>.yml`
-- Optional role at `ansible/roles/<service>/` when deployment is more than a few tasks
-- NPM service definition in `ansible/files/npm/services/<service>.yml`
-- Proxy sync playbook in `ansible/playbooks/services/update-<service>-proxy.yml`
-- Service documentation page in `docs/services/<service>.md`
-- Docs index updates in `README.md`, `docs/README.md`, and `ansible/playbooks/README.md` when playbooks/docs are added
+**Execution-only (Phase 2 → 6):** A `service-manifest.yml` already exists on the feature branch (produced by a human or coordinating agent). Read it from git and begin at Validate.
 
-## Required standards
+## Service Classes
 
-- Run from a feature branch, never `main`.
-- Be explicit about service placement (Unraid, platform VM, DNS LXC, GPU worker).
-- Use Ansible as source of truth; avoid clickops-only steps.
-- Never hardcode secrets; use env vars or 1Password lookups.
-- Set timezone to `America/Phoenix` for containers/services that support `TZ`.
-- For Unraid targets, prefer `raw`/shell-safe commands because Python may be unavailable.
-- Use stable/pinned image tags for critical services (avoid `latest` unless justified).
-- Include health checks with retries and clear failure messages.
+See `references/class-rules.md` for full rules and decision guidance.
 
-## Proxy and DNS standards (mandatory)
+| Class | Own IP | NPM | DNS | Homepage | mcp-proxy | Director | Bootstrap |
+|-------|--------|-----|-----|----------|-----------|----------|-----------|
+| `first-class` | ✅ macvlan | ✅ | ✅ | ✅ | ❌ | optional | ❌ |
+| `mcp` | ❌ | ❌ | ❌ | ❌ | if stdio | ✅ | ❌ |
+| `utility` | ❌ | optional | optional | ❌ | ❌ | ❌ | ❌ |
+| `agent` | ✅ macvlan | optional | ✅ | ❌ | optional | optional | ✅ |
 
-- Every externally exposed app must have an NPM proxy host entry.
-- Every new proxy host must use `certificate: klsll-wildcard`.
-- Proxy defaults:
-  - `ssl_forced: true`
-  - `hsts: true`
-  - `http2: true`
-  - `scheme: http` unless upstream requires https
-- Add DNS A records in the same `<service>.yml` under `dns_records`.
-- For services proxied through NPM, point DNS record value to NPM IP (`192.168.20.50`) unless there is a documented exception.
-- Include `ansible/files/npm/services/certificates.yml` in `npm_proxy_config_paths` unless the playbook intentionally uses a pre-existing cert map path and documents why.
+## Phase 1 — Intake
+*May be performed by a human, coordinating agent, or the same agent running phases 2–6.*
 
-## Implementation workflow
+- [ ] Research service: Docker image, config, existing MCP adapters if applicable
+- [ ] Open Gitea issue (`mcp__gitea__create_issue`)
+- [ ] Create feature branch: `git checkout -b feature/deploy-<name>`
+- [ ] Allocate port — see `references/port-registry-pattern.md`
+- [ ] Produce `service-manifest.yml` — see `references/service-manifest-schema.yml`
+- [ ] Commit manifest to feature branch
 
-1. Pick target host group and deployment style.
-2. Create/extend deployment playbook:
-   - For simple deployment, direct playbook tasks are acceptable.
-   - For reusable deployment, create a role and keep playbook thin.
-3. Create NPM+DNS service file from `references/npm-service-template.yml`.
-4. Create proxy sync playbook from `references/update-proxy-playbook-template.yml`.
-5. Update documentation:
-   - Add `docs/services/<service>.md` with deploy/run/verify/rollback.
-   - Add links in `README.md` and `docs/README.md`.
-   - Update `ansible/playbooks/README.md` if playbooks were added.
-   - Update the Obsidian service catalog (`obsidian_write_note` via MCP or edit vault directly).
-6. Validate and run in order:
-   - `cd ansible`
-   - `ansible-playbook playbooks/<group>/deploy-<service>.yml --syntax-check`
-   - `ansible-playbook playbooks/<group>/deploy-<service>.yml --check --diff --limit <host>`
-   - `ansible-playbook playbooks/<group>/deploy-<service>.yml --diff --limit <host> -v`
-   - `ansible-playbook playbooks/services/update-<service>-proxy.yml --syntax-check`
-   - `ansible-playbook playbooks/services/update-<service>-proxy.yml --check --diff --limit unraid`
-   - `ansible-playbook playbooks/services/update-<service>-proxy.yml --diff --limit unraid -v`
-7. Verify endpoint and DNS resolution after deploy.
+## Phase 2 — Validate
 
-## Additional standards this skill should enforce
+- [ ] Port not already in `docs/network-ports.md`
+- [ ] Role name unique: `ls ansible/roles/`
+- [ ] Class rules satisfied — see `references/class-rules.md`
+- [ ] Docker image tag resolvable
+- [ ] If `transport: stdio`: verify mcp-proxy is healthy — `curl -s http://192.168.20.14:6980/servers`
 
-- Idempotence gate: rerun both deploy and proxy playbooks in `--check --diff` and expect no unintended changes.
-- Required-variable gate: fail fast when required env vars are missing (use `assert` with actionable messages).
-- Network gate: ensure required Docker network exists (or fail with explicit remediation).
-- Security gate: no plaintext secrets in repo; placeholders must use `CHANGEME_*` naming.
-- Observability gate: include at least one post-deploy health check and one log inspection command in task output/docs.
-- Rollback gate: provide exact rollback command(s), usually `docker compose down` or redeploy prior pinned image tag.
-- Naming gate: enforce predictable filenames (`deploy-<service>.yml`, `update-<service>-proxy.yml`, `<service>.yml`).
-- Documentation gate: PR is incomplete unless README/docs/service docs and Obsidian service catalog are updated.
+## Phase 3 — Generate
+
+See `references/artifact-checklist.md` for per-class file list.
+
+**All classes:**
+- [ ] `ansible/roles/<name>/defaults/main.yml`
+- [ ] `ansible/roles/<name>/tasks/main.yml`
+- [ ] `ansible/files/<name>/docker-compose.yml`
+- [ ] `ansible/playbooks/<group>/deploy-<name>.yml`
+
+**mcp additionally:**
+- [ ] If `mcp_proxy.enabled`: update mcp-proxy servers config, redeploy, verify before Director wiring
+- [ ] Add to `ROLE_MAP` in `ansible/scripts/export-director-mcp-fragment.py`
+
+**first-class additionally:**
+- [ ] `ansible/files/npm/services/<name>.yml` — see `references/npm-service-template.yml`
+- [ ] `ansible/playbooks/services/update-<name>-proxy.yml` — see `references/update-proxy-playbook-template.yml`
+- [ ] Technitium DNS A record task
+- [ ] Homepage card in `stacks/platform/homepage/config/services.yaml`
+
+**agent additionally:**
+- [ ] Bootstrap tasks: zsh + oh-my-zsh, op, tea, homebrew, `.env_container`, SSH key
+
+## Phase 4 — Document
+
+- [ ] Add port row to `docs/network-ports.md`
+- [ ] Write Obsidian catalog entry via MCP (`obsidian_write_note`) or vault directly at `/mnt/user/appdata/obsidian/vaults/homelab/services/<name>.md`
+- [ ] Update `ansible/README.md` roles table
+- [ ] Update `ansible/playbooks/README.md`
+- [ ] If first-class: confirm homepage card added
+
+## Phase 5 — Deploy
+
+```bash
+cd ansible
+ansible-playbook playbooks/<group>/deploy-<name>.yml --syntax-check
+ansible-playbook playbooks/<group>/deploy-<name>.yml --check --diff --limit <host>
+ansible-playbook playbooks/<group>/deploy-<name>.yml --diff --limit <host> -v
+```
+
+- [ ] Verify: container running, port responding
+- [ ] For mcp: `curl -s http://192.168.20.14:<port>/mcp` returns valid response
+- [ ] Idempotence: rerun `--check`, expect `changed=0`
+- [ ] Open PR via `mcp__gitea__create_pull_request`, link to issue
+- [ ] Merge, delete branch
+
+## Phase 6 — Monitor *(placeholder — blocked on issue #30)*
+
+- [ ] Add to Obsidian catalog entry: "Uptime Kuma monitor pending — see issue #30"
+
+## Standards (all classes)
+
+- Run from a feature branch — never `main`
+- Never hardcode secrets — use `op read "op://AI Wedge/<item>/<field>"` in `defaults/main.yml`
+- Set `TZ: America/Phoenix` in compose env
+- Use `restart: unless-stopped`
+- For Unraid targets: use `ansible.builtin.raw` (no Python available)
+- Stateful volumes at `/mnt/user/appdata/<name>` (Unraid default until issue #31 resolved)
+- Unraid icon: set `net.unraid.docker.icon` label — source from `https://dashboardicons.com/`
+- Resource limits: always set `deploy.resources.limits` in compose
+- Idempotence gate: rerun `--check --diff` expecting `changed=0`
+- Security gate: no plaintext secrets; placeholders use `CHANGEME_*`
+- Rollback: document exact rollback command in Obsidian catalog entry
 
 ## References
 
-- Service deployment playbook scaffold: `references/deploy-playbook-template.yml`
-- NPM + DNS service definition scaffold: `references/npm-service-template.yml`
-- Proxy sync playbook scaffold: `references/update-proxy-playbook-template.yml`
-
+- Manifest template: `references/service-manifest-schema.yml`
+- Class rules: `references/class-rules.md`
+- Port allocation: `references/port-registry-pattern.md`
+- Ansible role structure: `references/ansible-role-template.md`
+- Per-class artifact checklist: `references/artifact-checklist.md`
+- NPM service template: `references/npm-service-template.yml`
+- Proxy playbook template: `references/update-proxy-playbook-template.yml`
+- Deploy playbook template: `references/deploy-playbook-template.yml`
