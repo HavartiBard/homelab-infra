@@ -1,0 +1,61 @@
+# service-manifest-schema.yml
+# Annotated template — copy, rename to service-manifest.yml, and fill in for each new service.
+# Commit to feature branch at end of Phase 1.
+# All subsequent phases (2-6) derive their actions deterministically from this file.
+# <name> throughout corresponds to this `name` field.
+
+service:
+  name: <slug>               # lowercase-hyphenated; used for role/dir/playbook names
+  display_name: "<Name>"     # human-readable; used in Obsidian catalog and homepage
+  description: "<one line>"
+
+  # Service class — determines which artifacts are generated and which phase steps apply.
+  # first-class: user-facing app with own IP, NPM proxy, DNS, homepage card
+  # mcp:         AI agent tool, shared IP + port, registered in Director
+  # utility:     internal support service; no Director, no homepage
+  # agent:       interactive container (SSH-in), own IP, full shell bootstrap
+  # See references/class-rules.md for the decision tree.
+  class: <first-class|mcp|utility|agent>
+
+  host: unraid               # unraid | proxmox | jetson | spraycheese
+
+networking:
+  port: <NNNN>               # Allocate from docs/network-ports.md — no conflicts allowed.
+                             # MCP range: 6970–6989. See references/port-registry-pattern.md.
+
+  # http: Director connects directly to http://<host>:<port>/mcp
+  # stdio: mcp-proxy bridges stdio→HTTP; update mcp-proxy BEFORE Director wiring
+  transport: <http|stdio>    # mcp class only; omit for other classes
+
+  shared_ip: true            # false for first-class and agent (macvlan — own IP required)
+  # ip: 192.168.20.XX        # Required if shared_ip: false — allocate from VLAN 20 range
+
+  mcp_proxy:                 # mcp class only
+    enabled: false           # true only if transport: stdio
+    name: <slug>             # key registered in mcp-proxy servers config
+
+  director:                  # mcp class only
+    enabled: true
+    playbook: dev-core       # Director playbook to register under: dev-core | global-core
+
+container:
+  image: <org/image:tag>     # Prefer pinned tags for production; avoid `latest` unless justified
+  interactive_shell: false   # true = agent class: deploy zsh, oh-my-zsh, op, tea, homebrew
+  stateful: true             # true = volume at /mnt/user/appdata/<name> (Unraid default)
+  # Find icons at https://dashboardicons.com/
+  # CDN URL format: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/<name>.png
+  unraid_icon_url: "<url>"
+
+# first-class only — omit this entire block for mcp / utility / agent
+# reverse_proxy:
+#   domain: <name>.klsll.com
+#   npm_upstream_port: <container-port>  # the port inside the container, not the host port
+#   npm_proxy: true
+#   homepage_card: true
+#   homepage_group: "<Group>"            # e.g. "Media", "Infrastructure", "AI"
+
+# Document credentials this service needs — implement via op read in defaults/main.yml.
+# Never put values here; this is a reference only.
+# credentials:
+#   - name: API_KEY
+#     op_path: "op://AI Wedge/<Item Name>/credential"
