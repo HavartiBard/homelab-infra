@@ -1,0 +1,71 @@
+---
+# Deploy gsuite-mcp container on Unraid
+# Uses raw commands since Unraid lacks Python
+# Requires pre-existing /mnt/user/appdata/gsuite-mcp/{gauth.json,accounts.json,credentials/}
+
+- name: Create gsuite-mcp appdata directories
+  ansible.builtin.raw: |
+    mkdir -p {{ gsuite_mcp_appdata_dir }}/credentials
+  changed_when: false
+
+- name: Copy Dockerfile to remote
+  ansible.builtin.raw: |
+    echo '{{ lookup("file", role_path + "/../../../docker/gsuite-mcp/Dockerfile") | b64encode }}' | base64 -d > /tmp/gsuite-mcp-Dockerfile
+  changed_when: false
+
+- name: Build gsuite-mcp image
+  ansible.builtin.raw: |
+    docker build -t {{ gsuite_mcp_image }} -f /tmp/gsuite-mcp-Dockerfile /tmp
+  register: build_result
+  changed_when: "'Successfully built' in build_result.stdout or 'writing image' in build_result.stdout"
+
+- name: Stop existing container (if running)
+  ansible.builtin.raw: |
+    docker stop {{ gsuite_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Remove existing container (if exists)
+  ansible.builtin.raw: |
+    docker rm {{ gsuite_mcp_container_name }} 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy gsuite-mcp container
+  ansible.builtin.raw: |
+    docker run -d \
+      --name {{ gsuite_mcp_container_name }} \
+      --restart unless-stopped \
+      --label net.unraid.docker.icon='{{ gsuite_mcp_icon }}' \
+      -v {{ gsuite_mcp_appdata_dir }}/gauth.json:/config/gauth.json:ro \
+      -v {{ gsuite_mcp_appdata_dir }}/accounts.json:/config/accounts.json:ro \
+      -v {{ gsuite_mcp_appdata_dir }}/credentials:/config/credentials \
+      -e TZ='{{ timezone }}' \
+      {{ gsuite_mcp_image }}
+  register: container_result
+  changed_when: container_result.rc == 0
+
+- name: Wait for container to start
+  ansible.builtin.raw: |
+    sleep 3
+  changed_when: false
+
+- name: Check container is running
+  ansible.builtin.raw: |
+    docker ps --filter "name={{ gsuite_mcp_container_name }}" --filter "status=running" -q
+  register: running_check
+  failed_when: running_check.stdout | trim == ""
+  changed_when: false
+
+- name: Verify mcp-gsuite binary is accessible
+  ansible.builtin.raw: |
+    docker exec {{ gsuite_mcp_container_name }} mcp-gsuite --help 2>&1
+  register: help_check
+  changed_when: false
+
+- name: Display binary check result
+  ansible.builtin.debug:
+    msg: "{{ help_check.stdout_lines }}"
+
+- name: Clean up build artifacts
+  ansible.builtin.raw: |
+    rm -f /tmp/gsuite-mcp-Dockerfile
+  changed_when: false
