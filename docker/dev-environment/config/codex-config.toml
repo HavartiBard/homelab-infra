@@ -26,12 +26,6 @@ enabled = true
 transport = "shttp"
 url = "http://192.168.20.14:6975/mcp"
 
-[mcp_servers.notion_public]
-enabled = true
-transport = "sse"
-url = "http://192.168.20.14:3000/mcp"
-bearer_token_env_var = "NOTION_MCP_TOKEN"
-
 [notice.model_migrations]
 "gpt-5.1-codex-max" = "gpt-5.2-codex"
 "gpt-5.1-codex-mini" = "gpt-5.2-codex"

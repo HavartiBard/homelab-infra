@@ -26,7 +26,7 @@ This repository uses a 1Password Service Account for automated credential access
 
 2. Verify the service account works:
    ```bash
-   op read "op://AI Wedge/Notion MCP Integration/credential"
+   op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"
    # Should output the token without prompting for signin
    ```
 
@@ -36,20 +36,20 @@ All playbooks automatically read credentials from 1Password. Just run them:
 
 ```bash
 # Credentials are automatically fetched from 1Password
-ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 ### Override Credentials for Testing
 
 ```bash
 # Override a specific credential via environment variable
-NOTION_TOKEN="test-token" ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
+UNRAID_API_KEY="test-key" ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 ### How It Works
 
 Roles use a two-tier fallback pattern:
-1. **Environment variable** (e.g., `NOTION_TOKEN`) - highest priority
+1. **Environment variable** (e.g., `UNRAID_API_KEY`) - highest priority
 2. **Direct 1Password lookup** via `op read` - automatic via service account
 3. **Empty fallback** - role fails with clear error if credential missing
 
@@ -178,9 +178,7 @@ Playbooks and roles assume stable 1Password item names but only consume them via
 - `Cloudflare DNS Token` (field: `credential`/API token)
 - `AdGuard Admin` (fields: `username`, `password`)
 - `Orbi Login` (fields: `username`, `password`)
-- `Notion MCP Integration` (field: `credential`)
 - `OP_SERVICE_ACCOUNT_TOKEN` (field: `credential`)
-- `Portainer API Token` (field: `credential`)
 - `Proxmox MCP Token` (fields: `host`, `port`, `username`, `token_name`, `credential`, `allow_elevated`)
 - `Unraid GraphQL - Wedge` (field: `credential`)
 
@@ -198,10 +196,8 @@ When adding a new service, pick a clear, purpose-specific item name, tag it `Ans
 | `CLOUDFLARE_API_TOKEN` | Cloudflare DNS Token | credential | `deploy-npm-unraid.yml` (npm role, cert DNS challenge) |
 | `PROXMOX_MCP_*` (HOST/PORT/USER/TOKEN_NAME/TOKEN_VALUE/ALLOW_ELEVATED) | Proxmox MCP Token | host, port, username, token_name, credential, allow_elevated | `deploy-proxmox-mcp.yml` |
 | `PROXMOX_API_TOKEN_SECRET` (+ host/user/id envs) | Proxmox API (root@pam) | secret/token field | `provision-dns-dhcp.yml`, `provision-dns-dhcp-services.yml` |
-| `NOTION_TOKEN` | Notion MCP Integration | credential/token | `deploy-notion-mcp-public.yml` |
 | `ADGUARD_ADMIN_USER` / `ADGUARD_ADMIN_PASSWORD` | AdGuard Admin | username, password | `deploy-adguard-config.yml` |
 | `ORBI_USERNAME` / `ORBI_PASSWORD` | Orbi Login | username, password | `deploy-homelab-mcp.yml` (read from 1Password item fields) |
-| `PORTAINER_TOKEN` | Portainer API Token | credential | `deploy-portainer-mcp.yml` |
 | `UNRAID_API_KEY` | Unraid GraphQL - Wedge | credential | `deploy-unraid-mcp.yml` |
 
 Notes:

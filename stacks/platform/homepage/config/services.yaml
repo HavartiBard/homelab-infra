@@ -2,9 +2,6 @@
     - Homepage:
         icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png
         href: https://home.klsll.com
-    - Portainer:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/portainer.png
-        href: https://portainer.klsll.com
     - NPM:
         icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png
         href: https://npm.klsll.com

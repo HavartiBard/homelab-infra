@@ -71,14 +71,6 @@ scrape_configs:
   #     - targets: ['host.docker.internal:9323']
 
   # =============================================================================
-  # Portainer Metrics
-  # =============================================================================
-  # - job_name: 'portainer'
-  #   static_configs:
-  #     - targets: ['portainer:9000']
-  #   metrics_path: /api/metrics
-
-  # =============================================================================
   # GPU Worker Metrics (Ollama)
   # Add WSL2 worker IPs after deployment
   # =============================================================================

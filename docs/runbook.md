@@ -1,6 +1,6 @@
 # Homelab Infrastructure Runbook
 
-**Executable step-by-step guide from zero to working Portainer-managed homelab.**
+**Executable step-by-step guide from zero to working homelab.**
 
 ## Prerequisites
 
@@ -103,11 +103,6 @@ sudo apt install -y ufw
 # Allow SSH from LAN
 sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp
 
-# Portainer (LAN only)
-sudo ufw allow from 192.168.0.0/16 to any port 9443 proto tcp
-sudo ufw allow from 192.168.0.0/16 to any port 9000 proto tcp
-sudo ufw allow from 192.168.0.0/16 to any port 8000 proto tcp
-
 # NPM public ports (for reverse proxy)
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
@@ -173,121 +168,19 @@ docker compose ps
 
 | Service | URL | Default Credentials |
 |---------|-----|---------------------|
-| Portainer | https://platform-vm-ip:9443 | Create admin on first login |
 | NPM | http://platform-vm-ip:81 | admin@example.com / changeme |
 | Uptime Kuma | http://platform-vm-ip:3001 | Create admin on first login |
 
 **Note:** DNS (Technitium/AdGuard) runs on dedicated LXCs (tt1/tt2, agh1/agh2), not Platform VM.
-See Phase 6 or `ansible/playbooks/dns/provision-dns-dhcp-services.yml` for DNS deployment.
+See Phase 4 or `ansible/playbooks/dns/provision-dns-dhcp-services.yml` for DNS deployment.
 
 **First-time setup tasks:**
-1. **Portainer:** Create admin account, save password in 1Password
-2. **NPM:** Change default admin email/password immediately
-3. **Uptime Kuma:** Create admin account
+1. **NPM:** Change default admin email/password immediately
+2. **Uptime Kuma:** Create admin account
 
 ---
 
-## Phase 2: Portainer Agent Deployment
-
-### 2.1 Add Local Environment in Portainer
-
-1. Open Portainer at `https://platform-vm-ip:9443`
-2. The local Docker environment should appear automatically
-3. Click on it and verify containers are visible
-
-### 2.2 Install Portainer Agent on Unraid
-
-**Option A: Via Unraid Docker UI**
-
-1. Go to Unraid web UI → Docker → Add Container
-2. Use these settings:
-   - **Name:** portainer-agent
-   - **Repository:** portainer/agent:2.21.4
-   - **Network:** bridge
-   - **Port:** 9001 → 9001
-   - **Path:** /var/run/docker.sock → /var/run/docker.sock
-   - **Path:** /var/lib/docker/volumes → /var/lib/docker/volumes
-
-**Option B: Via SSH/Command Line**
-
-```bash
-# SSH into Unraid
-ssh root@<unraid-ip>
-
-# Run Portainer Agent
-docker run -d \
-  --name portainer-agent \
-  --restart always \
-  -p 9001:9001 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-  portainer/agent:2.21.4
-```
-
-**Option C: Use the install script**
-
-```bash
-# From this repo
-./scripts/install-portainer-agent.sh
-```
-
-### 2.3 Add Unraid Endpoint to Portainer
-
-1. In Portainer, go to **Environments** → **Add Environment**
-2. Select **Agent**
-3. Enter:
-   - **Name:** Unraid
-   - **Environment URL:** `<unraid-ip>:9001`
-4. Click **Connect**
-5. Verify status shows "Up" with green indicator
-
-### 2.4 Install Agent on Additional Proxmox Docker VMs
-
-For each additional Docker VM:
-
-```bash
-# SSH into the VM
-ssh user@<vm-ip>
-
-# Run Portainer Agent
-docker run -d \
-  --name portainer-agent \
-  --restart always \
-  -p 9001:9001 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-  portainer/agent:2.21.4
-
-# Configure firewall to only allow Platform VM
-sudo ufw allow from <platform-vm-ip> to any port 9001 proto tcp
-sudo ufw enable
-```
-
-Add each endpoint in Portainer using the same process as Unraid.
-
-### 2.5 Configure Endpoint Groups and Tags
-
-1. In Portainer, go to **Environments**
-2. For each endpoint, click **Edit**
-3. Add **Tags** (e.g., `always-on`, `gpu-worker`, `nas`, `proxmox`)
-4. Create **Groups** for organization:
-   - **Always-On:** Platform VM, Unraid
-   - **GPU Workers:** WSL2 endpoints
-   - **Proxmox VMs:** Additional Docker VMs
-
-### 2.6 Verify All Agents
-
-```bash
-# From Platform VM, test connectivity to each agent
-curl -s http://<unraid-ip>:9001/api/agents | jq .
-curl -s http://<proxmox-vm-ip>:9001/api/agents | jq .
-```
-
-All endpoints should show "Up" with green status in Portainer.
-
----
-
-## Phase 3: WSL2 GPU Worker Setup
+## Phase 2: WSL2 GPU Worker Setup
 
 ### 3.1 Enable WSL2 on Windows
 
@@ -374,48 +267,7 @@ docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
 
 Expected output: GPU information showing your graphics card.
 
-### 3.6 Deploy Portainer Edge Agent
-
-1. In Portainer, go to **Environments** → **Add Environment**
-2. Select **Edge Agent**
-3. Enter:
-   - **Name:** GPU-Worker-1 (or descriptive name)
-   - **Portainer Server URL:** `https://<platform-vm-ip>:9443`
-4. Click **Create**
-5. Copy the generated Edge Agent command
-
-```bash
-# In WSL2, run the Edge Agent (example - use YOUR generated command)
-docker run -d \
-  --name portainer-edge-agent \
-  --restart always \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-  -v /:/host \
-  -v portainer_agent_data:/data \
-  -e EDGE=1 \
-  -e EDGE_ID=<your-edge-id> \
-  -e EDGE_KEY=<your-edge-key> \
-  -e EDGE_INSECURE_POLL=1 \
-  portainer/agent:2.21.4
-```
-
-### 3.7 Deploy GPU Worker Stack
-
-**Option A: Deploy from Portainer UI (Recommended)**
-
-1. In Portainer, select the GPU Worker environment
-2. Go to **Stacks** → **Add Stack**
-3. Select **Repository**
-4. Enter:
-   - **Name:** gpu-worker
-   - **Repository URL:** `<your-git-repo-url>`
-   - **Branch:** main
-   - **Compose path:** stacks/gpu-worker/compose.yml
-5. Add environment variables from `.env.example`
-6. Click **Deploy the stack**
-
-**Option B: Deploy locally in WSL2**
+### 3.6 Deploy GPU Worker Stack
 
 ```bash
 # Clone repo in WSL2
@@ -460,13 +312,7 @@ Access Open WebUI at `http://<wsl2-ip>:8080`
 
 To quickly stop GPU workloads for gaming:
 
-**Option A: From Portainer UI**
-1. Go to GPU Worker environment
-2. Select gpu-worker stack
-3. Click **Stop**
-4. When done gaming, click **Start**
-
-**Option B: From WSL2 command line**
+**From WSL2 command line:**
 
 ```bash
 # Stop for gaming
@@ -487,59 +333,18 @@ docker compose start
 
 ---
 
-## Phase 4: Deploy Stacks from Git in Portainer
+## Phase 3: Monitoring Stack Deployment
 
-### 4.1 Configure Git Repository in Portainer
+### 3.1 Deploy Monitoring Stack
 
-1. Go to **Settings** → **Authentication** (if using private repo)
-2. Add Git credentials if needed
+```bash
+cd stacks/monitoring
+cp .env.example .env
+# Edit .env and set GRAFANA_ADMIN_PASSWORD
+docker compose up -d
+```
 
-### 4.2 Deploy Stack from Git
-
-1. Select target environment (e.g., Platform VM)
-2. Go to **Stacks** → **Add Stack**
-3. Select **Repository**
-4. Configure:
-   - **Name:** Choose a name (e.g., `monitoring`)
-   - **Repository URL:** Your Git repo URL
-   - **Branch:** `main`
-   - **Compose path:** `stacks/monitoring/compose.yml`
-   - **GitOps updates:** Enable for auto-sync (optional)
-5. **Environment variables:** Add from `.env.example`
-   - Click "Add environment variable" for each required var
-   - Or use "Load variables from .env file" if supported
-6. Click **Deploy the stack**
-
-### 4.3 Handling Environment Variables and Secrets
-
-**DO NOT commit secrets to Git.** Instead:
-
-1. Store secrets in 1Password
-2. When deploying in Portainer, manually enter env vars
-3. Portainer encrypts and stores them securely
-
-For automation, consider:
-- Portainer's built-in secret management
-- External secret stores (HashiCorp Vault, etc.)
-
----
-
-## Phase 5: Monitoring Stack Deployment
-
-### 5.1 Deploy Monitoring Stack
-
-1. In Portainer, select Platform VM environment
-2. Go to **Stacks** → **Add Stack** → **Repository**
-3. Configure:
-   - **Name:** monitoring
-   - **Repository URL:** Your repo URL
-   - **Compose path:** stacks/monitoring/compose.yml
-4. Add environment variables:
-   - `GRAFANA_ADMIN_PASSWORD` (required)
-   - Other vars from `.env.example`
-5. Deploy
-
-### 5.2 Configure Prometheus Targets
+### 3.2 Configure Prometheus Targets
 
 After deployment, edit `prometheus.yml` to add your hosts:
 
@@ -559,7 +364,7 @@ nano prometheus.yml
 curl -X POST http://localhost:9090/-/reload
 ```
 
-### 5.3 Import Grafana Dashboards
+### 3.3 Import Grafana Dashboards
 
 1. Access Grafana at `http://platform-vm-ip:3000`
 2. Login with admin credentials
@@ -567,25 +372,22 @@ curl -X POST http://localhost:9090/-/reload
 4. Import these community dashboards:
    - **1860** - Node Exporter Full
    - **893** - Docker/cAdvisor
-   - **11462** - Portainer
 5. Select Prometheus as datasource
 
-### 5.4 Configure Uptime Kuma Monitors
+### 3.4 Configure Uptime Kuma Monitors
 
 1. Access Uptime Kuma at `http://platform-vm-ip:3001`
 2. Add monitors for:
-   - Portainer: `https://localhost:9443`
    - NPM: `http://localhost:81`
    - Technitium (tt1): `http://192.168.20.2:5380`
    - AdGuard (agh1): `http://192.168.20.4:3000`
-   - Each agent endpoint
    - External services you care about
 
 ---
 
-## Phase 6: DNS and Reverse Proxy Configuration
+## Phase 4: DNS and Reverse Proxy Configuration
 
-### 6.1 Deploy DNS Infrastructure via Ansible
+### 4.1 Deploy DNS Infrastructure via Ansible
 
 DNS (Technitium/AdGuard) is provisioned to dedicated LXCs via Ansible, not Platform VM.
 
@@ -611,39 +413,37 @@ ansible-playbook ansible/playbooks/dns/provision-dns-dhcp-services.yml --diff
 
 See `ansible/playbooks/dns/provision-dns-dhcp-services.yml` and `ansible/files/dns/` for compose templates.
 
-### 6.2 Configure Technitium as Authoritative DNS
+### 4.2 Configure Technitium as Authoritative DNS
 
 1. Access Technitium at `http://192.168.20.2:5380` (tt1) or `http://192.168.20.3:5380` (tt2)
 2. Go to **Zones** → **Add Zone**
 3. Create zone for your domain (e.g., `klsll.com`)
 4. Add A records for your services across VLANs:
-   - `portainer.lab.klsll.com` → Platform VM IP
    - `npm.lab.klsll.com` → Platform VM IP
    - etc.
 
 See **Homelab Tests > Technitium DNS config checklist** (below) for detailed setup.
 
-### 6.3 Configure Router DHCP
+### 4.3 Configure Router DHCP
 
 Update your router's DHCP settings to use Technitium/AdGuard as DNS:
 - Primary DNS: `192.168.20.2` (tt1 Technitium)
 - Secondary DNS: `192.168.20.3` (tt2 Technitium)
 - Fallback: `1.1.1.1` (external)
 
-### 6.4 Configure NPM Proxy Hosts
+### 4.4 Configure NPM Proxy Hosts
 
 1. Access NPM at `http://platform-vm-ip:81`
 2. Add Proxy Hosts for each service:
 
 | Domain | Forward Hostname | Forward Port | SSL |
 |--------|------------------|--------------|-----|
-| portainer.home.local | localhost | 9443 | Let's Encrypt* |
 | grafana.home.local | localhost | 3000 | Let's Encrypt* |
 | status.home.local | localhost | 3001 | Let's Encrypt* |
 
 *For LAN-only services, you can use self-signed certs or HTTP.
 
-#### 6.4.1 Automated service proxies
+#### 4.4.1 Automated service proxies
 
 We keep the proxy/DNS definitions for key portals under `ansible/files/npm/services/`
 and sync them to NPM with the matching playbooks:
@@ -653,7 +453,6 @@ and sync them to NPM with the matching playbooks:
 | `ansible/playbooks/services/update-adguard-proxy.yml` | Publish `adguard.klsll.com` pointing to AdGuard HTTP UI via the wildcard cert (loaded from `ansible/files/npm/services/certificates.yml`) |
 | `ansible/playbooks/services/update-dns-proxy.yml` | Publish `dns.klsll.com` so Technitium and DNS1/2 hostnames resolve through NPM |
 | `ansible/playbooks/services/update-proxmox-proxy.yml` | Publish `pve.klsll.com` for the Proxmox web UI |
-| `ansible/playbooks/services/update-portainer-proxy.yml` | Publish `portainer.klsll.com` for Portainer MCP access |
 | `ansible/playbooks/services/update-unraid-proxy.yml` | Publish `unraid.klsll.com` for the Unraid web UI |
 
 Each config ensures the vanity DNS name resolves to the NPM IP (192.168.20.50) so the UI traffic flows through the proxy stack and shares the wildcard certificate.
@@ -662,7 +461,6 @@ Run the applicable playbook any time you change the upstream port, move the serv
 
 ```bash
 ansible-playbook ansible/playbooks/services/update-unraid-proxy.yml
-ansible-playbook ansible/playbooks/services/update-portainer-proxy.yml
 ansible-playbook ansible/playbooks/services/update-adguard-proxy.yml
 ansible-playbook ansible/playbooks/services/update-proxmox-proxy.yml
 ansible-playbook ansible/playbooks/services/update-dns-proxy.yml
@@ -673,7 +471,6 @@ After the playbook completes, verify from any management host:
 ```bash
 dig @192.168.20.50 adguard.klsll.com +short
 curl -k https://pve.klsll.com
-curl https://portainer.klsll.com/api/status
 ```
 
 ---
@@ -682,7 +479,6 @@ curl https://portainer.klsll.com/api/status
 
 ### Platform VM
 - [ ] Docker running: `docker ps`
-- [ ] Portainer accessible: `https://platform-vm-ip:9443`
 - [ ] NPM accessible: `http://platform-vm-ip:81`
 - [ ] Uptime Kuma accessible: `http://platform-vm-ip:3001`
 - [ ] Firewall active: `sudo ufw status`
@@ -691,15 +487,9 @@ curl https://portainer.klsll.com/api/status
 - [ ] Technitium DNS responding: `dig @192.168.20.2 google.com` (tt1)
 - [ ] AdGuard accessible: `http://192.168.20.4:3000` (agh1)
 
-### Agents
-- [ ] Unraid agent connected in Portainer
-- [ ] All Proxmox VM agents connected
-- [ ] All endpoints show "healthy" status
-
 ### GPU Workers
 - [ ] WSL2 Docker running
 - [ ] NVIDIA GPU accessible: `docker run --gpus all nvidia/cuda:12.0-base nvidia-smi`
-- [ ] Edge Agent connected in Portainer
 - [ ] GPU Worker stack deployed and healthy
 - [ ] Ollama API responding: `curl http://localhost:11434/api/tags`
 
@@ -710,8 +500,7 @@ curl https://portainer.klsll.com/api/status
 
 ### Security
 - [ ] No secrets in Git: `git grep -i password`
-- [ ] Portainer not accessible from internet
-- [ ] Agent ports only accessible from Platform VM
+- [ ] Management interfaces not accessible from internet
 
 ---
 
@@ -749,22 +538,6 @@ docker run --rm -v <volume-name>:/data -v $(pwd):/backup alpine \
 2. Restore volumes from backup
 3. Checkout known-good commit
 4. Redeploy stacks
-
-### Edge Agent Reconnection
-
-If Edge Agent loses connection:
-
-```bash
-# In WSL2
-docker logs portainer-edge-agent
-
-# Restart agent
-docker restart portainer-edge-agent
-
-# If still failing, remove and redeploy with new edge key
-docker rm -f portainer-edge-agent
-# Re-run the edge agent command from Portainer
-```
 
 ---
 
@@ -808,18 +581,6 @@ docker info | grep -i nvidia
 
 # Restart Docker
 sudo service docker restart
-```
-
-### Edge Agent not connecting
-```bash
-# Check agent logs
-docker logs portainer-edge-agent
-
-# Verify outbound connectivity
-curl -v https://<platform-vm-ip>:8000
-
-# Check edge key hasn't expired
-# Generate new edge key in Portainer if needed
 ```
 
 ---
@@ -889,7 +650,6 @@ Primary: tt1 (192.168.1.2/20.2/30.2) = `dns1`. Secondary: tt2 (192.168.1.3/20.3/
 
 ### Quarterly
 - [ ] Review firewall rules
-- [ ] Audit Portainer users and access
 - [ ] Update base OS packages
 - [ ] Review and clean up unused images/volumes
 
@@ -931,7 +691,6 @@ docker system prune -af
 
 | Service | URL | Host |
 |---------|-----|------|
-| Portainer | https://platform-vm:9443 | Platform VM |
 | NPM Admin | http://platform-vm:81 | Platform VM |
 | Uptime Kuma | http://platform-vm:3001 | Platform VM |
 | Grafana | http://platform-vm:3000 | Platform VM |

@@ -1,6 +1,6 @@
 # Homepage (gethomepage.dev)
 
-Landing page for homelab services. Runs on the Platform stack alongside Portainer/NPM/Kuma.
+Landing page for homelab services. Runs on the Platform stack alongside NPM/Kuma.
 
 ## Config
 
@@ -12,7 +12,7 @@ Configuration files live in `stacks/platform/homepage/config/` and are mounted t
    - `services.yaml` (service cards)
    - `bookmarks.yaml` (links)
    - `widgets.yaml` (uptime, resources)
-3. Docker/Portainer widgets can read from the mounted Docker socket; disable the socket mount if not needed.
+3. Docker widgets can read from the mounted Docker socket; disable the socket mount if not needed.
 
 ## Environment
 

@@ -53,7 +53,7 @@ Produce all of these in one change set:
    - Add `docs/services/<service>.md` with deploy/run/verify/rollback.
    - Add links in `README.md` and `docs/README.md`.
    - Update `ansible/playbooks/README.md` if playbooks were added.
-   - Prepare Notion update content from `references/notion-update-template.md`.
+   - Update the Obsidian service catalog (`obsidian_write_note` via MCP or edit vault directly).
 6. Validate and run in order:
    - `cd ansible`
    - `ansible-playbook playbooks/<group>/deploy-<service>.yml --syntax-check`
@@ -73,11 +73,11 @@ Produce all of these in one change set:
 - Observability gate: include at least one post-deploy health check and one log inspection command in task output/docs.
 - Rollback gate: provide exact rollback command(s), usually `docker compose down` or redeploy prior pinned image tag.
 - Naming gate: enforce predictable filenames (`deploy-<service>.yml`, `update-<service>-proxy.yml`, `<service>.yml`).
-- Documentation gate: PR is incomplete unless README/docs/service docs and Notion content are updated.
+- Documentation gate: PR is incomplete unless README/docs/service docs and Obsidian service catalog are updated.
 
 ## References
 
 - Service deployment playbook scaffold: `references/deploy-playbook-template.yml`
 - NPM + DNS service definition scaffold: `references/npm-service-template.yml`
 - Proxy sync playbook scaffold: `references/update-proxy-playbook-template.yml`
-- Notion update scaffold: `references/notion-update-template.md`
+

@@ -39,7 +39,6 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - LMSTUDIO_API_KEY=${LMSTUDIO_API_KEY:-}
       - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN:-}
-      - NOTION_MCP_TOKEN=${NOTION_MCP_TOKEN:-}
       - GITEA_TOKEN=${GITEA_TOKEN:-}
       - CODEX_CONFIG_FILE=/home/${DEV_USER:-james}/.codex/config.toml
       - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://spraycheese.lab.klsll.com:1234/v1}

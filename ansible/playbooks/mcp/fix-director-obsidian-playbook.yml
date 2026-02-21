@@ -45,18 +45,13 @@
               - name: onepassword-mcp
                 type: http
                 url: http://192.168.20.14:6975/mcp
-              - name: portainer-mcp
-                type: http
-                url: http://192.168.20.14:6972/mcp
               - name: proxmox-mcp
                 type: http
                 url: http://192.168.20.14:6974/mcp
               - name: gitea-mcp
                 type: http
                 url: http://192.168.20.14:6976/mcp
-              - name: notion-mcp-public
-                type: http
-                url: http://192.168.20.14:3000/mcp
+
               - name: obsidian-mcp
                 type: http
                 url: http://192.168.20.14:6977/mcp
@@ -139,13 +134,6 @@
                   include: []
                 disabled: false
                 url: http://192.168.20.14:6976/mcp
-                headers: {}
-                type: http
-              - name: notion
-                prompts:
-                  include: []
-                disabled: true
-                url: https://mcp.notion.com/mcp
                 headers: {}
                 type: http
               - name: memory

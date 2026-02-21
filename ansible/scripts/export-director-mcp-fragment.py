@@ -35,12 +35,6 @@ ROLE_MAP = [
         "path": "/mcp",
     },
     {
-        "role": "portainer-mcp",
-        "name": "portainer-mcp",
-        "port_var": "portainer_mcp_port",
-        "path": "/mcp",
-    },
-    {
         "role": "proxmox-mcp",
         "name": "proxmox-mcp",
         "port_var": "proxmox_mcp_port",
@@ -50,12 +44,6 @@ ROLE_MAP = [
         "role": "gitea-mcp",
         "name": "gitea-mcp",
         "port_var": "gitea_mcp_port",
-        "path": "/mcp",
-    },
-    {
-        "role": "notion-mcp",
-        "name": "notion-mcp-public",
-        "port_var": "notion_mcp_port",
         "path": "/mcp",
     },
     {
