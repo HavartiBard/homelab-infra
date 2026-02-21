@@ -11,7 +11,7 @@
 
 - name: Generate docker-compose.yml content
   ansible.builtin.set_fact:
-    compose_content: "{{ lookup('template', '../files/searxng-mcp/docker-compose.yml') }}"
+    compose_content: "{{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}"
 
 - name: Write docker-compose.yml
   ansible.builtin.raw: |
@@ -40,7 +40,7 @@
 - name: Wait for mcp-searxng to be healthy
   ansible.builtin.raw: |
     for i in $(seq 1 12); do
-      if curl -sf http://localhost:{{ searxng_mcp_port }}/ > /dev/null 2>&1; then
+      if curl -sf http://localhost:{{ searxng_mcp_port }}/health > /dev/null 2>&1; then
         echo "healthy"; exit 0
       fi
       sleep 5
