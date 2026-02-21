@@ -33,13 +33,13 @@
 ```bash
 eval $(op signin)
 source ansible/scripts/setup-vault-helper-env.sh
-export NOTION_TOKEN=$(op read "op://AI Wedge/Notion MCP Integration/credential")
-ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
+export UNRAID_API_KEY=$(op read "op://AI Wedge/Unraid GraphQL - Wedge/credential")
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 **After** (new):
 ```bash
-ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 That's it! Credentials are automatically fetched via service account.
@@ -56,8 +56,8 @@ echo $OP_SERVICE_ACCOUNT_TOKEN
 # Should output: ops-... (service account token)
 
 # Test it works without signin
-bash -c 'op read "op://AI Wedge/Notion MCP Integration/credential"'
-# Should output the Notion token without prompting
+bash -c 'op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"'
+# Should output the token without prompting
 ```
 
 ### Running Playbooks
@@ -68,18 +68,18 @@ All playbooks work identically - credentials are auto-fetched:
 cd ansible
 
 # Run normally - no setup required
-ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml --check
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml --check
 
 # Credentials are automatically available
-ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml --diff
+ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml --diff
 ```
 
 ### Override Credentials for Testing
 
 ```bash
 # Override a specific credential via environment variable
-NOTION_TOKEN="test-token" \
-  ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml --check
+UNRAID_API_KEY="test-key" \
+  ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml --check
 ```
 
 ## Rollback Procedure
@@ -120,7 +120,7 @@ echo $OP_SERVICE_ACCOUNT_TOKEN
 # Should output ops-... token
 
 # Test service account can read credentials
-op read "op://AI Wedge/Notion MCP Integration/credential"
+op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"
 # Should succeed without signin
 
 # Reload shell to pick up new env vars
@@ -137,7 +137,7 @@ op item list --tags Ansible
 op vault list | grep "AI Wedge"
 
 # Verify item is tagged "Ansible"
-op item get "Notion MCP Integration" --tags
+op item get "Unraid GraphQL - Wedge" --tags
 ```
 
 ### Claude/Codex can't read credentials
@@ -175,9 +175,7 @@ All items in "AI Wedge" vault tagged "Ansible":
 
 | Credential | 1Password Item | Field | op:// Reference |
 |------------|----------------|-------|-----------------|
-| Notion Token | Notion MCP Integration | credential | `op://AI Wedge/Notion MCP Integration/credential` |
 | OP Service Account | OP_SERVICE_ACCOUNT_TOKEN | credential | `op://AI Wedge/OP_SERVICE_ACCOUNT_TOKEN/credential` |
-| Portainer Token | Portainer API Token | credential | `op://AI Wedge/Portainer API Token/credential` |
 | Unraid API Key | Unraid GraphQL - Wedge | credential | `op://AI Wedge/Unraid GraphQL - Wedge/credential` |
 | Orbi Username | Orbi Login | username | `op://AI Wedge/Orbi Login/username` |
 | Orbi Password | Orbi Login | password | `op://AI Wedge/Orbi Login/password` |
@@ -221,20 +219,20 @@ All items in "AI Wedge" vault tagged "Ansible":
 After migration:
 
 - [ ] `OP_SERVICE_ACCOUNT_TOKEN` is in `~/.bashrc`
-- [ ] Service account can read credentials: `op read "op://AI Wedge/Notion MCP Integration/credential"`
+- [ ] Service account can read credentials: `op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"`
 - [ ] All 10 role `defaults/main.yml` files use new pattern (ENV → OP lookup)
 - [ ] Vault files removed from git: `git ls-files | grep vault.yml` returns nothing
 - [ ] Vault backups exist: `ls ~/.ansible-vault-backup-*`
 - [ ] All playbooks pass check mode without `op signin`
-- [ ] Environment variable override works: `NOTION_TOKEN=test ansible-playbook ... --check`
-- [ ] Claude/Codex can read credentials: `python3 -c "import subprocess; subprocess.run(['op', 'read', 'op://AI Wedge/Notion MCP Integration/credential'], check=True)"`
+- [ ] Environment variable override works: `UNRAID_API_KEY=test ansible-playbook ... --check`
+- [ ] Claude/Codex can read credentials: `python3 -c "import subprocess; subprocess.run(['op', 'read', 'op://AI Wedge/Unraid GraphQL - Wedge/credential'], check=True)"`
 
 ## Next Steps
 
 1. **Verify credentials work** with a test playbook:
    ```bash
    cd ansible
-   ansible-playbook playbooks/mcp/deploy-notion-mcp-public.yml --check --limit unraid-server
+   ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml --check --limit unraid-server
    ```
 
 2. **Update any local documentation** that referenced vault setup

@@ -73,10 +73,6 @@ acme_wildcard_domain: "*.klsll.com"
 acme_dns_env: {}
 
 # MCP credentials (loaded from 1Password service account)
-notion_token: >-
-  {{ lookup('env', 'NOTION_TOKEN')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Notion MCP Integration/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
 unraid_api_key: >-
   {{ lookup('env', 'UNRAID_API_KEY')
   | default(lookup('pipe', 'op read "op://AI Wedge/Unraid GraphQL - Wedge/credential" 2>/dev/null || echo ""'), true)
@@ -88,10 +84,6 @@ orbi_username: >-
 orbi_password: >-
   {{ lookup('env', 'ORBI_PASSWORD')
   | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
-portainer_token: >-
-  {{ lookup('env', 'PORTAINER_TOKEN')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Portainer API Token/credential" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 op_service_account_token: >-
   {{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')

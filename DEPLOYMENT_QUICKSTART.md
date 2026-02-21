@@ -159,12 +159,12 @@ ssh -i ~/.ssh/id_ed25519_homelab root@unraid-server "docker logs mcp-proxmox"
 
 ---
 
-## Platform Services (Portainer, NPM, Uptime Kuma)
+## Platform Services (NPM, Uptime Kuma)
 
 **Status:** ✅ Production
 **Host:** Platform VM (Proxmox)
 
-### Deploy via Portainer Stacks
+### Deploy via Docker Compose
 
 ```bash
 cd /home/james/projects/homelab-infra/stacks/platform

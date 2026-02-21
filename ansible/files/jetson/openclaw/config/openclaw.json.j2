@@ -2,8 +2,8 @@
   "models": {
     "providers": {
       "lmstudio": {
-        "baseUrl": "{{ jetson_openclaw_env.LMSTUDIO_BASE_URL }}",
-        "apiKey": "{{ jetson_openclaw_env.LMSTUDIO_API_KEY }}",
+        "baseUrl": "{{ jetson_lmstudio_base_url }}",
+        "apiKey": "{{ lookup('env', 'LMSTUDIO_API_KEY') | default('sk-local', true) }}",
         "api": "openai-completions",
         "models": [
           {
@@ -16,15 +16,6 @@
             "maxTokens": 8192
           },
           {
-            "id": "zai-org/glm-4.7-flash",
-            "name": "GLM-4.7-Flash",
-            "reasoning": true,
-            "input": ["text"],
-            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
-            "contextWindow": 200000,
-            "maxTokens": 8192
-          },
-          {
             "id": "openai/gpt-oss-20b",
             "name": "gpt-oss-20b",
             "reasoning": true,
@@ -34,27 +25,87 @@
             "maxTokens": 4096
           }
         ]
+      },
+      "vllm": {
+        "baseUrl": "{{ jetson_vllm_base_url }}",
+        "apiKey": "vllm-local",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "google/functiongemma-270m-it",
+            "name": "FunctionGemma 270M IT (local vLLM)",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+            "contextWindow": 32768,
+            "maxTokens": 1024
+          }
+        ]
       }
     }
   },
   "agents": {
     "defaults": {
       "model": {
-        "primary": "lmstudio/qwen3-coder-30b-a3b-instruct",
+        "primary": "lmstudio/openai/gpt-oss-20b",
         "fallbacks": [
-          "lmstudio/zai-org/glm-4.7-flash",
-          "lmstudio/openai/gpt-oss-20b"
+          "vllm/google/functiongemma-270m-it"
         ]
+      },
+      "memorySearch": {
+        "enabled": false
+      },
+      "compaction": {
+        "memoryFlush": {
+          "enabled": false
+        }
       }
     }
   },
-  "plugins": {},
   "gateway": {
+    "port": {{ jetson_openclaw_port }},
     "mode": "local",
-    "port": 18789,
     "auth": {
       "mode": "token",
-      "token": "{{ jetson_openclaw_env.OPENCLAW_GATEWAY_TOKEN }}"
+      "token": "{{ lookup('env', 'OPENCLAW_GATEWAY_TOKEN') | default('CHANGEME_SET_OPENCLAW_GATEWAY_TOKEN', true) }}"
+    }
+  },
+  "channels": {
+    "slack": {
+      "mode": "socket",
+      "enabled": true,
+      "botToken": "{{ lookup('env', 'SLACK_BOT_TOKEN') | default('CHANGEME_SET_SLACK_BOT_TOKEN', true) }}",
+      "appToken": "{{ lookup('env', 'SLACK_APP_TOKEN') | default('CHANGEME_SET_SLACK_APP_TOKEN', true) }}",
+      "userTokenReadOnly": true,
+      "allowBots": true,
+      "groupPolicy": "open",
+      "actions": {
+        "messages": true,
+        "channelInfo": true,
+        "emojiList": true
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "slack": {
+        "enabled": true
+      }
+    }
+  },
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "session-memory": {"enabled": true},
+        "command-logger": {"enabled": true},
+        "boot-md": {"enabled": true}
+      }
+    }
+  },
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
     }
   }
 }

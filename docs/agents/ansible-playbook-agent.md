@@ -10,7 +10,7 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
 
 ## Pre-flight
 - Requirements: `ansible`, `community.docker`, `community.general`; optional `ansible-lint`.
-- Secrets/env to export before runs (from 1Password): `UNRAID_API_KEY`, `ORBI_PASSWORD`, `OP_SERVICE_ACCOUNT_TOKEN`, `PORTAINER_TOKEN`, `NOTION_TOKEN`, `PROXMOX_API_TOKEN_SECRET`, `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`. Ensure SSH key at `~/.ssh/id_ed25519_homelab` for targets that use it.
+- Secrets/env to export before runs (from 1Password): `UNRAID_API_KEY`, `ORBI_PASSWORD`, `OP_SERVICE_ACCOUNT_TOKEN`, `PROXMOX_API_TOKEN_SECRET`, `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`. Ensure SSH key at `~/.ssh/id_ed25519_homelab` for targets that use it.
 - Change into the playbook root: `cd ansible`.
 
 ## Standard workflow
@@ -38,9 +38,7 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
 | `ansible/playbooks/mcp/deploy-unraid-mcp.yml` | `unraid`/`unraid-server` | `UNRAID_API_KEY` | `wait_for port=6970`, `docker ps` for `unraid-mcp`, `curl http://<host>:6970/mcp` |
 | `ansible/playbooks/mcp/deploy-homelab-mcp.yml` | `unraid`/`unraid-server` | `ORBI_PASSWORD` | `wait_for port=6971`, `docker ps` for `homelab-mcp`, `curl http://<host>:6971/mcp` |
 | `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` | `unraid`/`unraid-server` | `OP_SERVICE_ACCOUNT_TOKEN` | `wait_for port=6975`, `docker ps` for `onepassword-mcp`, `curl http://<host>:6975/mcp` |
-| `ansible/playbooks/mcp/deploy-portainer-mcp.yml` | `unraid`/`unraid-server` | `PORTAINER_TOKEN` | `wait_for port=6972`, `docker ps` for `portainer-mcp`, `curl http://<host>:6972/mcp` |
 | `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` | `unraid-server` | `group_vars/unraid/vault.yml` values set (Proxmox host/user/token) | `wait_for port=6974`, `docker ps` for `mcp-proxmox` |
-| `ansible/playbooks/mcp/deploy-notion-mcp-public.yml` | `unraid`/`unraid-server` | `NOTION_TOKEN` (auth token comes from defaults/vars) | `wait_for port=3000`, `docker ps` for `notion-mcp-public`, `curl http://<host>:3000/mcp` |
 | `ansible/playbooks/platform/deploy-openhands.yml` | `unraid`/`unraid-server` | `.env` with `OPENHANDS_SECRET_KEY`, `OLLAMA_HOST_IP` | `wait_for port=3000`, `docker ps` for `openhands`, `curl http://<host>:3000/health` |
 | `ansible/playbooks/platform/deploy-ollama.yml` | `windows-gpu` hosts | `.env` on target (copied from example) | `curl http://<host>:11434/api/tags`, `docker ps` for `ollama-windows` |
 | `ansible/playbooks/dns/provision-dns-dhcp.yml` | `localhost` (Proxmox API) | `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET` | Check VMs exist with `pvesh`/`qm list` on Proxmox; rerun play in `--check` after changes |

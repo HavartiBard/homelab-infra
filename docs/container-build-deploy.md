@@ -86,9 +86,6 @@ Production deployments use Ansible playbooks from the `homelab-infra` repository
 ```bash
 cd ~/CascadeProjects/homelab-infra
 
-# Set required secrets (get from 1Password)
-export PORTAINER_TOKEN=$(op read "op://Personal/Portainer Homelab API/credential")
-
 # Run deployment
 ANSIBLE_ROLES_PATH=./ansible/roles ansible-playbook \
   -i ansible/inventory/hosts.yml \
@@ -145,11 +142,8 @@ ERROR! the role 'xxx' was not found
 ```
 **Solution**: Set `ANSIBLE_ROLES_PATH=./ansible/roles` or run from `ansible/` directory.
 
-### Token/Secret Not Passed
-Ensure environment variables are exported before running Ansible:
-```bash
-export PORTAINER_TOKEN="..."
-```
+### Secret Not Passed
+Ensure environment variables are exported before running Ansible. Use `op read` to retrieve from 1Password.
 
 ---
 

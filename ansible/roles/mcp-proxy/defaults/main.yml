@@ -28,5 +28,15 @@ mcp_proxy_servers:
       - serve
     transport_type: stdio
 
+  - name: obsidian-mcp
+    command: docker
+    args:
+      - exec
+      - -i
+      - obsidian-mcp
+      - node
+      - src/index.js
+    transport_type: stdio
+
 # Timezone
 timezone: "America/Phoenix"

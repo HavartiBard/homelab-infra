@@ -14,7 +14,6 @@ DATE_TAG=$(date +%Y%m%d_%H%M%S)
 
 # Known volumes to backup
 PLATFORM_VOLUMES=(
-    "portainer-data"
     "npm-data"
     "npm-letsencrypt"
     "npm-db-data"

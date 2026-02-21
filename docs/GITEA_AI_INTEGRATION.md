@@ -65,7 +65,7 @@ homelab-infra/
 │   ├── playbooks/   # Deployment playbooks
 │   ├── files/       # Configuration templates
 │   └── inventory/   # Host definitions
-├── stacks/          # Portainer reference stacks
+├── stacks/          # Docker Compose reference stacks
 ├── docker/          # Custom Dockerfiles
 ├── docs/            # Documentation
 └── .gitignore       # Files not tracked (secrets, caches, etc.)

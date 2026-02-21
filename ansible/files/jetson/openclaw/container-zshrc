@@ -1,0 +1,41 @@
+# OpenClaw container zsh config (managed by ansible deploy-openclaw.yml)
+
+# =============================================================================
+# Prompt
+# =============================================================================
+autoload -Uz colors && colors
+PROMPT='%F{red}[openclaw]%f %F{cyan}%n%f:%F{blue}%~%f %# '
+
+# =============================================================================
+# History
+# =============================================================================
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+
+# =============================================================================
+# Aliases
+# =============================================================================
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# OpenClaw shortcut
+alias oc='openclaw'
+
+# =============================================================================
+# Environment
+# =============================================================================
+export EDITOR=vim
+export PAGER=less
+
+# =============================================================================
+# Custom environment hooks
+# =============================================================================
+[ -f ~/.env_container ] && source ~/.env_container

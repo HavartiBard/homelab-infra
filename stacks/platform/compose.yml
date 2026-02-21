@@ -1,6 +1,6 @@
 # Platform Stack - Core Infrastructure Services
 # Deploy to: Platform VM (Proxmox) or Unraid
-# Includes: Portainer, Nginx Proxy Manager, Uptime Kuma
+# Includes: Nginx Proxy Manager, Uptime Kuma, Homepage
 #
 # Note: DNS (Technitium/AdGuard) is deployed to dedicated LXCs via Ansible
 #       See: ansible/playbooks/dns/provision-dns-dhcp-services.yml
@@ -8,34 +8,9 @@
 # Prerequisites:
 #   - Copy .env.example to .env and fill in values
 #   - Create required directories (see docs/runbook.md)
-#   - Ports 80, 443, 9443 must be available
+#   - Ports 80, 443 must be available
 
 services:
-  # =============================================================================
-  # Portainer - Container Management
-  # =============================================================================
-  portainer:
-    image: portainer/portainer-ce:2.21.4
-    container_name: portainer
-    restart: unless-stopped
-    ports:
-      - "${PORTAINER_HTTPS_PORT:-9443}:9443"  # HTTPS UI
-      - "${PORTAINER_HTTP_PORT:-9000}:9000"   # HTTP UI (optional, disable in prod)
-      - "${PORTAINER_EDGE_PORT:-8000}:8000"   # Edge Agent tunnel
-    volumes:
-      - portainer-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TZ=${TZ:-America/New_York}
-    networks:
-      - platform-net
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
   # =============================================================================
   # Nginx Proxy Manager - Reverse Proxy with Let's Encrypt
   # =============================================================================
@@ -152,8 +127,6 @@ networks:
 # For Unraid: Override in .env or use docker-compose.override.yml
 # =============================================================================
 volumes:
-  portainer-data:
-    name: portainer-data
   npm-data:
     name: npm-data
   npm-letsencrypt:
