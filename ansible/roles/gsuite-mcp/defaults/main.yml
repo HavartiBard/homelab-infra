@@ -1,0 +1,14 @@
+---
+# gsuite-mcp default variables
+
+# Container settings
+gsuite_mcp_container_name: "gsuite-mcp"
+gsuite_mcp_image: "gsuite-mcp:latest"
+gsuite_mcp_icon: >-
+  https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google.png
+
+# Paths on Unraid host
+gsuite_mcp_appdata_dir: "/mnt/user/appdata/gsuite-mcp"
+
+# Timezone
+timezone: "America/Phoenix"

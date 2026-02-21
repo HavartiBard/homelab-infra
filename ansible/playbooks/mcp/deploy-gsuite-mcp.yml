@@ -1,0 +1,54 @@
+---
+# Deploy gsuite-mcp (Gmail + Calendar MCP server) on Unraid
+#
+# Prerequisites:
+#   - /mnt/user/appdata/gsuite-mcp/gauth.json  (Desktop app OAuth client secrets)
+#   - /mnt/user/appdata/gsuite-mcp/accounts.json
+#   - /mnt/user/appdata/gsuite-mcp/credentials/.oauth2.<email>.json
+#   (Run do-auth.py one-time script to obtain credentials)
+#
+# After deployment, gsuite-mcp is accessible via mcp-proxy at:
+#   http://192.168.20.14:6980/servers/gsuite-mcp/sse
+
+- name: Deploy gsuite-mcp container and update mcp-proxy
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - gsuite-mcp
+    - role: mcp-proxy
+      vars:
+        mcp_proxy_servers:
+          - name: soullayer
+            command: docker
+            args:
+              - exec
+              - -i
+              - soullayer
+              - soullayer
+              - serve
+            transport_type: stdio
+
+          - name: obsidian-mcp
+            command: docker
+            args:
+              - exec
+              - -i
+              - obsidian-mcp
+              - node
+              - src/index.js
+            transport_type: stdio
+
+          - name: gsuite-mcp
+            command: docker
+            args:
+              - exec
+              - -i
+              - gsuite-mcp
+              - mcp-gsuite
+              - --gauth-file
+              - /config/gauth.json
+              - --accounts-file
+              - /config/accounts.json
+              - --credentials-dir
+              - /config/credentials
+            transport_type: stdio
