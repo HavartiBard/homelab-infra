@@ -1,0 +1,16 @@
+---
+ironclaw_port: 8090
+ironclaw_container_name: ironclaw
+ironclaw_postgres_container: ironclaw-postgres
+ironclaw_image: ironclaw:local
+ironclaw_appdata_dir: /mnt/user/appdata/ironclaw
+ironclaw_compose_dir: /opt/docker/ironclaw
+ironclaw_network: ironclaw-net
+ironclaw_source_repo: https://github.com/nearai/ironclaw.git
+ironclaw_source_tmp: /tmp/ironclaw-build
+ironclaw_ollama_base_url: http://192.168.20.50:11434
+ironclaw_ollama_model: llama3.1:8b-instruct-q4_K_M
+ironclaw_agent_name: ironclaw
+ironclaw_agent_max_parallel_jobs: 5
+ironclaw_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ai.png
+timezone: America/Phoenix
