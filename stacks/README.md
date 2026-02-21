@@ -1,14 +1,12 @@
 # Docker Compose Stacks
 
-This directory contains Docker Compose stacks for homelab infrastructure, designed to be deployed via Portainer from Git.
+This directory contains Docker Compose stacks for homelab infrastructure.
 
 ## Available Stacks
 
 ### Platform (`platform/`)
 Core infrastructure services for the Platform VM:
-- **Portainer CE** - Container management UI
 - **Nginx Proxy Manager** - Reverse proxy with Let's Encrypt
-- **Technitium DNS** - Local DNS server
 - **Uptime Kuma** - Status monitoring
 - **Homepage** - Landing page for homelab links/widgets
 
@@ -27,19 +25,6 @@ Observability stack:
 - **cAdvisor** - Container metrics
 
 ## Deployment
-
-### Via Portainer (Recommended)
-
-1. Go to target environment in Portainer
-2. **Stacks** → **Add Stack** → **Repository**
-3. Configure:
-   - **Repository URL:** Your Git repo URL
-   - **Branch:** `main`
-   - **Compose path:** `stacks/<stack-name>/compose.yml`
-4. Add environment variables from `.env.example`
-5. **Deploy the stack**
-
-### Via Command Line
 
 ```bash
 cd stacks/<stack-name>
@@ -90,12 +75,6 @@ docker compose config 2>&1 | grep -i error
 
 ## Updating Stacks
 
-### Via Portainer
-1. Select the stack
-2. Click **Pull and redeploy**
-3. Or: **Editor** → Pull latest → **Update the stack**
-
-### Via Command Line
 ```bash
 git pull
 docker compose pull
@@ -108,7 +87,7 @@ Stacks use named volumes for persistence. See `scripts/backup-volumes.sh` for ba
 
 ```bash
 # List volumes
-docker volume ls | grep -E "(portainer|npm|technitium|kuma|prometheus|grafana|ollama)"
+docker volume ls | grep -E "(npm|technitium|kuma|prometheus|grafana|ollama)"
 
 # Backup all volumes
 ../scripts/backup-volumes.sh

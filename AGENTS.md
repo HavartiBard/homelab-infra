@@ -28,13 +28,13 @@ Present the issues as a numbered list and ask which one to work on. If the user 
 
 ## Repository Overview
 
-This is an Ansible-managed Docker infrastructure for a hybrid homelab spanning Unraid, Proxmox VMs/LXCs, and WSL2 GPU workers. Ansible is the primary deployment mechanism for services requiring dynamic configuration (MCP servers, DNS infrastructure). Portainer stacks in `stacks/` serve as reference deployments for simpler services.
+This is an Ansible-managed Docker infrastructure for a hybrid homelab spanning Unraid, Proxmox VMs/LXCs, and WSL2 GPU workers. Ansible is the primary deployment mechanism for services requiring dynamic configuration (MCP servers, DNS infrastructure). Docker Compose stacks in `stacks/` serve as reference deployments for simpler services.
 
 ## Architecture
 
-- **Platform VM** (Proxmox): Portainer Server, Nginx Proxy Manager, Uptime Kuma
-- **Unraid** (192.168.20.14): Long-running services, MCP servers, Portainer Agent
-- **WSL2 GPU Workers** (spraycheese): Ollama, Open WebUI via Edge Agent
+- **Platform VM** (Proxmox): Nginx Proxy Manager, Uptime Kuma
+- **Unraid** (192.168.20.14): Long-running services, MCP servers
+- **WSL2 GPU Workers** (spraycheese): Ollama, Open WebUI
 - **DNS LXCs** (Proxmox): tt1/tt2 (Technitium), agh1/agh2 (AdGuard Home)
 
 ### DNS Infrastructure
@@ -53,7 +53,6 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 
 | Service | Host | Port | URL | Health Check |
 |---------|------|------|-----|-------------|
-| Portainer | Platform VM | 9443 | `portainer.klsll.com` | `curl -k https://localhost:9443/api/system/status` |
 | NPM | Platform VM | 80/443/81 | `npm.klsll.com` (admin) | `curl http://localhost:81/api/` |
 | Uptime Kuma | Platform VM | 3001 | `status.klsll.com` | `curl http://localhost:3001/api/info` |
 | mcp-proxy | Unraid | 6980 | - | stdio-to-HTTP MCP bridge |
@@ -76,19 +75,18 @@ homelab-infra/
 │   │   ├── openhands/      # OpenHands compose + config
 │   │   └── ollama/         # Ollama (Windows) compose
 │   └── inventory/          # Host definitions
-├── stacks/                 # Portainer reference stacks (secondary)
-│   ├── platform/           # Portainer, NPM, Uptime Kuma
+├── stacks/                 # Docker Compose reference stacks (secondary)
+│   ├── platform/           # NPM, Uptime Kuma, Homepage
 │   ├── gpu-worker/         # Ollama + Open WebUI
 │   └── monitoring/         # Prometheus, Grafana
 ├── docker/                 # Custom Dockerfiles only
-│   ├── obsidian-mcp-server/ # Obsidian MCP HTTP server
-│   └── portainer-mcp/      # Portainer MCP custom build
+│   └── obsidian-mcp-server/ # Obsidian MCP HTTP server
 └── docs/                   # Documentation
 ```
 
 **Deployment ownership:**
 - `ansible/` → Primary deployment mechanism (MCP servers, DNS, OpenHands, Ollama)
-- `stacks/` → Reference stacks for Portainer (Platform VM services)
+- `stacks/` → Reference Docker Compose stacks (Platform VM services)
 - `docker/` → Custom Dockerfiles only (no compose files)
 
 ## Key Commands
@@ -121,6 +119,8 @@ Common playbooks and their required env vars:
 - `ansible/playbooks/mcp/deploy-homelab-mcp.yml` → `ORBI_PASSWORD`
 - `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` → `OP_SERVICE_ACCOUNT_TOKEN`
 - `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` → Uses `group_vars/unraid/vault.yml`
+
+
 
 ### Docker Compose Stacks
 
@@ -225,7 +225,6 @@ api_key = result.stdout.strip()
 - Makefiles or `taskfile.yml` for repeatable commands
 
 **Avoid:**
-- One-off manual UI steps in Portainer unless there's no alternative
 - "Clickops" instructions without also providing an IaC equivalent
 
 ### Quality Bar
@@ -301,7 +300,7 @@ Brief description of the service.
 Key configuration details, file locations, etc.
 
 ## Deployment
-How the service is deployed (Ansible playbook, Portainer stack, etc.)
+How the service is deployed (Ansible playbook, Docker Compose stack, etc.)
 
 ## Health Check
 ```bash
@@ -323,9 +322,6 @@ Common issues and solutions.
 
 ### Service Health Checks
 ```bash
-# Portainer
-curl -k https://localhost:9443/api/system/status
-
 # NPM admin
 curl http://localhost:81/api/
 

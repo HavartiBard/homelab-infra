@@ -61,9 +61,9 @@ cd ansible
 ansible-playbook playbooks/services/update-director-proxy.yml --diff --limit unraid -v
 ```
 
-## Notion Update Checklist
+## Obsidian Service Catalog
 
-After deployment changes merge, update the Homelab Notion service catalog with:
+After deployment changes merge, update the Homelab Obsidian service catalog entry for Director:
 - Service name: Director
 - Owner: Homelab Platform
 - Host: Unraid (`192.168.20.14`)

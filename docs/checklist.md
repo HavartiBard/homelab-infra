@@ -23,9 +23,6 @@
 # Docker running
 docker ps
 
-# Portainer responding
-curl -k https://localhost:9443/api/system/status
-
 # NPM responding
 curl http://localhost:81/api/
 
@@ -34,13 +31,6 @@ dig @localhost google.com
 
 # Uptime Kuma responding
 curl http://localhost:3001/api/info
-```
-
-### Agent Connectivity
-```bash
-# From Platform VM, test agent connectivity
-curl http://<unraid-ip>:9001/api/agents
-curl http://<proxmox-vm-ip>:9001/api/agents
 ```
 
 ### GPU Worker (WSL2)
@@ -86,27 +76,6 @@ df -h
 ```bash
 sudo lsof -i :<port>
 sudo netstat -tulpn | grep <port>
-```
-
-### Agent Not Connecting
-```bash
-# Check agent logs
-docker logs portainer-agent
-
-# Verify firewall allows connection
-sudo ufw status
-nc -zv <platform-vm-ip> 9001
-```
-
-### Edge Agent Not Connecting
-```bash
-# Check edge agent logs
-docker logs portainer-edge-agent
-
-# Verify outbound connectivity to Portainer
-curl -v https://<platform-vm-ip>:8000
-
-# May need to regenerate edge key in Portainer
 ```
 
 ### DNS Not Resolving
@@ -165,15 +134,6 @@ ls -la ~/backups/docker-volumes/
 3. Checkout last known-good commit
 4. Redeploy stacks in order: platform → monitoring
 
-### Emergency: Reset Portainer
-```bash
-# Nuclear option - lose all Portainer config
-docker compose down
-docker volume rm portainer-data
-docker compose up -d
-# Reconfigure from scratch
-```
-
 ---
 
 ## Post-Deployment Verification
@@ -182,17 +142,13 @@ docker compose up -d
 - [ ] `docs/runbook.md` exists and is executable without missing steps
 - [ ] All compose files validate with `.env` populated
 - [ ] No secrets committed to git
-- [ ] Portainer can manage: Unraid endpoint
-- [ ] Portainer can manage: At least one Proxmox Docker VM
-- [ ] Portainer can manage: One WSL2 Edge Agent endpoint
 - [ ] Platform stack deploys successfully
-- [ ] Monitoring stack deploys successfully  
+- [ ] Monitoring stack deploys successfully
 - [ ] GPU-worker stack deploys to WSL2 successfully
 - [ ] Gaming toggle works (stop/start GPU workloads)
 
 ### Security Verification
-- [ ] Portainer not accessible from internet (test from mobile data)
-- [ ] Agent ports only reachable from Platform VM
+- [ ] Management interfaces not accessible from internet (test from mobile data)
 - [ ] UFW enabled on all Linux hosts
 - [ ] All admin passwords changed from defaults
 - [ ] Credentials stored in 1Password
@@ -220,6 +176,5 @@ docker compose up -d
 
 ### Quarterly
 - [ ] Review firewall rules
-- [ ] Audit Portainer users
 - [ ] Update base OS: `apt update && apt upgrade`
 - [ ] Clean up unused resources: `docker system prune -af`

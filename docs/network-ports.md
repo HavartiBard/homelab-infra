@@ -16,9 +16,6 @@ This document lists all ports used by homelab stacks with access requirements.
 
 | Service | Port | Protocol | Access | Description |
 |---------|------|----------|--------|-------------|
-| **Portainer** | 9443 | TCP/HTTPS | 🔒⚠️ LAN-Only | Admin UI (HTTPS) |
-| Portainer | 9000 | TCP/HTTP | 🔒⚠️ LAN-Only | Admin UI (HTTP, disable in prod) |
-| Portainer | 8000 | TCP | 🔒 LAN-Only | Edge Agent tunnel server |
 | **NPM** | 80 | TCP | 🌐 Proxied | HTTP (redirect to HTTPS) |
 | NPM | 443 | TCP | 🌐 Proxied | HTTPS reverse proxy |
 | NPM | 81 | TCP | 🔒⚠️ LAN-Only | Admin UI |
@@ -44,13 +41,6 @@ This document lists all ports used by homelab stacks with access requirements.
 |---------|------|----------|--------|-------------|
 | **Ollama** | 11434 | TCP | 🔒 LAN-Only | LLM API endpoint |
 | **Open WebUI** | 8080 | TCP | 🌐 Proxied | Chat interface |
-
-## Agent Ports
-
-| Service | Port | Protocol | Access | Description |
-|---------|------|----------|--------|-------------|
-| **Portainer Agent** | 9001 | TCP | 🔒 LAN-Only | Agent communication |
-| **Edge Agent** | (outbound) | TCP | 🔒 Outbound | Tunnels to Portainer :8000 |
 
 ## Dev Environment (macvlan)
 
@@ -82,11 +72,6 @@ This document lists all ports used by homelab stacks with access requirements.
 # SSH (from LAN only)
 sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp
 
-# Portainer (LAN only)
-sudo ufw allow from 192.168.0.0/16 to any port 9443 proto tcp
-sudo ufw allow from 192.168.0.0/16 to any port 9000 proto tcp
-sudo ufw allow from 192.168.0.0/16 to any port 8000 proto tcp
-
 # NPM (public for reverse proxy)
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
@@ -117,10 +102,7 @@ sudo ufw enable
 # SSH (from LAN only)
 sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp
 
-# Portainer Agent (from Platform VM only)
-sudo ufw allow from <PLATFORM_VM_IP> to any port 9001 proto tcp
-
-# Node Exporter (from Platform VM only)
+# Node Exporter (from monitoring host only)
 sudo ufw allow from <PLATFORM_VM_IP> to any port 9100 proto tcp
 
 sudo ufw default deny incoming
@@ -157,7 +139,6 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 
 | Hostname | Target | Auth | Notes |
 |----------|--------|------|-------|
-| `portainer.klsll.com` | https://portainer:9443 | Built-in | Platform stack |
 | `npm.klsll.com` | http://npm:81 | Built-in | Platform stack |
 | `home.klsll.com` | http://homepage:3000 | Built-in | Platform stack (Homepage); refers to VLAN br0 host 192.168.20.55 on Unraid when the playbook deploys homepage there. |
 | `status.klsll.com` | http://uptime-kuma:3001 | Built-in | Reserve; Kuma not deployed yet |

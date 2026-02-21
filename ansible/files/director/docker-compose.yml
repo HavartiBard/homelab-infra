@@ -14,6 +14,7 @@ services:
       - /mnt/user/appdata/director:/mnt/user/appdata/director
       - /mnt/user/appdata/director/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/user/appdata/director/studio-index.html:/usr/local/lib/node_modules/@director.run/cli/dist/studio/index.html:ro
     labels:
       - net.unraid.docker.icon=${DIRECTOR_ICON}
       - net.unraid.docker.webui=${DIRECTOR_WEBUI_URL}

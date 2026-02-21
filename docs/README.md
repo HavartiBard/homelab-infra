@@ -24,7 +24,6 @@
 
 ## External References
 
-- [Portainer Documentation](https://docs.portainer.io/)
 - [Nginx Proxy Manager](https://nginxproxymanager.com/)
 - [Technitium DNS](https://technitium.com/dns/)
 - [Ollama](https://ollama.ai/)

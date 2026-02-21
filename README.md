@@ -1,6 +1,6 @@
 # Homelab Infrastructure
 
-Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs, and WSL2 GPU workers.
+Ansible-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs, and WSL2 GPU workers.
 
 ## Architecture
 
@@ -8,10 +8,13 @@ Portainer-managed Docker infrastructure for hybrid homelab: Unraid, Proxmox VMs,
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           LAN / VPN Only                            │
 ├─────────────────────────────────────────────────────────────────────┤
-│   Platform VM (Proxmox)          Endpoints                          │
-│   ├── Portainer Server ◄──────── Unraid (Agent)                     │
-│   ├── Nginx Proxy Manager        Proxmox VMs (Agent)                │
-│   └── Uptime Kuma                WSL2 Workers (Edge Agent)          │
+│   Platform VM (Proxmox)                                             │
+│   ├── Nginx Proxy Manager                                           │
+│   └── Uptime Kuma                                                   │
+│                                                                     │
+│   Unraid (192.168.20.14)         WSL2 GPU Workers                  │
+│   ├── MCP Servers                └── Ollama + Open WebUI           │
+│   └── Long-running services                                         │
 │                                                                     │
 │   DNS Infrastructure (LXCs)      Query Flow                         │
 │   ├── agh1/agh2 (AdGuard)  ←──── Clients (DHCP-assigned DNS)        │
@@ -32,15 +35,14 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 1. **Read the runbook:** [`docs/runbook.md`](docs/runbook.md)
 2. **Deploy Platform VM** on Proxmox with Docker
 3. **Deploy Platform Stack** from `stacks/platform/`
-4. **Add Agents** on Unraid and other Docker hosts
-5. **Deploy GPU Workers** on WSL2 with Edge Agent
+4. **Deploy GPU Workers** on WSL2
 
 ## Repository Structure
 
 ```
 homelab-infra/
 ├── stacks/                    # Docker Compose stacks (source of truth)
-│   ├── platform/              # Core infra: Portainer, NPM, Kuma
+│   ├── platform/              # Core infra: NPM, Kuma, Homepage
 │   ├── gpu-worker/            # AI/ML: Ollama, Open WebUI
 │   └── monitoring/            # Observability: Prometheus, Grafana
 ├── ansible/                   # Ansible automation
@@ -59,7 +61,7 @@ homelab-infra/
 
 | Stack | Purpose | Deploy To |
 |-------|---------|-----------|
-| **platform** | Portainer, NPM, Uptime Kuma | Platform VM |
+| **platform** | NPM, Uptime Kuma, Homepage | Platform VM |
 | **gpu-worker** | Ollama, Open WebUI | WSL2 GPU workers |
 | **monitoring** | Prometheus, Grafana, Node Exporter | Platform VM |
 
@@ -71,7 +73,6 @@ homelab-infra/
 | **technitium** | Configure Technitium DNS (zones, DHCP) |
 | **unraid-mcp** | Deploy Unraid MCP server container |
 | **proxmox-mcp** | Deploy Proxmox MCP server container |
-| **notion-mcp** | Deploy Notion MCP server container |
 | **onepassword-mcp** | Deploy 1Password MCP server container |
 | **homelab-mcp** | Deploy Homelab MCP aggregator container |
 
@@ -79,7 +80,7 @@ homelab-infra/
 
 Playbooks are grouped by service area inside `ansible/playbooks/` to keep the root tidy:
 
-- `ansible/playbooks/mcp/` – MCP deployments (`deploy-*-mcp.yml`), including Portainer, Proxmox, OnePassword, Homelab, and Notion.
+- `ansible/playbooks/mcp/` – MCP deployments (`deploy-*-mcp.yml`), including Proxmox, OnePassword, and Homelab.
 - `ansible/playbooks/dns/` – DNS and DHCP provisioning plus AdGuard/Technitium config (`provision-dns-dhcp*.yml`, `deploy-adguard-config.yml`).
 - `ansible/playbooks/services/` – Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`).
 - `ansible/playbooks/platform/` – Platform services such as NPM, Ollama, and OpenHands.
@@ -94,10 +95,9 @@ Recent additions:
 
 ## Key Principles
 
-- **Git as Source of Truth** - Portainer deploys stacks from this repo
+- **Git as Source of Truth** - All infrastructure defined in this repo
 - **LAN-Only Access** - Management interfaces never exposed publicly
 - **Secrets via env + vault** - Credentials never committed in plaintext; 1Password is source of truth, sync into encrypted vaults or export env vars before runs
-- **Agent Architecture** - Standard agents for always-on, Edge for on-demand
 
 ## Documentation
 
@@ -108,16 +108,6 @@ Recent additions:
 - [**Director Service**](docs/services/director.md) - Director deployment, proxy, DNS, verify, rollback
 
 ## Deploy a Stack
-
-### From Portainer (Recommended)
-
-1. Add Environment → Select endpoint
-2. Stacks → Add Stack → Repository
-3. Enter repo URL, branch, compose path
-4. Add environment variables from `.env.example`
-5. Deploy
-
-### From Command Line
 
 ```bash
 cd stacks/<stack-name>
@@ -141,12 +131,6 @@ docker compose up -d
     ```
 
 ```bash
-# Install Portainer Agent on Linux hosts
-./scripts/install-portainer-agent.sh
-
-# Install Edge Agent for WSL2/remote workers
-./scripts/install-edge-agent.sh <EDGE_ID> <EDGE_KEY>
-
 # Backup Docker volumes
 ./scripts/backup-volumes.sh
 ```
@@ -154,8 +138,7 @@ docker compose up -d
 ## Security
 
 - Docker sockets never exposed publicly
-- Portainer accessible only via LAN/VPN
-- Agent ports restricted via firewall
+- Management interfaces accessible only via LAN/VPN
 - Credentials stored in 1Password, loaded via `.env`
 - TLS for production services via NPM
 

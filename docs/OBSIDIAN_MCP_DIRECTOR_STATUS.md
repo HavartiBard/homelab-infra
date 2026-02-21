@@ -35,7 +35,6 @@ Director successfully connects to other MCP servers but silently skips obsidian-
 - unraid-mcp (6970)
 - homelab-mcp (6971)
 - onepassword-mcp (6975)
-- portainer-mcp (6972)
 - gitea-mcp (6976)
 - soullayer (6980)
 - onepass (6975)
@@ -43,7 +42,6 @@ Director successfully connects to other MCP servers but silently skips obsidian-
 **Not Connecting:**
 - **obsidian-mcp (6977)**
 - proxmox-mcp (6974)
-- notion-mcp-public (3000)
 
 All three missing servers are reachable and return HTTP 200. No errors in Director logs.
 
