@@ -22,7 +22,7 @@ networking:
 container:
   # Two-container stack: SearXNG search engine + MCP HTTP adapter
   # SearXNG runs internally on port 8080; MCP adapter exposed on host port 6978
-  searxng_image: "searxng/searxng:2025.6.9-5a5a4e7"
+  searxng_image: "searxng/searxng:2026.2.20-93ac6ceb3"
   mcp_image: "isokoliuk/mcp-searxng:latest"
   interactive_shell: false
   stateful: true
