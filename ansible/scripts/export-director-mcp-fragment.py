@@ -47,6 +47,12 @@ ROLE_MAP = [
         "path": "/mcp",
     },
     {
+        "role": "searxng-mcp",
+        "name": "searxng-mcp",
+        "port_var": "searxng_mcp_port",
+        "path": "/mcp",
+    },
+    {
         "role": "mcp-proxy",
         "name": "mcp-proxy",
         "port_var": "mcp_proxy_port",
