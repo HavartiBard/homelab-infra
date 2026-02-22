@@ -57,6 +57,7 @@ This document lists all ports used by homelab stacks with access requirements.
 | **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
 | **Homelab MCP** | 6971 | TCP | 🔒 LAN-Only | MCP server (Orbi, NPM, etc.) |
 | **SearXNG MCP** | 6978 | HTTP | 🔒 LAN-Only | MCP server — privacy-respecting metasearch |
+| **IronClaw** | 3000 (macvlan) | TCP | 🌐 Proxied | AI assistant — web UI, webhooks, Slack; macvlan 192.168.20.56, proxied via ironclaw.klsll.com |
 | **AdGuard Home** | 53 | UDP/TCP | 🔒 LAN-Only | DNS queries |
 | AdGuard Home | 3080 | TCP | 🔒⚠️ LAN-Only | Initial setup UI |
 | AdGuard Home | 8053 | TCP | 🔒⚠️ LAN-Only | Web UI (HTTP) |
@@ -148,6 +149,7 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 | `ollama.klsll.com` | <worker-ip>:11434 | NPM Access List | GPU worker |
 | `chat.klsll.com` | <worker-ip>:8080 | Built-in | GPU worker |
 | `openclaw.klsll.com` | http://192.168.20.169:18789 | Built-in | Jetson OpenClaw Control UI (NPM adds the configured session token). |
+| `ironclaw.klsll.com` | http://192.168.20.56:3000 | Built-in | IronClaw AI assistant (macvlan) |
 | `netbox.klsll.com` | <unraid-ip>:8001 | Built-in | Unraid |
 | `adguard.klsll.com` | <unraid-ip>:8053 | Built-in | Unraid |
 | `dev-box` | 192.168.20.60:22 | SSH key | Dev environment (macvlan) |

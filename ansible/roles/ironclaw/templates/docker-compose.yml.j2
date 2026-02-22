@@ -1,0 +1,44 @@
+services:
+  ironclaw:
+    image: "{{ ironclaw_image }}"
+    container_name: "{{ ironclaw_container_name }}"
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "{{ ironclaw_icon }}"
+      net.unraid.docker.webui: "https://ironclaw.klsll.com"
+    env_file:
+      - "{{ ironclaw_compose_dir }}/ironclaw.env"
+    networks:
+      {{ ironclaw_macvlan_network }}:
+        ipv4_address: "{{ ironclaw_ip }}"
+      {{ ironclaw_internal_network }}:
+    depends_on:
+      ironclaw-postgres:
+        condition: service_healthy
+
+  ironclaw-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: "{{ ironclaw_postgres_container }}"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ironclaw
+      POSTGRES_USER: ironclaw
+      POSTGRES_PASSWORD: "{{ ironclaw_pg_password }}"
+      TZ: "{{ timezone }}"
+    volumes:
+      - "{{ ironclaw_appdata_dir }}/postgres:/var/lib/postgresql/data"
+    networks:
+      - "{{ ironclaw_internal_network }}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ironclaw"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  {{ ironclaw_macvlan_network }}:
+    external: true
+    name: "{{ ironclaw_macvlan_external_name }}"
+  {{ ironclaw_internal_network }}:
+    driver: bridge
+    internal: true

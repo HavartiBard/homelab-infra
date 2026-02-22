@@ -1,0 +1,19 @@
+---
+proxy_hosts:
+  - name: ironclaw
+    domains:
+      - ironclaw.klsll.com
+    forward_host: 192.168.20.56
+    forward_port: 3000
+    scheme: http
+    websocket: true
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: ironclaw.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600
