@@ -66,3 +66,9 @@
     - chiffon:
         icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/github.png
         href: https://github.com/HavartiBard/chiffon
+
+- AI:
+    - IronClaw:
+        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ai.png
+        href: https://ironclaw.klsll.com
+        description: Local AI assistant — web UI, Slack, webhooks (Unraid)
