@@ -8,6 +8,7 @@
 #       "IronClaw Slack Bot Token"      (credential field) -- xoxb-...
 #       "IronClaw Slack App Token"      (credential field) -- xapp-...
 #       "IronClaw Slack Signing Secret" (credential field)
+#       "IronClaw Secrets Master Key"   (credential field) -- hex key for secrets encryption
 #   - Ollama model available on spraycheese:
 #       curl http://192.168.20.50:11434/api/tags
 #   - OP_SERVICE_ACCOUNT_TOKEN set in environment (or op CLI signed in)
@@ -59,6 +60,13 @@
       no_log: true
       changed_when: false
 
+    - name: Fetch secrets master key from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/IronClaw Secrets Master Key/credential"
+      register: _ironclaw_secrets_key
+      no_log: true
+      changed_when: false
+
     - name: Set secret facts
       ansible.builtin.set_fact:
         ironclaw_pg_password: "{{ _ironclaw_pg_pw.stdout | trim }}"
@@ -66,6 +74,7 @@
         ironclaw_slack_bot_token: "{{ _ironclaw_slack_bot.stdout | trim }}"
         ironclaw_slack_app_token: "{{ _ironclaw_slack_app.stdout | trim }}"
         ironclaw_slack_signing_secret: "{{ _ironclaw_slack_sign.stdout | trim }}"
+        ironclaw_secrets_master_key: "{{ _ironclaw_secrets_key.stdout | trim }}"
       no_log: true
 
   roles:
