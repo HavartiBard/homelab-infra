@@ -1,11 +1,16 @@
 ---
-ironclaw_port: 8090
+ironclaw_ip: 192.168.20.56
+ironclaw_container_port: 3000
 ironclaw_container_name: ironclaw
 ironclaw_postgres_container: ironclaw-postgres
 ironclaw_image: ironclaw:local
 ironclaw_appdata_dir: /mnt/user/appdata/ironclaw
 ironclaw_compose_dir: /opt/docker/ironclaw
-ironclaw_network: ironclaw-net
+ironclaw_macvlan_network: ironclaw-macvlan
+ironclaw_internal_network: ironclaw-internal
+ironclaw_parent_iface: br0
+ironclaw_subnet: 192.168.20.0/23
+ironclaw_gateway: 192.168.20.1
 ironclaw_source_repo: https://github.com/nearai/ironclaw.git
 ironclaw_source_tmp: /tmp/ironclaw-build
 ironclaw_ollama_base_url: http://192.168.20.50:11434
