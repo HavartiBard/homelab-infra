@@ -3,6 +3,10 @@
     "gitea": {
       "type": "http",
       "url": "http://192.168.20.14:6976/mcp"
+    },
+    "gsuite": {
+      "type": "http",
+      "url": "http://192.168.20.14:8092/mcp/"
     }
   }
 }
