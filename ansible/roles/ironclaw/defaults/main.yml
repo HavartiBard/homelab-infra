@@ -1,6 +1,7 @@
 ---
 ironclaw_ip: 192.168.20.56
 ironclaw_container_port: 3000
+ironclaw_webhook_port: 3001
 ironclaw_container_name: ironclaw
 ironclaw_postgres_container: ironclaw-postgres
 ironclaw_image: ironclaw:local
