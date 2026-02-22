@@ -37,13 +37,8 @@ services:
 
 networks:
   {{ ironclaw_macvlan_network }}:
-    driver: macvlan
-    driver_opts:
-      parent: "{{ ironclaw_parent_iface }}"
-    ipam:
-      config:
-        - subnet: "{{ ironclaw_subnet }}"
-          gateway: "{{ ironclaw_gateway }}"
+    external: true
+    name: "{{ ironclaw_macvlan_external_name }}"
   {{ ironclaw_internal_network }}:
     driver: bridge
     internal: true

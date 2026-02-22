@@ -7,6 +7,7 @@ ironclaw_image: ironclaw:local
 ironclaw_appdata_dir: /mnt/user/appdata/ironclaw
 ironclaw_compose_dir: /opt/docker/ironclaw
 ironclaw_macvlan_network: ironclaw-macvlan
+ironclaw_macvlan_external_name: br0
 ironclaw_internal_network: ironclaw-internal
 ironclaw_parent_iface: br0
 ironclaw_subnet: 192.168.20.0/23

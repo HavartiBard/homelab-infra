@@ -71,7 +71,7 @@
 - name: Wait for IronClaw to be healthy (up to 60s)
   ansible.builtin.raw: |
     for i in $(seq 1 12); do
-      if docker exec {{ ironclaw_container_name }} curl -sf http://localhost:{{ ironclaw_container_port }}/health > /dev/null 2>&1; then
+      if curl -sf http://{{ ironclaw_ip }}:{{ ironclaw_container_port }}/health > /dev/null 2>&1; then
         echo "healthy"; exit 0
       fi
       sleep 5
