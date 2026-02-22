@@ -1,11 +1,15 @@
 ---
-# Deploy gsuite-mcp container on Unraid
+# Deploy google_workspace_mcp container on Unraid
 # Uses raw commands since Unraid lacks Python
-# Requires pre-existing /mnt/user/appdata/gsuite-mcp/{gauth.json,accounts.json,credentials/}
+# Requires pre-existing /mnt/user/appdata/gsuite-mcp/gauth.json
+# (Desktop app OAuth client secrets downloaded from Google Cloud Console)
+#
+# After deployment, authenticate once by visiting:
+#   https://gsuite-auth.klsll.com/auth/
 
 - name: Create gsuite-mcp appdata directories
   ansible.builtin.raw: |
-    mkdir -p {{ gsuite_mcp_appdata_dir }}/credentials
+    mkdir -p {{ gsuite_mcp_appdata_dir }}/store_creds
   changed_when: false
 
 - name: Copy Dockerfile to remote
@@ -13,7 +17,7 @@
     echo '{{ lookup("file", role_path + "/../../../docker/gsuite-mcp/Dockerfile") | b64encode }}' | base64 -d > /tmp/gsuite-mcp-Dockerfile
   changed_when: false
 
-- name: Build gsuite-mcp image
+- name: Build gsuite-mcp image (clones google_workspace_mcp from GitHub)
   ansible.builtin.raw: |
     docker build -t {{ gsuite_mcp_image }} -f /tmp/gsuite-mcp-Dockerfile /tmp
   register: build_result
@@ -35,17 +39,20 @@
       --name {{ gsuite_mcp_container_name }} \
       --restart unless-stopped \
       --label net.unraid.docker.icon='{{ gsuite_mcp_icon }}' \
+      -p {{ gsuite_mcp_port }}:8000 \
       -v {{ gsuite_mcp_appdata_dir }}/gauth.json:/config/gauth.json:ro \
-      -v {{ gsuite_mcp_appdata_dir }}/accounts.json:/config/accounts.json:ro \
-      -v {{ gsuite_mcp_appdata_dir }}/credentials:/config/credentials \
+      -v {{ gsuite_mcp_appdata_dir }}/store_creds:/app/store_creds \
       -e TZ='{{ timezone }}' \
+      -e GOOGLE_CLIENT_SECRET_PATH='{{ gsuite_mcp_client_secret_path }}' \
+      -e USER_GOOGLE_EMAIL='{{ gsuite_mcp_user_email }}' \
+      -e WORKSPACE_EXTERNAL_URL='{{ gsuite_mcp_external_url }}' \
       {{ gsuite_mcp_image }}
   register: container_result
   changed_when: container_result.rc == 0
 
 - name: Wait for container to start
   ansible.builtin.raw: |
-    sleep 3
+    sleep 5
   changed_when: false
 
 - name: Check container is running
@@ -55,15 +62,15 @@
   failed_when: running_check.stdout | trim == ""
   changed_when: false
 
-- name: Verify mcp-gsuite binary is accessible
+- name: Check health endpoint
   ansible.builtin.raw: |
-    docker exec {{ gsuite_mcp_container_name }} mcp-gsuite --help 2>&1
-  register: help_check
+    curl -sf http://localhost:{{ gsuite_mcp_port }}/health
+  register: health_check
   changed_when: false
 
-- name: Display binary check result
+- name: Display health check result
   ansible.builtin.debug:
-    msg: "{{ help_check.stdout_lines }}"
+    msg: "{{ health_check.stdout }}"
 
 - name: Clean up build artifacts
   ansible.builtin.raw: |

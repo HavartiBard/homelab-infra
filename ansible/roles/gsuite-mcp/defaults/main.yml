@@ -7,8 +7,21 @@ gsuite_mcp_image: "gsuite-mcp:latest"
 gsuite_mcp_icon: >-
   https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google.png
 
+# Port exposed on Unraid LAN (container listens on 8000 internally)
+gsuite_mcp_port: 8092
+
 # Paths on Unraid host
 gsuite_mcp_appdata_dir: "/mnt/user/appdata/gsuite-mcp"
+
+# OAuth client credentials file (Desktop app credentials from Google Cloud Console)
+# Path inside the container where gauth.json is mounted
+gsuite_mcp_client_secret_path: "/config/gauth.json"
+
+# Single-user email for Google Workspace
+gsuite_mcp_user_email: "jma8chz@gmail.com"
+
+# External URL used for OAuth callback (reverse proxy hostname)
+gsuite_mcp_external_url: "https://gsuite-auth.klsll.com"
 
 # Timezone
 timezone: "America/Phoenix"
