@@ -235,6 +235,82 @@
         - /tmp/.openclaw-zshrc
         - /tmp/.openclaw-env_container
 
+    # ── node user: sudo for apt-get / pip ─────────────────────────────────────
+
+    - name: Check if sudo is installed in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec openclaw which sudo
+      register: _container_sudo
+      changed_when: false
+      failed_when: false
+
+    - name: Install sudo in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y sudo"
+      when: _container_sudo.rc != 0
+      changed_when: true
+
+    - name: Grant node user passwordless sudo for apt-get and pip3
+      ansible.builtin.command:
+        cmd: >
+          docker exec -u root openclaw bash -c
+          "echo 'node ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/pip3, /usr/local/bin/pip3' > /etc/sudoers.d/node-tools && chmod 440 /etc/sudoers.d/node-tools"
+      changed_when: false
+
+    # ── pip + Ansible in container ─────────────────────────────────────────────
+
+    - name: Check if ansible is installed in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec openclaw which ansible
+      register: _container_ansible
+      changed_when: false
+      failed_when: false
+
+    - name: Install python3-pip and ansible in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y python3-pip && pip3 install --quiet ansible"
+      when: _container_ansible.rc != 0
+      changed_when: true
+
+    # ── Homelab SSH key for node user ──────────────────────────────────────────
+
+    - name: Ensure /home/node/.ssh exists in container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "mkdir -p /home/node/.ssh && chmod 700 /home/node/.ssh && chown node:node /home/node/.ssh"
+      changed_when: false
+
+    - name: Check if homelab SSH key exists in container
+      ansible.builtin.command:
+        cmd: docker exec openclaw test -f /home/node/.ssh/id_ed25519_homelab
+      register: _homelab_key_stat
+      changed_when: false
+      failed_when: false
+
+    - name: Copy homelab private key to temp file on Jetson
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_homelab"
+        dest: /tmp/.openclaw-homelab-key
+        mode: '0600'
+      when: _homelab_key_stat.rc != 0
+
+    - name: Copy homelab private key into container
+      ansible.builtin.command:
+        cmd: docker cp /tmp/.openclaw-homelab-key openclaw:/home/node/.ssh/id_ed25519_homelab
+      changed_when: true
+      when: _homelab_key_stat.rc != 0
+
+    - name: Fix key permissions and ownership in container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "chmod 600 /home/node/.ssh/id_ed25519_homelab && chown node:node /home/node/.ssh/id_ed25519_homelab"
+      changed_when: false
+      when: _homelab_key_stat.rc != 0
+
+    - name: Remove temp homelab key from Jetson
+      ansible.builtin.file:
+        path: /tmp/.openclaw-homelab-key
+        state: absent
+      when: _homelab_key_stat.rc != 0
+
     - name: Deploy oc wrapper script
       become: true
       ansible.builtin.copy:
