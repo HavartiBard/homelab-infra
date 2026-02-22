@@ -5,13 +5,13 @@ services:
     restart: unless-stopped
     labels:
       net.unraid.docker.icon: "{{ ironclaw_icon }}"
-      net.unraid.docker.webui: "http://192.168.20.14:{{ ironclaw_port }}"
+      net.unraid.docker.webui: "https://ironclaw.klsll.com"
     env_file:
       - "{{ ironclaw_compose_dir }}/ironclaw.env"
-    ports:
-      - "{{ ironclaw_port }}:3000"
     networks:
-      - "{{ ironclaw_network }}"
+      {{ ironclaw_macvlan_network }}:
+        ipv4_address: "{{ ironclaw_ip }}"
+      {{ ironclaw_internal_network }}:
     depends_on:
       ironclaw-postgres:
         condition: service_healthy
@@ -28,7 +28,7 @@ services:
     volumes:
       - "{{ ironclaw_appdata_dir }}/postgres:/var/lib/postgresql/data"
     networks:
-      - "{{ ironclaw_network }}"
+      - "{{ ironclaw_internal_network }}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ironclaw"]
       interval: 5s
@@ -36,5 +36,14 @@ services:
       retries: 5
 
 networks:
-  {{ ironclaw_network }}:
+  {{ ironclaw_macvlan_network }}:
+    driver: macvlan
+    driver_opts:
+      parent: "{{ ironclaw_parent_iface }}"
+    ipam:
+      config:
+        - subnet: "{{ ironclaw_subnet }}"
+          gateway: "{{ ironclaw_gateway }}"
+  {{ ironclaw_internal_network }}:
     driver: bridge
+    internal: true
