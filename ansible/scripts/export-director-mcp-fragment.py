@@ -53,6 +53,12 @@ ROLE_MAP = [
         "path": "/mcp",
     },
     {
+        "role": "gsuite-mcp",
+        "name": "gsuite-mcp",
+        "port_var": "gsuite_mcp_port",
+        "path": "/mcp",
+    },
+    {
         "role": "mcp-proxy",
         "name": "mcp-proxy",
         "port_var": "mcp_proxy_port",

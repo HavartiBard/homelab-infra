@@ -75,6 +75,13 @@
       no_log: true
       changed_when: false
 
+    - name: Fetch LM Studio API key from 1Password
+      delegate_to: localhost
+      ansible.builtin.command: op read "op://AI Wedge/LMStudio Ironclaw API token/credential"
+      register: _ironclaw_llm_api_key
+      no_log: true
+      changed_when: false
+
     - name: Set secret facts
       ansible.builtin.set_fact:
         ironclaw_pg_password: "{{ _ironclaw_pg_pw.stdout | trim }}"
@@ -84,6 +91,7 @@
         ironclaw_slack_signing_secret: "{{ _ironclaw_slack_sign.stdout | trim }}"
         ironclaw_secrets_master_key: "{{ _ironclaw_secrets_key.stdout | trim }}"
         ironclaw_gateway_auth_token: "{{ _ironclaw_gateway_token.stdout | trim }}"
+        ironclaw_llm_api_key: "{{ _ironclaw_llm_api_key.stdout | trim }}"
       no_log: true
 
   roles:

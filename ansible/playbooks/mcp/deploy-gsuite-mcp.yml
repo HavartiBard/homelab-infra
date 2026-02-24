@@ -2,17 +2,22 @@
 # Deploy google_workspace_mcp (Gmail + Calendar + Drive MCP server) on Unraid
 #
 # Prerequisites:
-#   - /mnt/user/appdata/gsuite-mcp/gauth.json  (Desktop app OAuth client secrets
+#   - /mnt/user/appdata/gsuite-mcp/gauth.json  (Web Application OAuth client JSON
 #     downloaded from Google Cloud Console → APIs & Services → Credentials)
+#   - The OAuth client must have https://gsuite-auth.klsll.com/oauth2callback
+#     registered as an authorized redirect URI in Google Cloud Console
 #
 # The server exposes a native HTTP MCP endpoint (streamable-http transport).
 # No mcp-proxy bridging needed — clients connect directly.
 #
-# After deployment, complete OAuth once by visiting:
-#   https://gsuite-auth.klsll.com/auth/
+# After deployment, complete OAuth once:
+#   1. Call the start_google_auth MCP tool to get an authorization URL
+#   2. Open that URL in a browser and authorize the app
+#   3. Google redirects to https://gsuite-auth.klsll.com/oauth2callback
+#   Tokens are stored in /mnt/user/appdata/gsuite-mcp/store_creds/
 #
 # MCP endpoint (for .mcp.json / Claude config):
-#   http://192.168.20.14:8092/mcp/
+#   http://192.168.20.14:8092/mcp
 
 - name: Deploy gsuite-mcp container and update mcp-proxy
   hosts: unraid
