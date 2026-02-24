@@ -4,8 +4,8 @@
 # Requires pre-existing /mnt/user/appdata/gsuite-mcp/gauth.json
 # (Desktop app OAuth client secrets downloaded from Google Cloud Console)
 #
-# After deployment, authenticate once by visiting:
-#   https://gsuite-auth.klsll.com/auth/
+# After deployment, authenticate once via the start_google_auth MCP tool.
+# The auth URL redirects to https://gsuite-auth.klsll.com/oauth2callback.
 
 - name: Create gsuite-mcp appdata directories
   ansible.builtin.raw: |
