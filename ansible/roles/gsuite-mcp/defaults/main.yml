@@ -23,5 +23,9 @@ gsuite_mcp_user_email: "jma8chz@gmail.com"
 # External URL used for OAuth callback (reverse proxy hostname)
 gsuite_mcp_external_url: "https://gsuite-auth.klsll.com"
 
+# OAuth redirect URI for the reverse proxy callback
+# Must match an authorized redirect URI in Google Cloud Console
+gsuite_mcp_oauth_redirect_uri: "{{ gsuite_mcp_external_url }}/oauth2callback"
+
 # Timezone
 timezone: "America/Phoenix"

@@ -46,6 +46,7 @@
       -e GOOGLE_CLIENT_SECRET_PATH='{{ gsuite_mcp_client_secret_path }}' \
       -e USER_GOOGLE_EMAIL='{{ gsuite_mcp_user_email }}' \
       -e WORKSPACE_EXTERNAL_URL='{{ gsuite_mcp_external_url }}' \
+      -e GOOGLE_OAUTH_REDIRECT_URI='{{ gsuite_mcp_oauth_redirect_uri }}' \
       {{ gsuite_mcp_image }}
   register: container_result
   changed_when: container_result.rc == 0
