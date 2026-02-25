@@ -15,6 +15,7 @@ services:
     volumes:
       - /home/james/.openclaw:/home/node/.openclaw
       - /home/james/bots/raclette:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - .env
     environment:
