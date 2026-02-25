@@ -1,0 +1,29 @@
+---
+# Chiffon Executor default variables
+
+# Container settings
+chiffon_executor_image: "registry.klsll.com/havartibard/chiffon-executor:latest"
+chiffon_executor_container_name: "chiffon-executor"
+
+# Paths
+chiffon_executor_appdata_dir: "/mnt/user/appdata/chiffon-executor"
+chiffon_executor_repo_dir: "{{ chiffon_executor_appdata_dir }}/repo"
+
+# Project settings
+chiffon_executor_project: "chiffon"
+chiffon_executor_lmstudio_url: "http://spraycheese.lab.klsll.com:1234"
+chiffon_executor_execution_mode: "cron"
+chiffon_executor_cron_schedule: "*/30 * * * *"
+
+# Auth token (read from environment or 1Password)
+chiffon_executor_token: >-
+  {{ lookup('env', 'CHIFFON_EXECUTOR_TOKEN')
+  | default(lookup('pipe', 'op read "op://AI Wedge/Chiffon Executor Token/credential" 2>/dev/null || echo ""'), true)
+  | default('', true) }}
+
+# Git identity used for commits from inside the container
+chiffon_git_user_name: "chiffon-executor"
+chiffon_git_user_email: "chiffon-executor@klsll.com"
+
+# Timezone
+timezone: "America/Phoenix"
