@@ -1,0 +1,19 @@
+---
+# Adds mcporter to the ironclaw container on Unraid.
+# Re-run after: the ironclaw role rebuilds ironclaw:local from source
+#
+# Usage:
+#   ansible-playbook playbooks/services/add-mcporter-to-ironclaw.yml --limit unraid-server -v
+- name: Add mcporter to ironclaw (Unraid)
+  hosts: unraid
+  gather_facts: no
+
+  vars:
+    mcporter_base_image: "ironclaw:local"
+    mcporter_container_name: "ironclaw"
+    mcporter_compose_dir: "/opt/docker/ironclaw"
+    mcporter_container_user: "ironclaw"
+    mcporter_config_path: "/home/ironclaw/.mcporter.json"
+
+  roles:
+    - add-mcporter
