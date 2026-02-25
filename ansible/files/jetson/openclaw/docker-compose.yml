@@ -12,6 +12,8 @@ services:
       - "18789"
       - --bind
       - lan
+    group_add:
+      - "994"
     volumes:
       - /home/james/.openclaw:/home/node/.openclaw
       - /home/james/bots/raclette:/workspace
