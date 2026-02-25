@@ -24,10 +24,10 @@
         && printf '#!/bin/sh\nexec /usr/local/bin/mcporter-real --config {{ mcporter_config_path }} "$@"\n' > /usr/local/bin/mcporter \
         && chmod +x /usr/local/bin/mcporter{% if mcporter_install_ansible | default(false) | bool %}
 
-RUN apt-get update -qq \
-    && apt-get install -y --no-install-recommends python3-pip \
-    && pip3 install --quiet ansible \
-    && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_container_user %}
+    RUN apt-get update -qq \
+        && apt-get install -y --no-install-recommends python3-pip \
+        && pip3 install --quiet ansible \
+        && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_container_user %}
 
     USER {{ mcporter_container_user }}{% endif %}
 
