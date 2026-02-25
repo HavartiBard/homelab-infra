@@ -18,7 +18,7 @@ chiffon_executor_cron_schedule: "*/30 * * * *"
 # Auth token (read from environment or 1Password)
 chiffon_executor_token: >-
   {{ lookup('env', 'CHIFFON_EXECUTOR_TOKEN')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Chiffon Executor Token/credential" 2>/dev/null || echo ""'), true)
+  | default(lookup('pipe', 'op read "op://AI Wedge/AGENT - Gitea Executor 01/token" 2>/dev/null || echo ""'), true)
   | default('', true) }}
 
 # Git identity used for commits from inside the container
