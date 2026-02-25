@@ -26,7 +26,7 @@
 
     RUN apt-get update -qq \
         && apt-get install -y --no-install-recommends python3-pip \
-        && pip3 install --quiet ansible \
+        && pip3 install --quiet --break-system-packages ansible \
         && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_container_user %}
 
     USER {{ mcporter_container_user }}{% endif %}
