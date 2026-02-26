@@ -221,11 +221,6 @@
       changed_when: false
       failed_when: false
 
-    - name: Symlink openclaw onto PATH in container
-      ansible.builtin.command:
-        cmd: docker exec -u root openclaw ln -sf /app/openclaw.mjs /usr/local/bin/openclaw
-      changed_when: false
-
     - name: Install zsh in OpenClaw container
       ansible.builtin.command:
         cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y zsh"
@@ -284,11 +279,11 @@
       when: _container_sudo.rc != 0
       changed_when: true
 
-    - name: Grant node user passwordless sudo for apt-get and pip3
+    - name: Grant node user passwordless sudo for apt-get, pip3, and network read tools
       ansible.builtin.command:
         cmd: >
           docker exec -u root openclaw bash -c
-          "echo 'node ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/pip3, /usr/local/bin/pip3' > /etc/sudoers.d/node-tools && chmod 440 /etc/sudoers.d/node-tools"
+          "echo 'node ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/pip3, /usr/local/bin/pip3, /usr/bin/ss, /usr/sbin/ufw, /usr/sbin/nft' > /etc/sudoers.d/node-tools && chmod 440 /etc/sudoers.d/node-tools"
       changed_when: false
 
     # ── Docker CLI in container (required for sandbox exec) ───────────────────

@@ -15,6 +15,8 @@
     mcporter_container_user: "node"
     mcporter_install_ansible: true
     mcporter_install_docker: true
+    mcporter_install_network_tools: true
+    mcporter_install_openclaw_cli: true
 
   roles:
     - add-mcporter
