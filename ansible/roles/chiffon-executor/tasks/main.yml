@@ -55,6 +55,7 @@
       -e REPO_PATH=/work \
       -e QUEUE_PATH=/work/tasks/queue \
       -e LMSTUDIO_URL='{{ chiffon_executor_lmstudio_url }}' \
+      -e LMSTUDIO_API_KEY='{{ chiffon_executor_lmstudio_api_key | default("") }}' \
       -e EXECUTION_MODE='{{ chiffon_executor_execution_mode }}' \
       -e CRON_SCHEDULE='{{ chiffon_executor_cron_schedule }}' \
       -e GITEA_BASE_URL=https://code.klsll.com \
