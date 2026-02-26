@@ -257,6 +257,21 @@
           "echo 'node ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/pip3, /usr/local/bin/pip3' > /etc/sudoers.d/node-tools && chmod 440 /etc/sudoers.d/node-tools"
       changed_when: false
 
+    # ── Docker CLI in container (required for sandbox exec) ───────────────────
+
+    - name: Check if docker CLI is installed in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec openclaw which docker
+      register: _container_docker
+      changed_when: false
+      failed_when: false
+
+    - name: Install docker CLI in OpenClaw container
+      ansible.builtin.command:
+        cmd: docker exec -u root openclaw bash -c "apt-get update -qq && apt-get install -y docker.io"
+      when: _container_docker.rc != 0
+      changed_when: true
+
     # ── pip + Ansible in container ─────────────────────────────────────────────
 
     - name: Check if ansible is installed in OpenClaw container
