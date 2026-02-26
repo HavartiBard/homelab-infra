@@ -18,3 +18,6 @@ mcporter_config_path: "/home/node/.openclaw/mcporter.json"
 # Install ansible (python3-pip + pip3 install ansible) into the image layer.
 # Enable for containers that need to run ansible-playbook (e.g. openclaw/raclette).
 mcporter_install_ansible: false
+# Install docker CLI (docker.io) into the image layer.
+# Enable for containers that need to spawn Docker sandbox containers (e.g. openclaw with tools.exec.host=sandbox).
+mcporter_install_docker: false

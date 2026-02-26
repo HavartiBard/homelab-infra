@@ -14,6 +14,7 @@
     mcporter_compose_dir: "/home/james/docker/openclaw"
     mcporter_container_user: "node"
     mcporter_install_ansible: true
+    mcporter_install_docker: true
 
   roles:
     - add-mcporter
