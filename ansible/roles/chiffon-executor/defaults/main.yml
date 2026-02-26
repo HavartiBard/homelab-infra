@@ -2,7 +2,7 @@
 # Chiffon Executor default variables
 
 # Container settings
-chiffon_executor_image: "registry.klsll.com/havartibard/chiffon-executor:latest"
+chiffon_executor_image: "code.klsll.com/havartibard/chiffon-executor:latest"
 chiffon_executor_container_name: "chiffon-executor"
 
 # Paths
