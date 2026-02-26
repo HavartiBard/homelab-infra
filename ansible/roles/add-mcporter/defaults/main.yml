@@ -21,3 +21,11 @@ mcporter_install_ansible: false
 # Install docker CLI (docker.io) into the image layer.
 # Enable for containers that need to spawn Docker sandbox containers (e.g. openclaw with tools.exec.host=sandbox).
 mcporter_install_docker: false
+# Install network inspection tools (iproute2/ss, ufw, nftables) and grant the node user
+# passwordless sudo for read-only invocations of those tools.
+# Enable for openclaw/agent containers that need host network/firewall visibility.
+mcporter_install_network_tools: false
+# Create a /usr/local/bin/openclaw wrapper script that calls `node /app/dist/index.js`.
+# Enable when the base image is ghcr.io/openclaw/openclaw so the agent can invoke the
+# openclaw CLI (security audit, update status, etc.) via exec.
+mcporter_install_openclaw_cli: false

@@ -31,7 +31,17 @@
 
     RUN apt-get update -qq \
         && apt-get install -y --no-install-recommends docker.io \
-        && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_container_user %}
+        && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_install_network_tools | default(false) | bool %}
+
+    RUN apt-get update -qq \
+        && apt-get install -y --no-install-recommends iproute2 ufw nftables sudo \
+        && rm -rf /var/lib/apt/lists/* \
+        && echo 'node ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/pip3, /usr/local/bin/pip3, /usr/bin/ss, /usr/sbin/ufw, /usr/sbin/nft' \
+               > /etc/sudoers.d/node-tools \
+        && chmod 440 /etc/sudoers.d/node-tools{% endif %}{% if mcporter_install_openclaw_cli | default(false) | bool %}
+
+    RUN printf '#!/bin/sh\nexec node /app/dist/index.js "$@"\n' > /usr/local/bin/openclaw \
+        && chmod +x /usr/local/bin/openclaw{% endif %}{% if mcporter_container_user %}
 
     USER {{ mcporter_container_user }}{% endif %}
 
