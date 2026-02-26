@@ -84,4 +84,5 @@
 
 - name: Display container logs
   ansible.builtin.debug:
-    msg: "{{ container_logs.stdout_lines }}"
+    msg: "{{ container_logs.stdout | default('') }}"
+  when: container_logs.stdout is defined
