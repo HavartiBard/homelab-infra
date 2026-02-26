@@ -168,6 +168,40 @@
           when: _device_auth_reconstructed is changed
           changed_when: true
 
+    # ── Enforce tools.exec.host=gateway ───────────────────────────────────────
+    # Director may push tools.exec.host=sandbox via config patch when an agent
+    # session starts.  Sandbox mode prevents mcporter from running because the
+    # sandbox containers don't have the mcporter binary.  We always enforce
+    # gateway mode so exec commands run inside the openclaw container where
+    # mcporter is available at /usr/local/bin/mcporter.
+
+    - name: Read current tools.exec.host from openclaw.json
+      ansible.builtin.command:
+        cmd: >
+          python3 -c
+          "import json; d=json.load(open('{{ jetson_openclaw_state_dir }}/openclaw.json'));
+          print(d.get('tools', {}).get('exec', {}).get('host', 'unset'))"
+      register: _exec_host_current
+      changed_when: false
+
+    - name: Enforce tools.exec.host=gateway in openclaw.json
+      ansible.builtin.command:
+        cmd: >
+          python3 -c "
+          import json
+          path = '{{ jetson_openclaw_state_dir }}/openclaw.json'
+          with open(path) as f:
+              cfg = json.load(f)
+          cfg.setdefault('tools', {}).setdefault('exec', {})['host'] = 'gateway'
+          cfg['tools']['exec'].setdefault('security', 'full')
+          cfg['tools']['exec'].setdefault('ask', 'off')
+          with open(path, 'w') as f:
+              json.dump(cfg, f, indent=2)
+              f.write('\n')
+          "
+      when: _exec_host_current.stdout != 'gateway'
+      changed_when: true
+
     - name: Wait for OpenClaw gateway to become available
       ansible.builtin.uri:
         url: "http://127.0.0.1:{{ jetson_openclaw_port }}"
