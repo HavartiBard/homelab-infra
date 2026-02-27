@@ -43,8 +43,8 @@ ansible/group_vars/**/*.bak.*
 *.tfvars
 !*.tfvars.example
 
-# Vault files deprecated - using direct 1Password service account lookups
-ansible/group_vars/*/vault.yml
+# Ansible vault encrypted files are committed to git (encrypted at rest)
+# Only exclude plaintext backups
 ansible/group_vars/*/vault.yml.bak.*
 ansible/artifacts/
 .worktrees/
