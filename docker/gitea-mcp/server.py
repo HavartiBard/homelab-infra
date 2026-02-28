@@ -78,7 +78,7 @@ def list_issues(owner: str, repo: str, state: str = "open", labels: str = "",
         if "labels" in i:
             i["labels"] = [lb["name"] for lb in i["labels"]]
         if "assignees" in i:
-            i["assignees"] = [a["login"] for a in i["assignees"]]
+            i["assignees"] = [a["login"] for a in (i["assignees"] or [])]
         if "milestone" in i and i["milestone"]:
             i["milestone"] = i["milestone"]["title"]
     return json.dumps(issues, indent=2)
@@ -93,7 +93,7 @@ def get_issue(owner: str, repo: str, index: int) -> str:
     if "labels" in issue:
         issue["labels"] = [lb["name"] for lb in issue["labels"]]
     if "assignees" in issue:
-        issue["assignees"] = [a["login"] for a in issue["assignees"]]
+        issue["assignees"] = [a["login"] for a in (issue["assignees"] or [])]
     if "milestone" in issue and issue["milestone"]:
         issue["milestone"] = issue["milestone"]["title"]
     return json.dumps(issue, indent=2)
