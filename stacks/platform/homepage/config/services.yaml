@@ -1,74 +1,9 @@
-- Platform:
-    - Homepage:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homepage.png
-        href: https://home.klsll.com
-    - NPM:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png
-        href: https://npm.klsll.com
-        widget:
-          type: npm
-          url: "{{ npm_webui_url | default('http://192.168.20.50:81', true) }}"
-          username: "{{ npm_admin_email_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          password: "{{ npm_admin_password_vault | default('', true) | trim | regex_replace('\"', '') }}"
-
-- DNS:
-    - Technitium:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/technitium.png
-        href: https://dns.klsll.com
-    - AdGuard (Primary):
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/adguard-home.png
-        href: https://adguard.klsll.com
-        widget:
-          type: adguard
-          url: http://192.168.20.4:3000
-          username: "{{ adguard_admin_user_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          password: "{{ adguard_admin_password_vault | default('', true) | trim | regex_replace('\"', '') }}"
-    - AdGuard (Replica):
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/adguard-home.png
-        href: https://adguard-replica.klsll.com
-        widget:
-          type: adguard
-          url: http://192.168.20.5:3000
-          username: "{{ adguard_admin_user_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          password: "{{ adguard_admin_password_vault | default('', true) | trim | regex_replace('\"', '') }}"
-
-- Infra:
-    - Unraid:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/unraid.png
-        href: https://unraid.klsll.com
-        widget:
-          type: unraid
-          url: https://unraid.klsll.com
-          key: "{{ unraid_api_key_vault | default('', true) | trim | regex_replace('\"', '') }}"
-    - Proxmox (pve-01):
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png
-        href: https://pve.klsll.com
-        widget:
-          type: proxmox
-          url: https://192.168.20.100:8006
-          username: "{{ proxmox_mcp_user_vault | default('', true) | trim | regex_replace('\"', '') }}!{{ proxmox_mcp_token_name_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          password: "{{ proxmox_mcp_token_value_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          node: pve-01
-    - Proxmox (pve-02):
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png
-        href: https://pve.klsll.com
-        widget:
-          type: proxmox
-          url: https://192.168.20.101:8006
-          username: "{{ proxmox_mcp_user_vault | default('', true) | trim | regex_replace('\"', '') }}!{{ proxmox_mcp_token_name_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          password: "{{ proxmox_mcp_token_value_vault | default('', true) | trim | regex_replace('\"', '') }}"
-          node: pve-02
-
-- DevOps:
-    - homelab-infra:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/github.png
-        href: https://github.com/HavartiBard/homelab-infra
-    - chiffon:
-        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/github.png
-        href: https://github.com/HavartiBard/chiffon
-
 - AI:
     - IronClaw:
         icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ai.png
         href: https://ironclaw.klsll.com
         description: Local AI assistant — web UI, Slack, webhooks (Unraid)
+    - Research Dashboard:
+        icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/graph.png
+        href: https://research.klsll.com
+        description: Local research workspace + charts

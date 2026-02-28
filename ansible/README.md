@@ -225,6 +225,7 @@ Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.templ
 
 | Role | Description | Config |
 |------|-------------|--------|
+| `research-dashboard` | Research dashboard web app | unraid |
 | `homelab-mcp` | Orbi, NPM, Pi-hole MCP server | Jinja2 template |
 | `onepassword-mcp` | 1Password secrets MCP server | Env vars only |
 | `unraid-mcp` | Unraid GraphQL management MCP server | Env vars only |

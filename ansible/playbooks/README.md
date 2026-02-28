@@ -20,5 +20,7 @@ ansible-playbook playbooks/<group>/<playbook>.yml --limit <host-or-group>
 Update this README whenever playbooks are added, moved, or removed so it stays a current guide for the agent workflow.
 
 Recent platform/service additions:
+- `platform/deploy-research-dashboard.yml`
+- `services/update-research-dashboard-proxy.yml`
 - `platform/deploy-director.yml`
 - `services/update-director-proxy.yml`

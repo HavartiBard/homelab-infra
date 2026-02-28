@@ -1,0 +1,106 @@
+---
+- name: Ensure appdata and compose directories exist
+  ansible.builtin.raw: |
+    mkdir -p {{ research_dashboard_appdata }} {{ research_dashboard_compose_dir }} {{ research_dashboard_repo_dir }}
+  changed_when: false
+
+- name: Sync research-dashboard source repo
+  ansible.builtin.raw: |
+    set -euo pipefail
+    if [ -d {{ research_dashboard_repo_dir }}/.git ]; then
+      git -C {{ research_dashboard_repo_dir }} fetch --all --prune
+      git -C {{ research_dashboard_repo_dir }} reset --hard origin/main
+    else
+      rm -rf {{ research_dashboard_repo_dir }}
+      git clone {{ research_dashboard_repo }} {{ research_dashboard_repo_dir }}
+    fi
+
+- name: Render docker-compose.yml
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cat <<'EOF' > {{ research_dashboard_compose_dir }}/docker-compose.yml
+    {{ lookup('file', playbook_dir + '/../../files/research-dashboard/docker-compose.yml') }}
+    EOF
+
+- name: Render .env
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cat <<'EOF' > {{ research_dashboard_compose_dir }}/.env
+    TZ=America/Phoenix
+    RESEARCH_DASHBOARD_IMAGE={{ research_dashboard_image }}
+    RESEARCH_DASHBOARD_APPDATA={{ research_dashboard_appdata }}
+    RESEARCH_DASHBOARD_IP={{ research_dashboard_ip }}
+    RESEARCH_DASHBOARD_NETWORK_NAME={{ research_dashboard_network_name }}
+    RESEARCH_DASHBOARD_ICON={{ research_dashboard_icon }}
+    LMSTUDIO_BASE_URL={{ research_dashboard_lmstudio_base_url }}
+    LMSTUDIO_MODEL={{ research_dashboard_lmstudio_model }}
+    LMSTUDIO_AUTH_HEADER={{ research_dashboard_lmstudio_auth_header }}
+    OBSIDIAN_MCP_ENABLED={{ research_dashboard_obsidian_mcp_enabled }}
+    OBSIDIAN_MCP_FOLDER={{ research_dashboard_obsidian_mcp_folder }}
+    EOF
+
+- name: Check for docker compose plugin
+  ansible.builtin.raw: |
+    if docker compose version >/dev/null 2>&1; then
+      echo "docker_compose=1"
+    else
+      exit 1
+    fi
+  register: docker_compose_plugin
+  changed_when: false
+  ignore_errors: true
+
+- name: Check for legacy docker-compose
+  ansible.builtin.raw: |
+    if {{ compose_bin_path }} version >/dev/null 2>&1; then
+      echo "docker_compose_legacy=1"
+    else
+      exit 1
+    fi
+  register: docker_compose_legacy
+  changed_when: false
+  ignore_errors: true
+
+- name: Install docker-compose binary when missing
+  ansible.builtin.raw: |
+    set -euo pipefail
+    if ! command -v {{ compose_bin_path }} >/dev/null 2>&1; then
+      curl -fsSL "{{ compose_download_url }}" -o {{ compose_bin_path }}
+      chmod +x {{ compose_bin_path }}
+    fi
+  when:
+    - docker_compose_plugin.rc != 0
+    - docker_compose_legacy.rc != 0
+
+- name: Select compose command
+  ansible.builtin.set_fact:
+    docker_compose_command: >-
+      {{ 'docker compose'
+      if docker_compose_plugin.rc == 0
+      else compose_bin_path }}
+
+- name: Build research-dashboard image
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ research_dashboard_compose_dir }}
+    {{ docker_compose_command }} build
+
+- name: Deploy research-dashboard
+  ansible.builtin.raw: |
+    set -euo pipefail
+    cd {{ research_dashboard_compose_dir }}
+    {{ docker_compose_command }} up -d --remove-orphans
+
+- name: Validate research-dashboard HTTP endpoint
+  ansible.builtin.raw: |
+    set -euo pipefail
+    attempts=0
+    until curl -fsSL http://{{ research_dashboard_ip }}:{{ research_dashboard_container_port }} >/dev/null; do
+      attempts=$((attempts + 1))
+      if [ $attempts -ge 24 ]; then
+        echo "research-dashboard at {{ research_dashboard_ip }}:{{ research_dashboard_container_port }} is unreachable"
+        exit 1
+      fi
+      sleep 5
+    done
+  changed_when: false

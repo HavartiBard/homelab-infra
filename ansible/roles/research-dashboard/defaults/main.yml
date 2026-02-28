@@ -1,0 +1,22 @@
+---
+research_dashboard_port: 3036
+research_dashboard_container_port: 3000
+research_dashboard_ip: 192.168.20.57
+research_dashboard_name: research-dashboard
+research_dashboard_image: "research-dashboard:latest"
+research_dashboard_repo: "https://code.klsll.com/HavartiBard/research-dashboard.git"
+research_dashboard_repo_dir: "/opt/docker/research-dashboard/app"
+research_dashboard_appdata: "/mnt/user/appdata/research-dashboard"
+research_dashboard_compose_dir: "/opt/docker/research-dashboard"
+research_dashboard_network_name: br0
+research_dashboard_subnet: 192.168.20.0/23
+research_dashboard_gateway: 192.168.20.1
+research_dashboard_parent_iface: br0
+research_dashboard_icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/graph.png"
+
+research_dashboard_lmstudio_base_url: "http://spraycheese.klsll.com:1234/v1"
+research_dashboard_lmstudio_model: "local-model"
+research_dashboard_lmstudio_auth_header: "{{ lookup('env', 'LMSTUDIO_AUTH_HEADER') or lookup('pipe', 'op read \"op://AI Wedge/LMStudio Openclaw API Token/credential\"') }}"
+
+research_dashboard_obsidian_mcp_enabled: false
+research_dashboard_obsidian_mcp_folder: research

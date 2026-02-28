@@ -1,0 +1,6 @@
+---
+- name: Deploy Research Dashboard
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - role: research-dashboard

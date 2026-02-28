@@ -52,6 +52,7 @@ This document lists all ports used by homelab stacks with access requirements.
 
 | Service | Port | Protocol | Access | Description |
 |---------|------|----------|--------|-------------|
+| **Research Dashboard** | 3036 | TCP | 🌐 Proxied | Local research workspace |
 | **NetBox** | 8001 | TCP | 🌐 Proxied | DCIM/IPAM |
 | **1Password MCP** | 6975 | TCP | 🔒 LAN-Only | MCP server |
 | **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
