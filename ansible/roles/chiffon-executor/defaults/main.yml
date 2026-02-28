@@ -12,6 +12,7 @@ chiffon_executor_repo_dir: "{{ chiffon_executor_appdata_dir }}/repo"
 # Project settings
 chiffon_executor_project: "homelab-infra"
 chiffon_executor_lmstudio_url: "http://spraycheese.lab.klsll.com:1234"
+chiffon_executor_lmstudio_model: "qwen/qwen2.5-coder-32b"
 chiffon_executor_lmstudio_api_key: "{{ vault_chiffon_lmstudio_api_key }}"
 chiffon_executor_execution_mode: "cron"
 chiffon_executor_cron_schedule: "*/30 * * * *"
