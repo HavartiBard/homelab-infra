@@ -19,6 +19,7 @@ services:
       - /home/james/bots/raclette:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/james/.env_container:/home/node/.env_container:ro
+      - /home/james/.vault-pass:/home/node/.vault-pass:ro
     env_file:
       - .env
     environment:
