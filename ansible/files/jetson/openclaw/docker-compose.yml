@@ -18,6 +18,7 @@ services:
       - /home/james/.openclaw:/home/node/.openclaw
       - /home/james/bots/raclette:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
+      - /home/james/.env_container:/home/node/.env_container:ro
     env_file:
       - .env
     environment:
