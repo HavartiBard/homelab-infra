@@ -32,17 +32,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # 1Password SSH agent socket (from host)
       - ${OP_SSH_AGENT_SOCK:-/home/james/.1password/agent.sock}:/home/${DEV_USER:-james}/.1password/agent.sock:ro
-      # Obsidian vault from Unraid via NFS (read-only)
-      - obsidian-vault:/mnt/obsidian:ro
+      # Obsidian vault — direct bind mount (container runs on Unraid, no NFS needed)
+      - /mnt/user/appdata/obsidian/vaults/homelab:/mnt/obsidian
     environment:
       - TZ=${TZ:-America/Phoenix}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - LMSTUDIO_API_KEY=${LMSTUDIO_API_KEY:-}
       - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN:-}
+      - NOTION_MCP_TOKEN=${NOTION_MCP_TOKEN:-}
       - GITEA_TOKEN=${GITEA_TOKEN:-}
       - CODEX_CONFIG_FILE=/home/${DEV_USER:-james}/.codex/config.toml
       - LMSTUDIO_BASE_URL=${LMSTUDIO_BASE_URL:-http://spraycheese.lab.klsll.com:1234/v1}
       - DEV_USER=${DEV_USER:-james}
+      - DEV_SAFE_MODE=${DEV_SAFE_MODE:-true}
+      - DEV_MANAGE_HOME_CONFIGS=${DEV_MANAGE_HOME_CONFIGS:-false}
       - VSCODE_TUNNEL_NAME=${VSCODE_TUNNEL_NAME:-dev-box}
     deploy:
       resources:
@@ -67,12 +70,3 @@ networks:
   br0:
     external: true
 
-volumes:
-  # Obsidian vault from local NFS export
-  # Since this is running ON Unraid, mount the local export
-  obsidian-vault:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=127.0.0.1,nfsvers=4,ro,nolock
-      device: ":/mnt/user/appdata/obsidian/vaults/homelab"
