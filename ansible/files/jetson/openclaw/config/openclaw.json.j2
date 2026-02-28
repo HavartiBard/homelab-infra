@@ -93,6 +93,9 @@
     "auth": {
       "mode": "token",
       "token": "{{ lookup('env', 'OPENCLAW_GATEWAY_TOKEN') | default('CHANGEME_SET_OPENCLAW_GATEWAY_TOKEN', true) }}"
+    },
+    "controlUi": {
+      "dangerouslyAllowHostHeaderOriginFallback": true
     }
   },
   "channels": {
