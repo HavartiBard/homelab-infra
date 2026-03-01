@@ -36,23 +36,12 @@ npm_manage_dns: false
 npm_proxy_config_dir: ""
 npm_proxy_config_paths: []
 npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
-npm_admin_email: >-
-  {{ lookup('env', 'NPM_ADMIN_EMAIL')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Nginx Proxy Manager Admin/username" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
-npm_admin_password: >-
-  {{ lookup('env', 'NPM_ADMIN_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Nginx Proxy Manager Admin/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+# Credentials MUST be provided via env or vault vars; no op lookups allowed.
+npm_admin_email: "{{ lookup('env', 'NPM_ADMIN_EMAIL') | default('', true) }}"
+npm_admin_password: "{{ lookup('env', 'NPM_ADMIN_PASSWORD') | default('', true) }}"
 technitium_api_url: ""
 technitium_zone: klsll.com
 technitium_admin_user: dns-automation
 technitium_api_token: "{{ lookup('env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
-technitium_admin_password: >-
-  {{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/DNS Automation Credential/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
-cloudflare_dns_token: >-
-  {{ lookup('env', 'CLOUDFLARE_API_TOKEN')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Cloudflare DNS Token/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+technitium_admin_password: "{{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD') | default('', true) }}"
+cloudflare_dns_token: "{{ lookup('env', 'CLOUDFLARE_API_TOKEN') | default('', true) }}"
