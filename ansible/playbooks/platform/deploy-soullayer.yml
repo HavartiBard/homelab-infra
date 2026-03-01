@@ -32,18 +32,9 @@
         state: directory
         mode: "0700"
 
-    - name: Read AI-Agents SSH private key from 1Password (on dev-box)
-      ansible.builtin.shell: op read "op://AI Wedge/ai-agents-gitea-ssh/private key"
-      register: ssh_private_key
-      delegate_to: localhost
-      changed_when: false
-      no_log: true
-      environment:
-        OP_SERVICE_ACCOUNT_TOKEN: "{{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN') }}"
-
     - name: Deploy SSH private key to Unraid
       ansible.builtin.copy:
-        content: "{{ ssh_private_key.stdout }}"
+        content: "{{ vault_ai_agents_ssh_private_key }}"
         dest: "{{ ssh_key_path }}"
         mode: "0600"
         owner: root
