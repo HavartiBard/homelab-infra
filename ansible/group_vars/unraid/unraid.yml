@@ -30,37 +30,26 @@ openclaw_session_token: >-
   {{ lookup('env', 'OPENCLAW_SESSION_TOKEN')
   | default('CHANGEME_OPENCLAW_SESSION_TOKEN', true) }}
 
-op_vault: "{{ lookup('env', 'OP_VAULT') | default('AI Wedge', true) }}"
-npm_op_item: "Nginx Proxy Manager Admin"
-technitium_op_item: "DNS Automation Credential"
-cloudflare_op_item: "Cloudflare DNS Token"
-npm_op_command: >-
-  op item get "{{ npm_op_item }}" --vault "{{ op_vault }}" --fields password --reveal
-npm_op_user_command: >-
-  op item get "{{ npm_op_item }}" --vault "{{ op_vault }}" --fields username --reveal
-technitium_op_command: >-
-  op item get "{{ technitium_op_item }}" --vault "{{ op_vault }}" --fields credential --reveal
-cloudflare_op_command: >-
-  op item get "{{ cloudflare_op_item }}" --vault "{{ op_vault }}" --fields credential --reveal
+
+# Credentials: env or vault only (no op lookups)
 npm_admin_email: >-
   {{ lookup('env', 'NPM_ADMIN_EMAIL')
-  | default(lookup('pipe', npm_op_user_command), true) }}
+  | default(npm_admin_email_vault | default('', true), true) }}
 npm_admin_password: >-
   {{ lookup('env', 'NPM_ADMIN_PASSWORD')
-  | default(lookup('pipe', npm_op_command), true) }}
+  | default(npm_admin_password_vault | default('', true), true) }}
 technitium_api_url: "http://192.168.20.2:5380"
 technitium_zone: klsll.com
 technitium_admin_user: dns-automation
 technitium_api_token: >-
   {{ lookup('env', 'TECHNITIUM_API_TOKEN')
-  | default(lookup('pipe', technitium_op_command), true) }}
+  | default(technitium_api_token_vault | default('', true), true) }}
 technitium_admin_password: >-
   {{ lookup('env', 'TECHNITIUM_ADMIN_PASSWORD')
-  | default(lookup('pipe', technitium_op_command), true) }}
+  | default(technitium_admin_password_vault | default('', true), true) }}
 cloudflare_dns_token: >-
   {{ lookup('env', 'CLOUDFLARE_API_TOKEN')
-  | default(lookup('pipe', cloudflare_op_command), true) }}
-
+  | default(cloudflare_dns_token_vault | default('', true), true) }}
 # Optional external ACME issuer
 # Set to true to enable the lego/acme.sh helper container.
 enable_external_acme_issuer: false
@@ -74,53 +63,41 @@ acme_dns_env: {}
 
 # MCP credentials (loaded from 1Password service account)
 unraid_api_key: >-
-  {{ lookup('env', 'UNRAID_API_KEY')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Unraid GraphQL - Wedge/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'UNRAID_API_KEY')
+  | default(unraid_api_key_vault | default('', true), true) }
 orbi_username: >-
-  {{ lookup('env', 'ORBI_USERNAME')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/username" 2>/dev/null || echo ""'), true)
-  | default('admin') }}
+  { lookup('env', 'ORBI_USERNAME')
+  | default(orbi_username_vault | default('', true), true) }
 orbi_password: >-
-  {{ lookup('env', 'ORBI_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Orbi Login/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'ORBI_PASSWORD')
+  | default(orbi_password_vault | default('', true), true) }
 op_service_account_token: >-
-  {{ lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')
-  | default(lookup('pipe', 'op read "op://AI Wedge/OP_SERVICE_ACCOUNT_TOKEN/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'OP_SERVICE_ACCOUNT_TOKEN')
+  | default(op_service_account_token_vault | default('', true), true) }
 proxmox_host: >-
-  {{ lookup('env', 'PROXMOX_MCP_HOST')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/host" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'PROXMOX_HOST')
+  | default(proxmox_mcp_host_vault | default('', true), true) }
 proxmox_port: >-
-  {{ lookup('env', 'PROXMOX_MCP_PORT')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/port" 2>/dev/null || echo ""'), true)
-  | default('8006') }}
+  { lookup('env', 'PROXMOX_PORT')
+  | default(proxmox_mcp_port_vault | default('', true), true) }
 proxmox_user: >-
-  {{ lookup('env', 'PROXMOX_MCP_USER')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/username" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'PROXMOX_USER')
+  | default(proxmox_mcp_user_vault | default('', true), true) }
 proxmox_token_name: >-
-  {{ lookup('env', 'PROXMOX_MCP_TOKEN_NAME')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/token_name" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'PROXMOX_TOKEN_NAME')
+  | default(proxmox_mcp_token_name_vault | default('', true), true) }
 proxmox_token_value: >-
-  {{ lookup('env', 'PROXMOX_MCP_TOKEN_VALUE')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'PROXMOX_TOKEN_VALUE')
+  | default(proxmox_mcp_token_value_vault | default('', true), true) }
 proxmox_allow_elevated: >-
-  {{ lookup('env', 'PROXMOX_MCP_ALLOW_ELEVATED')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Proxmox MCP Token/allow_elevated" 2>/dev/null || echo ""'), true)
-  | default('false') }}
+  { lookup('env', 'PROXMOX_ALLOW_ELEVATED')
+  | default(proxmox_mcp_allow_elevated_vault | default('', true), true) }
 adguard_admin_user: >-
-  {{ lookup('env', 'ADGUARD_ADMIN_USER')
-  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/username" 2>/dev/null || echo ""'), true)
-  | default('admin') }}
+  { lookup('env', 'ADGUARD_ADMIN_USER')
+  | default(adguard_admin_user_vault | default('', true), true) }
 adguard_admin_password: >-
-  {{ lookup('env', 'ADGUARD_ADMIN_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+  { lookup('env', 'ADGUARD_ADMIN_PASSWORD')
+  | default(adguard_admin_password_vault | default('', true), true) }
 gitea_db_password: >-
   {{ lookup('env', 'GITEA_DB_PASSWORD')
   | default(lookup('pipe', 'op read "op://AI Wedge/Gitea DB Credentials/password" 2>/dev/null || echo ""'), true)
