@@ -36,6 +36,7 @@
     LMSTUDIO_MODEL={{ research_dashboard_lmstudio_model }}
     LMSTUDIO_AUTH_HEADER={{ research_dashboard_lmstudio_auth_header }}
     LMSTUDIO_JIT_LOAD={{ research_dashboard_lmstudio_jit_load }}
+    LMSTUDIO_LOAD_URL={{ research_dashboard_lmstudio_load_url }}
     OBSIDIAN_MCP_ENABLED={{ research_dashboard_obsidian_mcp_enabled }}
     OBSIDIAN_MCP_FOLDER={{ research_dashboard_obsidian_mcp_folder }}
     EOF

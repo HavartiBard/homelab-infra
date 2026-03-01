@@ -23,6 +23,7 @@ compose_download_url: >-
 research_dashboard_lmstudio_base_url: "{{ lookup('env', 'LMSTUDIO_BASE_URL') | default('http://spraycheese.lab.klsll.com:1234/v1', true) }}"
 research_dashboard_lmstudio_model: "{{ lookup('env', 'LMSTUDIO_MODEL') | default('local-model', true) }}"
 research_dashboard_lmstudio_jit_load: "true"
+research_dashboard_lmstudio_load_url: "http://169.254.83.107:1234/api/v1/models/load"
 
 research_dashboard_lmstudio_auth_header: "{{
   lookup('env', 'LMSTUDIO_AUTH_HEADER')
