@@ -7,10 +7,10 @@
       - "{{ playbook_dir }}/../../files/npm/services/research-dashboard.yml"
     npm_manage_proxies: true
     npm_manage_dns: true
-    # Ensure delegated localhost tasks can access vault-provided creds
-    npm_admin_email: "{{ hostvars[inventory_hostname].npm_admin_email | default(npm_admin_email, true) }}"
-    npm_admin_password: "{{ hostvars[inventory_hostname].npm_admin_password | default(npm_admin_password, true) }}"
-    technitium_api_token: "{{ hostvars[inventory_hostname].technitium_api_token | default(technitium_api_token, true) }}"
-    technitium_admin_password: "{{ hostvars[inventory_hostname].technitium_admin_password | default(technitium_admin_password, true) }}"
+    # Use vault vars directly for delegated localhost tasks
+    npm_admin_email: "{{ vault_npm_admin_username }}"
+    npm_admin_password: "{{ vault_npm_admin_password }}"
+    technitium_api_token: "{{ vault_technitium_api_token }}"
+    technitium_admin_password: "{{ vault_dns_automation_credential }}"
   roles:
     - npm
