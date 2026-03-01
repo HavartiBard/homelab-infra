@@ -14,11 +14,7 @@ gitea_mcp_webui_url: >-
 gitea_mcp_host: "https://code.klsll.com"
 
 # Credentials (env var with 1Password fallback)
-gitea_mcp_token: >-
-  {{ lookup('env', 'GITEA_MCP_TOKEN')
-  | default(lookup('env', 'GITEA_TOKEN'), true)
-  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea MCP Token/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
 
 # Timezone
 timezone: "America/Phoenix"
