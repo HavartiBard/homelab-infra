@@ -395,3 +395,23 @@
         owner: "{{ bootstrap_user }}"
         group: "{{ bootstrap_user }}"
         mode: '0600'
+
+    # ── Homelab SSH key ───────────────────────────────────────────────────────
+    # Required by OpenClaw/Raclette for git ops and SSH to homelab hosts.
+    # Mounted read-only into the openclaw container.
+
+    - name: Deploy homelab SSH private key from controller
+      ansible.builtin.copy:
+        content: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519_homelab') }}"
+        dest: "{{ bootstrap_user_home }}/.ssh/id_ed25519_homelab"
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0600'
+
+    - name: Deploy homelab SSH public key from controller
+      ansible.builtin.copy:
+        content: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519_homelab.pub') }}"
+        dest: "{{ bootstrap_user_home }}/.ssh/id_ed25519_homelab.pub"
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_user }}"
+        mode: '0644'
