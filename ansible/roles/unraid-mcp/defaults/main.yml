@@ -16,11 +16,7 @@ unraid_mcp_transport: "streamable-http"
 
 # Unraid GraphQL API settings
 unraid_api_url: "https://localhost/graphql"
-unraid_op_item: "Unraid GraphQL - Wedge"
-unraid_api_key: >-
-  {{ lookup('env', 'UNRAID_API_KEY')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Unraid GraphQL - Wedge/credential" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+unraid_api_key: "{{ vault_unraid_api_key }}"
 unraid_verify_ssl: false
 unraid_auto_start_subscriptions: true
 
