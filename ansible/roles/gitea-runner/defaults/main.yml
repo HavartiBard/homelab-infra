@@ -48,10 +48,7 @@ registry_host: registry.klsll.com
 registry_protocol: https
 registry_username: >-
   {{ lookup('env', 'REGISTRY_USERNAME') | default('', true) }}
-registry_password: >-
-  {{ lookup('env', 'REGISTRY_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/Gitea Registry Credentials/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+registry_password: "{{ vault_gitea_registry_password }}"
 
 # GitHub Actions compatibility (for some workflows)
 github_token: >-
