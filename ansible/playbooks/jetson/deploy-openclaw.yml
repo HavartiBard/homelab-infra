@@ -300,44 +300,63 @@
       when: _container_ansible.rc != 0
       changed_when: true
 
-    # ── Homelab SSH key for node user ──────────────────────────────────────────
+    # ── Post-deploy verification ───────────────────────────────────────────────
+    # Asserts all runtime requirements are satisfied inside the running container.
+    # Fails fast with a clear message if anything is missing.
+    # SSH key, vault-pass, and env_container are volume-mounted from the Jetson host.
 
-    - name: Ensure /home/node/.ssh exists in container
+    - name: Verify .env_container is mounted in container
       ansible.builtin.command:
-        cmd: docker exec -u root openclaw bash -c "mkdir -p /home/node/.ssh && chmod 700 /home/node/.ssh && chown node:node /home/node/.ssh"
+        cmd: docker exec openclaw test -r /home/node/.env_container
       changed_when: false
+      register: _verify_env_container
+      failed_when: _verify_env_container.rc != 0
+      tags: [verify]
 
-    - name: Check if homelab SSH key exists in container
+    - name: Verify .vault-pass is mounted in container
       ansible.builtin.command:
-        cmd: docker exec openclaw test -f /home/node/.ssh/id_ed25519_homelab
-      register: _homelab_key_stat
+        cmd: docker exec openclaw test -r /home/node/.vault-pass
       changed_when: false
-      failed_when: false
+      register: _verify_vault_pass
+      failed_when: _verify_vault_pass.rc != 0
+      tags: [verify]
 
-    - name: Copy homelab private key to temp file on Jetson
-      ansible.builtin.copy:
-        src: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_homelab"
-        dest: /tmp/.openclaw-homelab-key
-        mode: '0600'
-      when: _homelab_key_stat.rc != 0
-
-    - name: Copy homelab private key into container
+    - name: Verify homelab SSH key is mounted in container
       ansible.builtin.command:
-        cmd: docker cp /tmp/.openclaw-homelab-key openclaw:/home/node/.ssh/id_ed25519_homelab
-      changed_when: true
-      when: _homelab_key_stat.rc != 0
-
-    - name: Fix key permissions and ownership in container
-      ansible.builtin.command:
-        cmd: docker exec -u root openclaw bash -c "chmod 600 /home/node/.ssh/id_ed25519_homelab && chown node:node /home/node/.ssh/id_ed25519_homelab"
+        cmd: docker exec openclaw test -r /home/node/.ssh/id_ed25519_homelab
       changed_when: false
-      when: _homelab_key_stat.rc != 0
+      register: _verify_ssh_key
+      failed_when: _verify_ssh_key.rc != 0
+      tags: [verify]
 
-    - name: Remove temp homelab key from Jetson
-      ansible.builtin.file:
-        path: /tmp/.openclaw-homelab-key
-        state: absent
-      when: _homelab_key_stat.rc != 0
+    - name: Get homelab SSH key permissions
+      ansible.builtin.command:
+        cmd: docker exec openclaw stat -c '%a' /home/node/.ssh/id_ed25519_homelab
+      changed_when: false
+      register: _ssh_key_perms
+      tags: [verify]
+
+    - name: Assert homelab SSH key permissions are 600
+      ansible.builtin.assert:
+        that: _ssh_key_perms.stdout == '600'
+        fail_msg: "SSH key has permissions {{ _ssh_key_perms.stdout }}, expected 600"
+      tags: [verify]
+
+    - name: Verify mcporter is installed in container
+      ansible.builtin.command:
+        cmd: docker exec openclaw which mcporter
+      changed_when: false
+      register: _verify_mcporter
+      failed_when: _verify_mcporter.rc != 0
+      tags: [verify]
+
+    - name: Verify tools.exec.host is gateway
+      ansible.builtin.command:
+        cmd: "jq -e '.tools.exec.host == \"gateway\"' {{ jetson_openclaw_state_dir }}/openclaw.json"
+      changed_when: false
+      register: _verify_exec_host
+      failed_when: _verify_exec_host.rc != 0
+      tags: [verify]
 
     - name: Deploy oc wrapper script
       become: true
