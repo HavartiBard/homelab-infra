@@ -1,13 +1,6 @@
 ---
-adguard_op_item: "AdGuard Admin"
-adguard_admin_user: >-
-  {{ lookup('env', 'ADGUARD_ADMIN_USER')
-  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/username" 2>/dev/null || echo ""'), true)
-  | default('admin') }}
-adguard_admin_password: >-
-  {{ lookup('env', 'ADGUARD_ADMIN_PASSWORD')
-  | default(lookup('pipe', 'op read "op://AI Wedge/AdGuard Admin/password" 2>/dev/null || echo ""'), true)
-  | default('', true) }}
+adguard_admin_user: "{{ vault_adguard_admin_username }}"
+adguard_admin_password: "{{ vault_adguard_admin_password }}"
 
 adguard_http_port: 3000
 adguard_dns_port: 53
