@@ -23,6 +23,9 @@ compose_download_url: >-
 research_dashboard_lmstudio_base_url: "{{ lookup('env', 'LMSTUDIO_BASE_URL') | default('http://spraycheese.lab.klsll.com:1234/v1', true) }}"
 research_dashboard_lmstudio_model: "{{ lookup('env', 'LMSTUDIO_MODEL') | default('local-model', true) }}"
 research_dashboard_lmstudio_jit_load: "true"
+research_dashboard_lmstudio_fast_model: "qwen2-7b-instruct"
+research_dashboard_lmstudio_deep_model: "qwen3-14b-claude-4.5-opus-high-reasoning-distill"
+
 research_dashboard_lmstudio_load_url: "http://spraycheese.lab.klsll.com:1234/api/v1/models/load"
 
 research_dashboard_lmstudio_auth_header: "{{
