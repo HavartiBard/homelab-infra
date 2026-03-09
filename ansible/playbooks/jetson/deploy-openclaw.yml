@@ -387,7 +387,7 @@
             exec docker exec -u node openclaw node dist/index.js "$@"
           fi
 
-    - name: Deploy model-swap-codex script
+    - name: Deploy model-swap-codex script (Jetson host)
       become: true
       ansible.builtin.copy:
         dest: /usr/local/bin/model-swap-codex
@@ -397,13 +397,13 @@
         content: |
           #!/bin/bash
           # Swap Raclette primary model to OpenAI Codex and restart.
-          # Run from inside the openclaw container or via exec tool.
+          # Runs on the Jetson host — uses docker exec to update config inside container.
           docker exec -u node openclaw node dist/index.js config set \
             agents.defaults.model.primary 'openai-codex/gpt-5.3-codex'
           echo "Restarting openclaw container..."
           docker restart openclaw
 
-    - name: Deploy model-swap-local script
+    - name: Deploy model-swap-local script (Jetson host)
       become: true
       ansible.builtin.copy:
         dest: /usr/local/bin/model-swap-local
@@ -417,6 +417,22 @@
             agents.defaults.model.primary 'lmstudio/qwen/qwen3-14b'
           echo "Restarting openclaw container..."
           docker restart openclaw
+
+    - name: Install model-swap-codex inside openclaw container
+      ansible.builtin.command:
+        cmd: >
+          docker exec -u root openclaw bash -c
+          "printf '#!/bin/bash\nnode /app/dist/index.js config set agents.defaults.model.primary openai-codex/gpt-5.3-codex\ndocker restart openclaw\n'
+          > /usr/local/bin/model-swap-codex && chmod 755 /usr/local/bin/model-swap-codex"
+      changed_when: false
+
+    - name: Install model-swap-local inside openclaw container
+      ansible.builtin.command:
+        cmd: >
+          docker exec -u root openclaw bash -c
+          "printf '#!/bin/bash\nnode /app/dist/index.js config set agents.defaults.model.primary lmstudio/qwen/qwen3-14b\ndocker restart openclaw\n'
+          > /usr/local/bin/model-swap-local && chmod 755 /usr/local/bin/model-swap-local"
+      changed_when: false
 
     - name: Report OpenClaw container status
       ansible.builtin.command:
