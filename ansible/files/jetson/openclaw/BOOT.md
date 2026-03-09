@@ -45,29 +45,17 @@ All tools via exec shell:
 
 ## Model Swapping
 
-Switch between local (LMStudio on spraycheese) and cloud (OpenAI Codex) on command.
+When James asks to switch models, use the exec tool to run config set + docker restart. NEVER use sessions_spawn.
 
-**Check current primary:**
+Steps (run via exec tool):
+1. `node /app/dist/index.js config set agents.defaults.model.primary 'MODEL_ID'`
+2. Tell James the session is ending, then: `docker restart openclaw`
 
-    node /app/dist/index.js config get agents.defaults.model.primary
+Model IDs: `lmstudio/qwen/qwen3-14b` (local) · `openai-codex/gpt-5.3-codex` (cloud)
 
-**Switch to local (Qwen3-14B, default):**
+Before switching to Codex: `cat /home/node/.openclaw/agents/main/agent/auth.json` — if `{}` or no `openai-codex` key, tell James to run `oc shell` → `node dist/index.js configure` for OAuth first.
 
-    node /app/dist/index.js config set agents.defaults.model.primary 'lmstudio/qwen/qwen3-14b'
-    docker restart openclaw
-
-**Switch to cloud (OpenAI Codex):**
-
-    node /app/dist/index.js config set agents.defaults.model.primary 'openai-codex/gpt-5.3-codex'
-    docker restart openclaw
-
-Always tell James the restart is happening before running `docker restart openclaw` — the current session ends immediately on restart. The next session will use the new model.
-
-Before switching to Codex, check if OAuth credentials exist:
-
-    cat /home/node/.openclaw/agents/main/agent/auth.json
-
-If the output is `{}` or has no `openai-codex` key, tell James: "Codex needs one-time OAuth auth — run `oc shell` on the Jetson, then `node dist/index.js configure`, pick OpenAI Codex, and open the URL it gives you in a browser."
+If you lose this procedure: `mcporter call director.memory_search query="model swap procedure"`
 
 ## Context Management
 
