@@ -387,6 +387,37 @@
             exec docker exec -u node openclaw node dist/index.js "$@"
           fi
 
+    - name: Deploy model-swap-codex script
+      become: true
+      ansible.builtin.copy:
+        dest: /usr/local/bin/model-swap-codex
+        mode: '0755'
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          # Swap Raclette primary model to OpenAI Codex and restart.
+          # Run from inside the openclaw container or via exec tool.
+          docker exec -u node openclaw node dist/index.js config set \
+            agents.defaults.model.primary 'openai-codex/gpt-5.3-codex'
+          echo "Restarting openclaw container..."
+          docker restart openclaw
+
+    - name: Deploy model-swap-local script
+      become: true
+      ansible.builtin.copy:
+        dest: /usr/local/bin/model-swap-local
+        mode: '0755'
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          # Swap Raclette primary model to local LMStudio (Qwen3-14B) and restart.
+          docker exec -u node openclaw node dist/index.js config set \
+            agents.defaults.model.primary 'lmstudio/qwen/qwen3-14b'
+          echo "Restarting openclaw container..."
+          docker restart openclaw
+
     - name: Report OpenClaw container status
       ansible.builtin.command:
         cmd: "docker ps --filter name=openclaw --format {% raw %}'table {{.Names}}\t{{.Status}}\t{{.Image}}'{% endraw %}"

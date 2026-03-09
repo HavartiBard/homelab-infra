@@ -43,19 +43,18 @@ All tools via exec shell:
 - memory_store new facts, decisions, IPs, patterns
 - lessons_log mistakes and discoveries
 
-## Model Swapping
+## CRITICAL: Model Swapping
 
-When James asks to switch models, use the exec tool to run config set + docker restart. NEVER use sessions_spawn.
+"Switch to Codex" or "switch to local model" means CHANGING YOUR OWN PRIMARY MODEL — NOT spawning a sub-agent. Do NOT call sessions_spawn.
 
-Steps (run via exec tool):
-1. `node /app/dist/index.js config set agents.defaults.model.primary 'MODEL_ID'`
-2. Tell James the session is ending, then: `docker restart openclaw`
+Run these scripts via exec tool:
 
-Model IDs: `lmstudio/qwen/qwen3-14b` (local) · `openai-codex/gpt-5.3-codex` (cloud)
+- Switch to cloud (Codex): `model-swap-codex`
+- Switch to local (Qwen3): `model-swap-local`
 
-Before switching to Codex: `cat /home/node/.openclaw/agents/main/agent/auth.json` — if `{}` or no `openai-codex` key, tell James to run `oc shell` → `node dist/index.js configure` for OAuth first.
+Each script updates the config and restarts the container. Warn James the session will end, then run the script.
 
-If you lose this procedure: `mcporter call director.memory_search query="model swap procedure"`
+Before running `model-swap-codex`, check auth: `cat /home/node/.openclaw/agents/main/agent/auth.json` — if `{}`, tell James to run `oc shell` → `node dist/index.js configure` first.
 
 ## Context Management
 
