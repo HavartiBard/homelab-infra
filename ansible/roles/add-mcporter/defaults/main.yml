@@ -25,6 +25,10 @@ mcporter_install_docker: false
 # passwordless sudo for read-only invocations of those tools.
 # Enable for openclaw/agent containers that need host network/firewall visibility.
 mcporter_install_network_tools: false
+# Install zsh into the image layer.
+# Enable for containers where `oc shell` / interactive debugging is needed.
+# Without this, zsh must be installed at runtime (lost on container recreate).
+mcporter_install_zsh: false
 # Create a /usr/local/bin/openclaw wrapper script that calls `node /app/dist/index.js`.
 # Enable when the base image is ghcr.io/openclaw/openclaw so the agent can invoke the
 # openclaw CLI (security audit, update status, etc.) via exec.

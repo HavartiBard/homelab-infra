@@ -41,7 +41,11 @@
         && chmod 440 /etc/sudoers.d/node-tools{% endif %}{% if mcporter_install_openclaw_cli | default(false) | bool %}
 
     RUN printf '#!/bin/sh\nexec node /app/dist/index.js "$@"\n' > /usr/local/bin/openclaw \
-        && chmod +x /usr/local/bin/openclaw{% endif %}{% if mcporter_container_user %}
+        && chmod +x /usr/local/bin/openclaw{% endif %}{% if mcporter_install_zsh | default(false) | bool %}
+
+    RUN apt-get update -qq \
+        && apt-get install -y --no-install-recommends zsh \
+        && rm -rf /var/lib/apt/lists/*{% endif %}{% if mcporter_container_user %}
 
     USER {{ mcporter_container_user }}{% endif %}
 

@@ -21,6 +21,7 @@ services:
       - /home/james/.env_container:/home/node/.env_container:ro
       - /home/james/.vault-pass:/home/node/.vault-pass:ro
       - /home/james/.ssh/id_ed25519_homelab:/home/node/.ssh/id_ed25519_homelab:ro
+    init: true
     env_file:
       - .env
     environment:
