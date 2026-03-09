@@ -44,34 +44,19 @@
           }
         ]
       },
-      "vllm": {
-        "baseUrl": "{{ jetson_vllm_base_url }}",
-        "apiKey": "vllm-local",
-        "api": "openai-completions",
-        "models": [
-          {
-            "id": "google/functiongemma-270m-it",
-            "name": "FunctionGemma 270M IT (local vLLM)",
-            "reasoning": false,
-            "input": ["text"],
-            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
-            "contextWindow": 32768,
-            "maxTokens": 1024
-          }
-        ]
-      }
     }
   },
   "agents": {
     "defaults": {
       "model": {
-        "primary": "openai-codex/gpt-5.2-codex",
+        "primary": "lmstudio/qwen/qwen3-14b",
         "fallbacks": [
-          "lmstudio/qwen/qwen3-14b"
+          "lmstudio/qwen3-coder-30b-a3b-instruct",
+          "lmstudio/qwen3-14b-claude-4.5-opus-high-reasoning-distill"
         ]
       },
       "memorySearch": {
-        "enabled": false
+        "enabled": true
       },
       "compaction": {
         "memoryFlush": {
