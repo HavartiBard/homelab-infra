@@ -63,7 +63,11 @@ Switch between local (LMStudio on spraycheese) and cloud (OpenAI Codex) on comma
 
 Always tell James the restart is happening before running `docker restart openclaw` — the current session ends immediately on restart. The next session will use the new model.
 
-Note: Codex requires prior OAuth authentication. If not authenticated, tell James to run `oc shell` on the Jetson then `node dist/index.js configure` to complete the OAuth flow.
+Before switching to Codex, check if OAuth credentials exist:
+
+    cat /home/node/.openclaw/agents/main/agent/auth.json
+
+If the output is `{}` or has no `openai-codex` key, tell James: "Codex needs one-time OAuth auth — run `oc shell` on the Jetson, then `node dist/index.js configure`, pick OpenAI Codex, and open the URL it gives you in a browser."
 
 ## Context Management
 
