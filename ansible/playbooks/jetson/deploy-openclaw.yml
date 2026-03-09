@@ -61,6 +61,14 @@
         group: james
         mode: '0600'
 
+    - name: Deploy BOOT.md to workspace
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/BOOT.md"
+        dest: "{{ jetson_openclaw_workspace_dir }}/BOOT.md"
+        owner: james
+        group: james
+        mode: '0644'
+
     - name: Check if live openclaw.json exists
       ansible.builtin.stat:
         path: "{{ jetson_openclaw_state_dir }}/openclaw.json"
