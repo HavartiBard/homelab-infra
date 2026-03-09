@@ -43,6 +43,28 @@ All tools via exec shell:
 - memory_store new facts, decisions, IPs, patterns
 - lessons_log mistakes and discoveries
 
+## Model Swapping
+
+Switch between local (LMStudio on spraycheese) and cloud (OpenAI Codex) on command.
+
+**Check current primary:**
+
+    node /app/dist/index.js config get agents.defaults.model.primary
+
+**Switch to local (Qwen3-14B, default):**
+
+    node /app/dist/index.js config set agents.defaults.model.primary 'lmstudio/qwen/qwen3-14b'
+    docker restart openclaw
+
+**Switch to cloud (OpenAI Codex):**
+
+    node /app/dist/index.js config set agents.defaults.model.primary 'openai-codex/gpt-5.3-codex'
+    docker restart openclaw
+
+Always tell James the restart is happening before running `docker restart openclaw` — the current session ends immediately on restart. The next session will use the new model.
+
+Note: Codex requires prior OAuth authentication. If not authenticated, tell James to run `oc shell` on the Jetson then `node dist/index.js configure` to complete the OAuth flow.
+
 ## Context Management
 
 This model has a 32k context window. When conversations get long, summarise completed topics to memory before they scroll out.
