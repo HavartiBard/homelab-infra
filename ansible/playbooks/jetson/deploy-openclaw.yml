@@ -61,6 +61,14 @@
         group: james
         mode: '0600'
 
+    - name: Deploy BOOT.md to workspace
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../files/jetson/openclaw/BOOT.md"
+        dest: "{{ jetson_openclaw_workspace_dir }}/BOOT.md"
+        owner: james
+        group: james
+        mode: '0644'
+
     - name: Check if live openclaw.json exists
       ansible.builtin.stat:
         path: "{{ jetson_openclaw_state_dir }}/openclaw.json"
@@ -369,9 +377,10 @@
           #!/bin/bash
           # Wrapper for OpenClaw CLI inside the openclaw container.
           # Usage: oc <command> [args...]   e.g. oc tui, oc devices list
-          #        oc shell                 drop into a zsh shell as node user
+          #        oc shell                 drop into an interactive shell as node user
           if [ "${1}" = "shell" ]; then
-            exec docker exec -u node -it openclaw zsh
+            SHELL=$(docker exec openclaw sh -c 'command -v zsh || command -v bash')
+            exec docker exec -u node -it openclaw "$SHELL"
           elif [ -t 0 ] && [ -t 1 ]; then
             exec docker exec -u node -it openclaw node dist/index.js "$@"
           else
