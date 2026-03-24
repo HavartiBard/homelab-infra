@@ -13,6 +13,7 @@
 - name: Generate docker-compose.yml content
   ansible.builtin.set_fact:
     _paperless_compose_content: "{{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}"
+  no_log: true
 
 - name: Write docker-compose.yml
   ansible.builtin.raw: |
@@ -24,6 +25,7 @@
 - name: Generate paperless.env content
   ansible.builtin.set_fact:
     _paperless_env_content: "{{ lookup('template', role_path + '/templates/paperless.env.j2') }}"
+  no_log: true
 
 - name: Write paperless.env (no_log to protect secrets)
   ansible.builtin.raw: |

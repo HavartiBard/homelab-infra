@@ -30,3 +30,4 @@ paperless_db_user: paperless
 
 # Unraid labels
 paperless_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless-ngx.png
+paperless_image_tag: "2.14.7"

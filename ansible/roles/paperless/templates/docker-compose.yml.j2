@@ -31,7 +31,7 @@ services:
       retries: 5
 
   {{ paperless_web_container }}:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    image: ghcr.io/paperless-ngx/paperless-ngx:{{ paperless_image_tag }}
     container_name: {{ paperless_web_container }}
     restart: unless-stopped
     depends_on:
@@ -61,7 +61,7 @@ services:
       start_period: 60s
 
   {{ paperless_worker_container }}:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    image: ghcr.io/paperless-ngx/paperless-ngx:{{ paperless_image_tag }}
     container_name: {{ paperless_worker_container }}
     restart: unless-stopped
     depends_on:
