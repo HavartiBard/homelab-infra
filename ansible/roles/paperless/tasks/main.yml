@@ -59,7 +59,7 @@
 
 - name: Display container status
   ansible.builtin.raw: |
-    docker ps --filter name=paperless --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>&1
+    docker ps --filter name=paperless 2>&1
   register: paperless_ps
   changed_when: false
 

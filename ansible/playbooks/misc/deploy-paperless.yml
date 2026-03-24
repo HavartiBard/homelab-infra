@@ -16,11 +16,6 @@
   hosts: unraid
   gather_facts: false
 
-  vars:
-    vault_paperless_secret_key: "{{ vault_paperless_secret_key }}"
-    vault_paperless_db_password: "{{ vault_paperless_db_password }}"
-    vault_paperless_admin_password: "{{ vault_paperless_admin_password }}"
-
   roles:
     - role: paperless
 
