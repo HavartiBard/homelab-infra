@@ -3,7 +3,8 @@
 
 - name: Create appdata directories
   ansible.builtin.raw: |
-    mkdir -p {{ paperless_appdata_dir }}/data/pgdata
+    mkdir -p {{ paperless_appdata_dir }}/data
+    mkdir -p {{ paperless_appdata_dir }}/pgdata
     mkdir -p {{ paperless_appdata_dir }}/media
     mkdir -p {{ paperless_appdata_dir }}/consume
     mkdir -p {{ paperless_appdata_dir }}/export

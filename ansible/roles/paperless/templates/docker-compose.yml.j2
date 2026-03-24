@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: "{{ vault_paperless_db_password }}"
       TZ: {{ paperless_time_zone }}
     volumes:
-      - {{ paperless_appdata_dir }}/data/pgdata:/var/lib/postgresql/data
+      - {{ paperless_appdata_dir }}/pgdata:/var/lib/postgresql/data
     networks:
       - {{ paperless_network }}
     healthcheck:
