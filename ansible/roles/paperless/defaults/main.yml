@@ -1,0 +1,32 @@
+---
+# Paperless-NGX role defaults
+
+# Paths
+paperless_appdata_dir: /mnt/user/paperless
+paperless_compose_dir: /opt/docker/paperless
+
+# Container config
+paperless_port: 8000
+paperless_web_container: paperless-web
+paperless_worker_container: paperless-worker
+paperless_redis_container: paperless-redis
+paperless_db_container: paperless-db
+paperless_network: paperless-net
+
+# Application config
+paperless_admin_user: admin
+paperless_time_zone: America/Phoenix
+paperless_ocr_language: eng
+paperless_url: https://paperless.klsll.com
+
+# Email ingestion (IMAP)
+paperless_email_port: 993
+paperless_email_security: SSL
+paperless_email_from_email: james@klsll.com
+
+# Database
+paperless_db_name: paperless
+paperless_db_user: paperless
+
+# Unraid labels
+paperless_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless-ngx.png
