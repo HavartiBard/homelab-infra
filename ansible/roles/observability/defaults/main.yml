@@ -1,0 +1,4 @@
+---
+observability_compose_dir: /mnt/user/appdata/observability
+observability_appdata_dir: /mnt/user/appdata/observability/config
+observability_port_grafana: 3000

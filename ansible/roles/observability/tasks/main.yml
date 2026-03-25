@@ -1,0 +1,167 @@
+---
+# Deploy observability stack — all tasks use raw since Unraid lacks Python
+
+- name: Create appdata directories
+  ansible.builtin.raw: |
+    mkdir -p {{ observability_appdata_dir }}/loki
+    mkdir -p {{ observability_appdata_dir }}/prometheus/rules
+    mkdir -p {{ observability_appdata_dir }}/alertmanager
+    mkdir -p {{ observability_appdata_dir }}/syslog-ng
+    mkdir -p {{ observability_appdata_dir }}/grafana/provisioning/datasources
+    mkdir -p {{ observability_appdata_dir }}/grafana/provisioning/dashboards/json
+    mkdir -p {{ observability_compose_dir }}
+  changed_when: false
+
+# --- compose.yml ---
+
+- name: Read compose.yml content
+  ansible.builtin.set_fact:
+    _obs_compose_content: "{{ lookup('file', role_path + '/../../../files/observability/compose.yml') }}"
+
+- name: Write compose.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_compose_dir }}/compose.yml << 'EOFCOMPOSE'
+    {{ _obs_compose_content }}
+    EOFCOMPOSE
+  changed_when: true
+
+# --- Static config files ---
+
+- name: Read loki/config.yml content
+  ansible.builtin.set_fact:
+    _obs_loki_config: "{{ lookup('file', role_path + '/../../../files/observability/loki/config.yml') }}"
+
+- name: Write loki/config.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/loki/config.yml << 'EOFLOKI'
+    {{ _obs_loki_config }}
+    EOFLOKI
+  changed_when: true
+
+- name: Read prometheus/prometheus.yml content
+  ansible.builtin.set_fact:
+    _obs_prometheus_config: "{{ lookup('file', role_path + '/../../../files/observability/prometheus/prometheus.yml') }}"
+
+- name: Write prometheus/prometheus.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/prometheus/prometheus.yml << 'EOFPROM'
+    {{ _obs_prometheus_config }}
+    EOFPROM
+  changed_when: true
+
+- name: Read prometheus/rules/alerts.yml content
+  ansible.builtin.set_fact:
+    _obs_prometheus_alerts: "{{ lookup('file', role_path + '/../../../files/observability/prometheus/rules/alerts.yml') }}"
+
+- name: Write prometheus/rules/alerts.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/prometheus/rules/alerts.yml << 'EOFALERTS'
+    {{ _obs_prometheus_alerts }}
+    EOFALERTS
+  changed_when: true
+
+- name: Read syslog-ng/syslog-ng.conf content
+  ansible.builtin.set_fact:
+    _obs_syslog_config: "{{ lookup('file', role_path + '/../../../files/observability/syslog-ng/syslog-ng.conf') }}"
+
+- name: Write syslog-ng/syslog-ng.conf
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/syslog-ng/syslog-ng.conf << 'EOFSYSLOG'
+    {{ _obs_syslog_config }}
+    EOFSYSLOG
+  changed_when: true
+
+# --- Alertmanager (secret — rendered from template) ---
+
+- name: Generate alertmanager.yml content
+  ansible.builtin.set_fact:
+    _obs_alertmanager_content: "{{ lookup('template', role_path + '/templates/alertmanager.yml.j2') }}"
+  no_log: true
+
+- name: Write alertmanager/alertmanager.yml (no_log to protect secrets)
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/alertmanager/alertmanager.yml << 'EOFAM'
+    {{ _obs_alertmanager_content }}
+    EOFAM
+    chmod 600 {{ observability_appdata_dir }}/alertmanager/alertmanager.yml
+  changed_when: true
+  no_log: true
+
+# --- Grafana provisioning files ---
+
+- name: Read grafana datasources.yml content
+  ansible.builtin.set_fact:
+    _obs_grafana_datasources: "{{ lookup('file', role_path + '/../../../files/observability/grafana/provisioning/datasources/datasources.yml') }}"
+
+- name: Write grafana provisioning datasources.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/grafana/provisioning/datasources/datasources.yml << 'EOFDATASRC'
+    {{ _obs_grafana_datasources }}
+    EOFDATASRC
+  changed_when: true
+
+- name: Read grafana dashboards.yml content
+  ansible.builtin.set_fact:
+    _obs_grafana_dashboards: "{{ lookup('file', role_path + '/../../../files/observability/grafana/provisioning/dashboards/dashboards.yml') }}"
+
+- name: Write grafana provisioning dashboards.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/grafana/provisioning/dashboards/dashboards.yml << 'EOFDASHBD'
+    {{ _obs_grafana_dashboards }}
+    EOFDASHBD
+  changed_when: true
+
+# --- observability.env (secret — rendered from template) ---
+
+- name: Generate observability.env content
+  ansible.builtin.set_fact:
+    _obs_env_content: "{{ lookup('template', role_path + '/templates/observability.env.j2') }}"
+  no_log: true
+
+- name: Write observability.env (no_log to protect secrets)
+  ansible.builtin.raw: |
+    cat > {{ observability_compose_dir }}/observability.env << 'EOFENV'
+    {{ _obs_env_content }}
+    EOFENV
+    chmod 600 {{ observability_compose_dir }}/observability.env
+  changed_when: true
+  no_log: true
+
+# --- Pull images ---
+
+- name: Pull observability images
+  ansible.builtin.raw: |
+    cd {{ observability_compose_dir }} && docker compose --env-file observability.env pull
+  changed_when: true
+
+# --- Deploy stack ---
+
+- name: Deploy observability compose stack
+  ansible.builtin.raw: |
+    cd {{ observability_compose_dir }} && docker compose --env-file observability.env up -d
+  changed_when: true
+
+# --- Health check ---
+
+- name: Wait for Grafana to be healthy (up to 90s)
+  ansible.builtin.raw: |
+    for i in $(seq 1 18); do
+      if curl -sf http://localhost:{{ observability_port_grafana }}/api/health > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for grafana" >&2; exit 1
+  changed_when: false
+
+# --- Container status ---
+
+- name: Display container status
+  ansible.builtin.raw: |
+    docker ps --filter name=loki --filter name=prometheus --filter name=grafana --filter name=syslog-ng --filter name=alertmanager --format "table {{.Names}}\t{{.Status}}"
+  register: obs_container_status
+  changed_when: false
+
+- name: Show container status
+  ansible.builtin.debug:
+    msg: "{{ obs_container_status.stdout_lines | default([]) }}"
