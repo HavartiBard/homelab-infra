@@ -28,6 +28,8 @@
           - '--path.rootfs=/rootfs'
           - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
         network_mode: host
+        security_opt:
+          - apparmor=unconfined
     EOFCOMPOSE
   changed_when: true
 

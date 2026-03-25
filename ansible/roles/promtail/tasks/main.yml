@@ -33,6 +33,8 @@
           - /etc/machine-id:/etc/machine-id:ro
         command: -config.file=/etc/promtail/config.yml
         network_mode: host
+        security_opt:
+          - apparmor=unconfined
     EOFCOMPOSE
   changed_when: true
 

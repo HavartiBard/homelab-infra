@@ -26,6 +26,8 @@
           - /dev/disk/:/dev/disk:ro
         devices:
           - /dev/kmsg
+        security_opt:
+          - apparmor=unconfined
     EOFCOMPOSE
   changed_when: true
 
