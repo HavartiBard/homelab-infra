@@ -83,7 +83,7 @@
     cat > {{ observability_appdata_dir }}/alertmanager/alertmanager.yml << 'EOFAM'
     {{ _obs_alertmanager_content }}
     EOFAM
-    chmod 600 {{ observability_appdata_dir }}/alertmanager/alertmanager.yml
+    chmod 644 {{ observability_appdata_dir }}/alertmanager/alertmanager.yml
   changed_when: true
   no_log: true
 
