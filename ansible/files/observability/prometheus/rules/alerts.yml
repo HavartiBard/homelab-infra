@@ -20,7 +20,7 @@ groups:
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 20% free space."
 
       - alert: ContainerRestartLoop
-        expr: rate(container_last_seen{name!=""}[10m]) > 0 and delta(container_start_time_seconds{name!=""}[10m]) > 3
+        expr: increase(container_start_time_seconds{name!=""}[10m]) > 3
         for: 5m
         labels:
           severity: warning

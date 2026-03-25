@@ -9,7 +9,7 @@ services:
     container_name: loki
     restart: unless-stopped
     volumes:
-      - ${OBSERVABILITY_APPDATA}/loki/config.yml:/etc/loki/config.yml:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
       - loki-data:/loki
     command: -config.file=/etc/loki/config.yml
     networks:
@@ -26,8 +26,8 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ${OBSERVABILITY_APPDATA}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ${OBSERVABILITY_APPDATA}/prometheus/rules:/etc/prometheus/rules:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -56,11 +56,11 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ${OBSERVABILITY_APPDATA}/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
       - TZ=America/Phoenix
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=https://grafana.klsll.com
     networks:
@@ -80,7 +80,7 @@ services:
       - "514:514/udp"
       - "514:514/tcp"
     volumes:
-      - ${OBSERVABILITY_APPDATA}/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
     networks:
       - observability-net
     healthcheck:
@@ -88,13 +88,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: alertmanager
     restart: unless-stopped
     volumes:
-      - ${OBSERVABILITY_APPDATA}/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
@@ -106,6 +107,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
 networks:
   observability-net:
