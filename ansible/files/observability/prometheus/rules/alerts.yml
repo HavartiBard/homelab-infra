@@ -10,7 +10,7 @@ groups:
           summary: "Host {{ $labels.instance }} is down"
           description: "node_exporter on {{ $labels.instance }} has been unreachable for more than 5 minutes."
 
-      - alert: DiskSpaceCritical
+      - alert: DiskSpaceLow
         expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes) * 100 < 20
         for: 5m
         labels:
