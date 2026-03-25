@@ -1,0 +1,4 @@
+---
+# Technitium DNS query log path — confirm actual path before deploying
+# Run: find /opt/technitium -name "*.log" 2>/dev/null on tt1 to find it
+promtail_technitium_log_path: ""  # TODO: confirm path on tt1

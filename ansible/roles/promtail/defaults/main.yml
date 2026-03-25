@@ -1,0 +1,14 @@
+---
+promtail_version: "3.3.2"
+promtail_compose_dir: /opt/promtail
+loki_url: "http://192.168.20.14:3100"
+
+# Set to true on hosts with systemd journal
+promtail_scrape_journal: true
+
+# Set to true on Unraid (no journal, Docker socket only)
+promtail_unraid_mode: false
+
+# DNS query log paths (set per host group in group_vars)
+promtail_adguard_log_path: ""
+promtail_technitium_log_path: ""

@@ -1,0 +1,58 @@
+---
+# Promtail — runs on all homelab hosts
+
+- name: Create Promtail compose dir
+  ansible.builtin.raw: |
+    mkdir -p {{ promtail_compose_dir }}
+  changed_when: false
+
+- name: Generate Promtail config
+  ansible.builtin.set_fact:
+    _promtail_config: "{{ lookup('template', role_path + '/templates/promtail-config.yml.j2') }}"
+
+- name: Write Promtail config
+  ansible.builtin.raw: |
+    cat > {{ promtail_compose_dir }}/promtail-config.yml << 'EOFCONF'
+    {{ _promtail_config }}
+    EOFCONF
+  changed_when: true
+
+- name: Write Promtail compose file
+  ansible.builtin.raw: |
+    cat > {{ promtail_compose_dir }}/compose.yml << 'EOFCOMPOSE'
+    services:
+      promtail:
+        image: grafana/promtail:{{ promtail_version }}
+        container_name: promtail
+        restart: unless-stopped
+        volumes:
+          - {{ promtail_compose_dir }}/promtail-config.yml:/etc/promtail/config.yml:ro
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - /var/log/journal:/var/log/journal:ro
+          - /run/log/journal:/run/log/journal:ro
+          - /etc/machine-id:/etc/machine-id:ro
+        command: -config.file=/etc/promtail/config.yml
+        network_mode: host
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Pull Promtail image
+  ansible.builtin.raw: |
+    cd {{ promtail_compose_dir }} && docker compose pull
+  changed_when: true
+
+- name: Deploy Promtail
+  ansible.builtin.raw: |
+    cd {{ promtail_compose_dir }} && docker compose up -d
+  changed_when: true
+
+- name: Verify Promtail responds
+  ansible.builtin.raw: |
+    for i in $(seq 1 6); do
+      if curl -sf http://localhost:9080/ready > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for promtail" >&2; exit 1
+  changed_when: false
