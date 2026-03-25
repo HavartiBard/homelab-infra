@@ -1,0 +1,29 @@
+groups:
+  - name: homelab.rules
+    rules:
+      - alert: HostDown
+        expr: up{job="node_exporter"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host {{ $labels.instance }} is down"
+          description: "node_exporter on {{ $labels.instance }} has been unreachable for more than 5 minutes."
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 20% free space."
+
+      - alert: ContainerRestartLoop
+        expr: rate(container_last_seen{name!=""}[10m]) > 0 and delta(container_start_time_seconds{name!=""}[10m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting frequently"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted more than 3 times in 10 minutes."
