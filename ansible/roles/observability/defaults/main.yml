@@ -2,3 +2,5 @@
 observability_compose_dir: /mnt/user/appdata/observability
 observability_appdata_dir: /mnt/user/appdata/observability/config
 observability_port_grafana: 3000
+# Unraid rsyslogd owns :514 — syslog-ng binds :5514 externally, :514 internally
+observability_port_syslog: 5514
