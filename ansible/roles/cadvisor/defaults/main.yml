@@ -1,0 +1,4 @@
+---
+cadvisor_version: "v0.49.1"
+cadvisor_port: 8081
+cadvisor_compose_dir: /opt/cadvisor
