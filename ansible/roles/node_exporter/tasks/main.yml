@@ -1,0 +1,53 @@
+---
+# node_exporter — runs on all homelab hosts
+# Uses raw throughout for Unraid compatibility
+
+- name: Create node_exporter compose dir
+  ansible.builtin.raw: |
+    mkdir -p {{ node_exporter_compose_dir }}
+  changed_when: false
+
+- name: Write node_exporter compose file
+  ansible.builtin.raw: |
+    cat > {{ node_exporter_compose_dir }}/compose.yml << 'EOFCOMPOSE'
+    services:
+      node_exporter:
+        image: prom/node-exporter:{{ node_exporter_version }}
+        container_name: node_exporter
+        restart: unless-stopped
+        pid: host
+        ports:
+          - "{{ node_exporter_port }}:9100"
+        volumes:
+          - /proc:/host/proc:ro
+          - /sys:/host/sys:ro
+          - /:/rootfs:ro
+        command:
+          - '--path.procfs=/host/proc'
+          - '--path.sysfs=/host/sys'
+          - '--path.rootfs=/rootfs'
+          - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+        network_mode: host
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Pull node_exporter image
+  ansible.builtin.raw: |
+    cd {{ node_exporter_compose_dir }} && docker compose pull
+  changed_when: true
+
+- name: Deploy node_exporter
+  ansible.builtin.raw: |
+    cd {{ node_exporter_compose_dir }} && docker compose up -d
+  changed_when: true
+
+- name: Verify node_exporter responds
+  ansible.builtin.raw: |
+    for i in $(seq 1 6); do
+      if curl -sf http://localhost:{{ node_exporter_port }}/metrics > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for node_exporter" >&2; exit 1
+  changed_when: false
