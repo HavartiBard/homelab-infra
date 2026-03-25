@@ -1,0 +1,5 @@
+---
+# Technitium server/DHCP log path
+# Query logging is not currently enabled in Technitium UI — enable it there
+# first if you want query logs in Loki. DHCP/server logs ship regardless.
+promtail_technitium_log_path: "/opt/dns/data/technitium/logs/*.log"

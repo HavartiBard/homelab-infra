@@ -68,6 +68,10 @@ gitea_db_password: "{{ vault_gitea_db_password }}"
 gitea_admin_password: "{{ vault_gitea_service_password }}"
 gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
 
+# Promtail: Unraid has no systemd journal — Docker socket logs only
+promtail_unraid_mode: true
+promtail_scrape_journal: false
+
 # Gitea Git and registry service on Unraid
 gitea_ip: 192.168.20.52
 gitea_db_ip: 192.168.20.53

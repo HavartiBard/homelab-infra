@@ -1,0 +1,86 @@
+services:
+  {{ paperless_redis_container }}:
+    image: redis:7-alpine
+    container_name: {{ paperless_redis_container }}
+    restart: unless-stopped
+    networks:
+      - {{ paperless_network }}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  {{ paperless_db_container }}:
+    image: postgres:16-alpine
+    container_name: {{ paperless_db_container }}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: {{ paperless_db_name }}
+      POSTGRES_USER: {{ paperless_db_user }}
+      POSTGRES_PASSWORD: "{{ vault_paperless_db_password }}"
+      TZ: {{ paperless_time_zone }}
+    volumes:
+      - {{ paperless_appdata_dir }}/pgdata:/var/lib/postgresql/data
+    networks:
+      - {{ paperless_network }}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ paperless_db_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  {{ paperless_web_container }}:
+    image: ghcr.io/paperless-ngx/paperless-ngx:{{ paperless_image_tag }}
+    container_name: {{ paperless_web_container }}
+    restart: unless-stopped
+    depends_on:
+      {{ paperless_db_container }}:
+        condition: service_healthy
+      {{ paperless_redis_container }}:
+        condition: service_healthy
+    ports:
+      - "{{ paperless_port }}:8000"
+    env_file:
+      - {{ paperless_compose_dir }}/paperless.env
+    volumes:
+      - {{ paperless_appdata_dir }}/data:/usr/src/paperless/data
+      - {{ paperless_appdata_dir }}/media:/usr/src/paperless/media
+      - {{ paperless_appdata_dir }}/consume:/usr/src/paperless/consume
+      - {{ paperless_appdata_dir }}/export:/usr/src/paperless/export
+    networks:
+      - {{ paperless_network }}
+    labels:
+      net.unraid.docker.icon: "{{ paperless_icon }}"
+      net.unraid.docker.webui: "{{ paperless_url }}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  {{ paperless_worker_container }}:
+    image: ghcr.io/paperless-ngx/paperless-ngx:{{ paperless_image_tag }}
+    container_name: {{ paperless_worker_container }}
+    restart: unless-stopped
+    depends_on:
+      {{ paperless_db_container }}:
+        condition: service_healthy
+      {{ paperless_redis_container }}:
+        condition: service_healthy
+    command: celery --app paperless worker --loglevel INFO
+    env_file:
+      - {{ paperless_compose_dir }}/paperless.env
+    volumes:
+      - {{ paperless_appdata_dir }}/data:/usr/src/paperless/data
+      - {{ paperless_appdata_dir }}/media:/usr/src/paperless/media
+      - {{ paperless_appdata_dir }}/consume:/usr/src/paperless/consume
+      - {{ paperless_appdata_dir }}/export:/usr/src/paperless/export
+    networks:
+      - {{ paperless_network }}
+
+networks:
+  {{ paperless_network }}:
+    driver: bridge
+    name: {{ paperless_network }}

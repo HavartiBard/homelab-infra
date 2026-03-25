@@ -1,0 +1,3 @@
+---
+# AdGuard Home query log path for Promtail scraping
+promtail_adguard_log_path: "/opt/adguardhome/data/querylog.json"
