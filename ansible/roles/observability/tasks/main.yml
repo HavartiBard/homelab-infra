@@ -156,12 +156,9 @@
 
 # --- Container status ---
 
-- name: Display container status
-  ansible.builtin.raw: |
-    docker ps --filter name=loki --filter name=prometheus --filter name=grafana --filter name=syslog-ng --filter name=alertmanager --format "table {{.Names}}\t{{.Status}}"
-  register: obs_container_status
-  changed_when: false
-
 - name: Show container status
-  ansible.builtin.debug:
-    msg: "{{ obs_container_status.stdout_lines | default([]) }}"
+  ansible.builtin.raw: |
+    docker ps --filter name=loki --filter name=prometheus --filter name=grafana \
+      --filter name=syslog-ng --filter name=alertmanager \
+      --format "table {{.Names}}\t{{.Status}}"
+  changed_when: false
