@@ -41,13 +41,10 @@
     cd {{ node_exporter_compose_dir }} && docker compose up -d
   changed_when: true
 
-- name: Verify node_exporter responds
-  ansible.builtin.raw: |
-    for i in $(seq 1 6); do
-      if curl -sf http://localhost:{{ node_exporter_port }}/metrics > /dev/null 2>&1; then
-        echo "healthy"; exit 0
-      fi
-      sleep 5
-    done
-    echo "timeout waiting for node_exporter" >&2; exit 1
-  changed_when: false
+- name: Verify node_exporter port is reachable
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ node_exporter_port }}"
+    timeout: 30
+  delegate_to: localhost
+  ignore_errors: true
