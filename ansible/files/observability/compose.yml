@@ -53,7 +53,7 @@ services:
       prometheus:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "3030:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/grafana/provisioning:/etc/grafana/provisioning:ro
