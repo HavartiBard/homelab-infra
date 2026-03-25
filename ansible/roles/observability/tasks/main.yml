@@ -16,7 +16,7 @@
 
 - name: Read compose.yml content
   ansible.builtin.set_fact:
-    _obs_compose_content: "{{ lookup('file', role_path + '/../../../files/observability/compose.yml') }}"
+    _obs_compose_content: "{{ lookup('file', role_path + '/../../files/observability/compose.yml') }}"
 
 - name: Write compose.yml
   ansible.builtin.raw: |
@@ -29,7 +29,7 @@
 
 - name: Read loki/config.yml content
   ansible.builtin.set_fact:
-    _obs_loki_config: "{{ lookup('file', role_path + '/../../../files/observability/loki/config.yml') }}"
+    _obs_loki_config: "{{ lookup('file', role_path + '/../../files/observability/loki/config.yml') }}"
 
 - name: Write loki/config.yml
   ansible.builtin.raw: |
@@ -40,7 +40,7 @@
 
 - name: Read prometheus/prometheus.yml content
   ansible.builtin.set_fact:
-    _obs_prometheus_config: "{{ lookup('file', role_path + '/../../../files/observability/prometheus/prometheus.yml') }}"
+    _obs_prometheus_config: "{{ lookup('file', role_path + '/../../files/observability/prometheus/prometheus.yml') }}"
 
 - name: Write prometheus/prometheus.yml
   ansible.builtin.raw: |
@@ -51,7 +51,7 @@
 
 - name: Read prometheus/rules/alerts.yml content
   ansible.builtin.set_fact:
-    _obs_prometheus_alerts: "{{ lookup('file', role_path + '/../../../files/observability/prometheus/rules/alerts.yml') }}"
+    _obs_prometheus_alerts: "{{ lookup('file', role_path + '/../../files/observability/prometheus/rules/alerts.yml') }}"
 
 - name: Write prometheus/rules/alerts.yml
   ansible.builtin.raw: |
@@ -62,7 +62,7 @@
 
 - name: Read syslog-ng/syslog-ng.conf content
   ansible.builtin.set_fact:
-    _obs_syslog_config: "{{ lookup('file', role_path + '/../../../files/observability/syslog-ng/syslog-ng.conf') }}"
+    _obs_syslog_config: "{{ lookup('file', role_path + '/../../files/observability/syslog-ng/syslog-ng.conf') }}"
 
 - name: Write syslog-ng/syslog-ng.conf
   ansible.builtin.raw: |
@@ -91,7 +91,7 @@
 
 - name: Read grafana datasources.yml content
   ansible.builtin.set_fact:
-    _obs_grafana_datasources: "{{ lookup('file', role_path + '/../../../files/observability/grafana/provisioning/datasources/datasources.yml') }}"
+    _obs_grafana_datasources: "{{ lookup('file', role_path + '/../../files/observability/grafana/provisioning/datasources/datasources.yml') }}"
 
 - name: Write grafana provisioning datasources.yml
   ansible.builtin.raw: |
@@ -102,7 +102,7 @@
 
 - name: Read grafana dashboards.yml content
   ansible.builtin.set_fact:
-    _obs_grafana_dashboards: "{{ lookup('file', role_path + '/../../../files/observability/grafana/provisioning/dashboards/dashboards.yml') }}"
+    _obs_grafana_dashboards: "{{ lookup('file', role_path + '/../../files/observability/grafana/provisioning/dashboards/dashboards.yml') }}"
 
 - name: Write grafana provisioning dashboards.yml
   ansible.builtin.raw: |
@@ -159,6 +159,5 @@
 - name: Show container status
   ansible.builtin.raw: |
     docker ps --filter name=loki --filter name=prometheus --filter name=grafana \
-      --filter name=syslog-ng --filter name=alertmanager \
-      --format "table {{.Names}}\t{{.Status}}"
+      --filter name=syslog-ng --filter name=alertmanager
   changed_when: false
