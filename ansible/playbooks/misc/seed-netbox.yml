@@ -1,0 +1,216 @@
+---
+# Seed NetBox with homelab inventory
+#
+# Populates: site, prefixes, device roles, platforms, manufacturers,
+#            device types, devices, interfaces, and IP addresses.
+#
+# Idempotent — safe to re-run. Uses netbox.netbox collection.
+#
+# Run:
+#   ansible-playbook playbooks/misc/seed-netbox.yml \
+#     --vault-password-file ~/.vault-pass
+
+- name: Seed NetBox homelab inventory
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    netbox_url: "http://192.168.20.14:8001"
+    netbox_token: "{{ vault_netbox_api_token }}"
+
+  tasks:
+
+    # ── Site ──────────────────────────────────────────────────────────────────
+
+    - name: Create site
+      netbox.netbox.netbox_site:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: Homelab
+          slug: homelab
+          status: active
+          description: Home lab — Unraid, Proxmox, edge devices
+        state: present
+
+    # ── IP Prefixes ───────────────────────────────────────────────────────────
+
+    - name: Create IP prefixes
+      netbox.netbox.netbox_prefix:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          prefix: "{{ item.prefix }}"
+          site: Homelab
+          status: active
+          description: "{{ item.description }}"
+        state: present
+      loop:
+        - { prefix: "192.168.1.0/24",  description: "VLAN 1 — Management" }
+        - { prefix: "192.168.20.0/24", description: "VLAN 20 — Servers" }
+        - { prefix: "192.168.30.0/24", description: "VLAN 30 — IoT/Guest" }
+
+    # ── Device Roles ──────────────────────────────────────────────────────────
+
+    - name: Create device roles
+      netbox.netbox.netbox_device_role:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          color: "{{ item.color }}"
+          vm_role: "{{ item.vm_role | default(false) }}"
+        state: present
+      loop:
+        - { name: NAS,              slug: nas,            color: "aa1409", vm_role: false }
+        - { name: Hypervisor,       slug: hypervisor,     color: "2196f3", vm_role: false }
+        - { name: DNS Server,       slug: dns-server,     color: "4caf50", vm_role: true  }
+        - { name: DNS Filter,       slug: dns-filter,     color: "009688", vm_role: true  }
+        - { name: GPU Workstation,  slug: gpu-workstation,color: "9c27b0", vm_role: false }
+        - { name: Edge Device,      slug: edge-device,    color: "ff9800", vm_role: false }
+
+    # ── Platforms ─────────────────────────────────────────────────────────────
+
+    - name: Create platforms
+      netbox.netbox.netbox_platform:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+        state: present
+      loop:
+        - { name: Unraid,        slug: unraid }
+        - { name: Proxmox VE,    slug: proxmox-ve }
+        - { name: Ubuntu 24.04,  slug: ubuntu-24-04 }
+        - { name: Windows 11,    slug: windows-11 }
+        - { name: JetPack,       slug: jetpack }
+
+    # ── Manufacturers ─────────────────────────────────────────────────────────
+
+    - name: Create manufacturers
+      netbox.netbox.netbox_manufacturer:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+        state: present
+      loop:
+        - { name: Generic,  slug: generic }
+        - { name: NVIDIA,   slug: nvidia }
+
+    # ── Device Types ──────────────────────────────────────────────────────────
+
+    - name: Create device types
+      netbox.netbox.netbox_device_type:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          model: "{{ item.model }}"
+          slug: "{{ item.slug }}"
+          manufacturer: "{{ item.manufacturer }}"
+        state: present
+      loop:
+        - { model: Generic Server,       slug: generic-server,      manufacturer: Generic }
+        - { model: Generic Workstation,  slug: generic-workstation, manufacturer: Generic }
+        - { model: Jetson Orin Nano,     slug: jetson-orin-nano,    manufacturer: NVIDIA }
+
+    # ── Devices ───────────────────────────────────────────────────────────────
+
+    - name: Create devices
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          site: Homelab
+          device_type: "{{ item.device_type }}"
+          device_role: "{{ item.device_role }}"
+          platform: "{{ item.platform }}"
+          status: active
+        state: present
+      loop:
+        - { name: unraid-server, device_type: Generic Server,      device_role: NAS,             platform: Unraid }
+        - { name: pve-01,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE }
+        - { name: pve-02,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE }
+        - { name: tt1,           device_type: Generic Server,      device_role: DNS Server,      platform: Ubuntu 24.04 }
+        - { name: tt2,           device_type: Generic Server,      device_role: DNS Server,      platform: Ubuntu 24.04 }
+        - { name: agh1,          device_type: Generic Server,      device_role: DNS Filter,      platform: Ubuntu 24.04 }
+        - { name: agh2,          device_type: Generic Server,      device_role: DNS Filter,      platform: Ubuntu 24.04 }
+        - { name: spraycheese,   device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11 }
+        - { name: jetson,        device_type: Jetson Orin Nano,    device_role: Edge Device,     platform: JetPack }
+
+    # ── Interfaces ────────────────────────────────────────────────────────────
+
+    - name: Create management interfaces
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          device: "{{ item.device }}"
+          name: "{{ item.iface }}"
+          type: 1000base-t
+        state: present
+      loop:
+        - { device: unraid-server, iface: eth0 }
+        - { device: pve-01,        iface: eth0 }
+        - { device: pve-02,        iface: eth0 }
+        - { device: tt1,           iface: eth0 }
+        - { device: tt2,           iface: eth0 }
+        - { device: agh1,          iface: eth0 }
+        - { device: agh2,          iface: eth0 }
+        - { device: spraycheese,   iface: eth0 }
+        - { device: jetson,        iface: eth0 }
+
+    # ── IP Addresses ──────────────────────────────────────────────────────────
+
+    - name: Assign IP addresses to interfaces
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "{{ item.address }}"
+          interface:
+            device: "{{ item.device }}"
+            name: "{{ item.iface }}"
+          status: active
+          dns_name: "{{ item.dns | default('') }}"
+        state: present
+      loop:
+        - { device: unraid-server, iface: eth0, address: "192.168.20.14/24",  dns: "unraid-server" }
+        - { device: pve-01,        iface: eth0, address: "192.168.20.100/24", dns: "pve-01" }
+        - { device: pve-02,        iface: eth0, address: "192.168.20.101/24", dns: "pve-02" }
+        - { device: tt1,           iface: eth0, address: "192.168.20.2/24",   dns: "tt1" }
+        - { device: tt2,           iface: eth0, address: "192.168.20.3/24",   dns: "tt2" }
+        - { device: agh1,          iface: eth0, address: "192.168.20.4/24",   dns: "agh1" }
+        - { device: agh2,          iface: eth0, address: "192.168.20.5/24",   dns: "agh2" }
+        - { device: spraycheese,   iface: eth0, address: "192.168.20.50/24",  dns: "spraycheese" }
+        - { device: jetson,        iface: eth0, address: "192.168.20.169/24", dns: "jetson.lab" }
+
+    # ── Set primary IPs ───────────────────────────────────────────────────────
+
+    - name: Set primary IPv4 on each device
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          site: Homelab
+          device_type: "{{ item.device_type }}"
+          device_role: "{{ item.device_role }}"
+          platform: "{{ item.platform }}"
+          primary_ip4: "{{ item.address }}"
+          status: active
+        state: present
+      loop:
+        - { name: unraid-server, device_type: Generic Server,      device_role: NAS,             platform: Unraid,       address: "192.168.20.14/24" }
+        - { name: pve-01,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE,   address: "192.168.20.100/24" }
+        - { name: pve-02,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE,   address: "192.168.20.101/24" }
+        - { name: tt1,           device_type: Generic Server,      device_role: DNS Server,      platform: Ubuntu 24.04, address: "192.168.20.2/24" }
+        - { name: tt2,           device_type: Generic Server,      device_role: DNS Server,      platform: Ubuntu 24.04, address: "192.168.20.3/24" }
+        - { name: agh1,          device_type: Generic Server,      device_role: DNS Filter,      platform: Ubuntu 24.04, address: "192.168.20.4/24" }
+        - { name: agh2,          device_type: Generic Server,      device_role: DNS Filter,      platform: Ubuntu 24.04, address: "192.168.20.5/24" }
+        - { name: spraycheese,   device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11,   address: "192.168.20.50/24" }
+        - { name: jetson,        device_type: Jetson Orin Nano,    device_role: Edge Device,     platform: JetPack,      address: "192.168.20.169/24" }
