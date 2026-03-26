@@ -1,11 +1,15 @@
 ---
 # Seed NetBox with homelab inventory
 #
-# Populates: site, prefixes, device roles, platforms, cluster types,
-#            clusters, physical devices, VMs (LXC + Docker), interfaces,
-#            and IP addresses.
+# Populates: site, prefixes, device roles, platforms, manufacturers,
+#            device types, locations, rack, cluster types, clusters,
+#            physical devices, VMs (LXC + Docker), interfaces, IPs.
 #
-# Physical devices: unraid-server, pve-01, pve-02, spraycheese, jetson
+# Physical devices: unraid-server, pve-01, pve-02, spraycheese, jetson,
+#                   mikrotik-css610, jetkvm, bambulab-p1s
+# Locations: Office (Bookcase, Desk, Media Closet), Living Room, Garage,
+#            Kitchen, Dining Room, bedrooms, Den, Pantry
+# Rack: Mini Rack (6U, Bookcase) — U2 Mikrotik, U3-5 PVE/Jetson, U6 JetKVM
 # VMs (Proxmox LXC): tt1, tt2, agh1, agh2
 # VMs (Docker): all significant service containers
 #
@@ -73,6 +77,10 @@
         - { name: Hypervisor,      slug: hypervisor,      color: "2196f3", vm_role: false }
         - { name: GPU Workstation, slug: gpu-workstation, color: "9c27b0", vm_role: false }
         - { name: Edge Device,     slug: edge-device,     color: "ff9800", vm_role: false }
+        # More physical roles
+        - { name: Network Switch,  slug: network-switch,  color: "3f51b5", vm_role: false }
+        - { name: KVM,             slug: kvm,             color: "607d8b", vm_role: false }
+        - { name: 3D Printer,      slug: 3d-printer,      color: "ff5722", vm_role: false }
         # VM roles
         - { name: DNS Server,      slug: dns-server,      color: "4caf50", vm_role: true }
         - { name: DNS Filter,      slug: dns-filter,      color: "009688", vm_role: true }
@@ -97,6 +105,7 @@
         - { name: Windows 11,   slug: windows-11 }
         - { name: JetPack,      slug: jetpack }
         - { name: Docker,       slug: docker }
+        - { name: RouterOS,     slug: routeros }
 
     # ── Manufacturers & Device Types ──────────────────────────────────────────
 
@@ -109,8 +118,11 @@
           slug: "{{ item.slug }}"
         state: present
       loop:
-        - { name: Generic, slug: generic }
-        - { name: NVIDIA,  slug: nvidia }
+        - { name: Generic,   slug: generic }
+        - { name: NVIDIA,    slug: nvidia }
+        - { name: MikroTik,  slug: mikrotik }
+        - { name: JetKVM,    slug: jetkvm }
+        - { name: Bambu Lab, slug: bambu-lab }
 
     - name: Create device types
       netbox.netbox.netbox_device_type:
@@ -125,6 +137,9 @@
         - { model: Generic Server,      slug: generic-server,      manufacturer: Generic }
         - { model: Generic Workstation, slug: generic-workstation, manufacturer: Generic }
         - { model: Jetson Orin Nano,    slug: jetson-orin-nano,    manufacturer: NVIDIA }
+        - { model: CSS610-8G-2S IN,     slug: css610-8g-2s-in,    manufacturer: MikroTik }
+        - { model: JetKVM,              slug: jetkvm,              manufacturer: JetKVM }
+        - { model: P1S,                 slug: p1s,                 manufacturer: Bambu Lab }
 
     # ── Cluster Types & Clusters ──────────────────────────────────────────────
 
@@ -156,6 +171,62 @@
         - { name: spraycheese-docker, cluster_type: Docker,  description: "Docker on spraycheese GPU workstation" }
         - { name: jetson-docker,      cluster_type: Docker,  description: "Docker on Jetson Orin Nano edge device" }
 
+    # ── Locations ─────────────────────────────────────────────────────────────
+
+    - name: Create top-level room locations
+      netbox.netbox.netbox_location:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          site: Homelab
+          status: active
+        state: present
+      loop:
+        - { name: Office,           slug: office }
+        - { name: Living Room,      slug: living-room }
+        - { name: Garage,           slug: garage }
+        - { name: Kitchen,          slug: kitchen }
+        - { name: Dining Room,      slug: dining-room }
+        - { name: Madison Bedroom,  slug: madison-bedroom }
+        - { name: Parker Bedroom,   slug: parker-bedroom }
+        - { name: Emma Bedroom,     slug: emma-bedroom }
+        - { name: Master Bedroom,   slug: master-bedroom }
+        - { name: Den,              slug: den }
+        - { name: Pantry,           slug: pantry }
+
+    - name: Create Office sub-locations
+      netbox.netbox.netbox_location:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          site: Homelab
+          parent_location: Office
+          status: active
+        state: present
+      loop:
+        - { name: Bookcase,     slug: bookcase }
+        - { name: Desk,         slug: desk }
+        - { name: Media Closet, slug: media-closet }
+
+    # ── Rack ──────────────────────────────────────────────────────────────────
+
+    - name: Create Mini Rack
+      netbox.netbox.netbox_rack:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: Mini Rack
+          site: Homelab
+          location: Bookcase
+          status: active
+          u_height: 6
+          desc_units: true
+        state: present
+
     # ── Physical Devices ──────────────────────────────────────────────────────
 
     - name: Remove LXC hosts that were incorrectly created as physical devices
@@ -180,16 +251,26 @@
           site: Homelab
           device_type: "{{ item.device_type }}"
           device_role: "{{ item.device_role }}"
-          platform: "{{ item.platform }}"
+          platform: "{{ item.platform | default(omit) }}"
           cluster: "{{ item.cluster | default(omit) }}"
+          location: "{{ item.location | default(omit) }}"
+          rack: "{{ item.rack | default(omit) }}"
+          position: "{{ item.position | default(omit) }}"
+          face: "{{ item.face | default(omit) }}"
           status: active
         state: present
       loop:
-        - { name: unraid-server, device_type: Generic Server,      device_role: NAS,             platform: Unraid }
-        - { name: pve-01,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE, cluster: pve-cluster }
-        - { name: pve-02,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE, cluster: pve-cluster }
-        - { name: spraycheese,   device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11 }
-        - { name: jetson,        device_type: Jetson Orin Nano,    device_role: Edge Device,     platform: JetPack }
+        # Bookcase — not racked
+        - { name: unraid-server,   device_type: Generic Server,      device_role: NAS,            platform: Unraid,    location: Bookcase }
+        - { name: bambulab-p1s,    device_type: P1S,                 device_role: 3D Printer,                          location: Bookcase }
+        # Mini Rack (U2-6, desc_units — U1 is top)
+        - { name: mikrotik-css610, device_type: CSS610-8G-2S IN,     device_role: Network Switch, platform: RouterOS,  rack: Mini Rack, position: 2, face: front }
+        - { name: pve-01,          device_type: Generic Server,      device_role: Hypervisor,     platform: Proxmox VE, cluster: pve-cluster, rack: Mini Rack, position: 3, face: front }
+        - { name: pve-02,          device_type: Generic Server,      device_role: Hypervisor,     platform: Proxmox VE, cluster: pve-cluster, rack: Mini Rack, position: 4, face: front }
+        - { name: jetson,          device_type: Jetson Orin Nano,    device_role: Edge Device,    platform: JetPack,   rack: Mini Rack, position: 5, face: front }
+        - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,                                 rack: Mini Rack, position: 6, face: front }
+        # Desk
+        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11, location: Desk }
 
     - name: Create physical device interfaces
       netbox.netbox.netbox_device_interface:
@@ -206,6 +287,9 @@
         - { device: pve-02 }
         - { device: spraycheese }
         - { device: jetson }
+        - { device: mikrotik-css610 }
+        - { device: jetkvm }
+        - { device: bambulab-p1s }
 
     - name: Assign IPs to physical device interfaces
       netbox.netbox.netbox_ip_address:
@@ -220,11 +304,14 @@
           dns_name: "{{ item.dns }}"
         state: present
       loop:
-        - { device: unraid-server, address: "192.168.20.14/24",  dns: "unraid-server" }
-        - { device: pve-01,        address: "192.168.20.100/24", dns: "pve-01" }
-        - { device: pve-02,        address: "192.168.20.101/24", dns: "pve-02" }
-        - { device: spraycheese,   address: "192.168.20.50/24",  dns: "spraycheese" }
-        - { device: jetson,        address: "192.168.20.169/24", dns: "jetson.lab" }
+        - { device: unraid-server,   address: "192.168.20.14/24",  dns: "unraid-server" }
+        - { device: pve-01,          address: "192.168.20.100/24", dns: "pve-01" }
+        - { device: pve-02,          address: "192.168.20.101/24", dns: "pve-02" }
+        - { device: spraycheese,     address: "192.168.20.50/24",  dns: "spraycheese" }
+        - { device: jetson,          address: "192.168.20.169/24", dns: "jetson.lab" }
+        - { device: mikrotik-css610, address: "192.168.1.11/24",   dns: "mikrotik-css610" }
+        - { device: jetkvm,          address: "192.168.20.8/24",   dns: "jetkvm" }
+        - { device: bambulab-p1s,    address: "192.168.20.194/24", dns: "bambulab-p1s" }
       register: _phys_ip_result
       failed_when: false
 
@@ -244,16 +331,18 @@
           site: Homelab
           device_type: "{{ item.device_type }}"
           device_role: "{{ item.device_role }}"
-          platform: "{{ item.platform }}"
           primary_ip4: "{{ item.address }}"
           status: active
         state: present
       loop:
-        - { name: unraid-server, device_type: Generic Server,      device_role: NAS,             platform: Unraid,    address: "192.168.20.14/24" }
-        - { name: pve-01,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE, address: "192.168.20.100/24" }
-        - { name: pve-02,        device_type: Generic Server,      device_role: Hypervisor,      platform: Proxmox VE, address: "192.168.20.101/24" }
-        - { name: spraycheese,   device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11, address: "192.168.20.50/24" }
-        - { name: jetson,        device_type: Jetson Orin Nano,    device_role: Edge Device,     platform: JetPack,    address: "192.168.20.169/24" }
+        - { name: unraid-server,   device_type: Generic Server,      device_role: NAS,            address: "192.168.20.14/24" }
+        - { name: pve-01,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.100/24" }
+        - { name: pve-02,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.101/24" }
+        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, address: "192.168.20.50/24" }
+        - { name: jetson,          device_type: Jetson Orin Nano,    device_role: Edge Device,    address: "192.168.20.169/24" }
+        - { name: mikrotik-css610, device_type: CSS610-8G-2S IN,     device_role: Network Switch, address: "192.168.1.11/24" }
+        - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,            address: "192.168.20.8/24" }
+        - { name: bambulab-p1s,    device_type: P1S,                 device_role: 3D Printer,     address: "192.168.20.194/24" }
 
     # ── Proxmox LXC Virtual Machines ─────────────────────────────────────────
 
