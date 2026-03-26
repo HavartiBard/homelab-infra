@@ -1,0 +1,15 @@
+---
+# paperless-ai defaults
+
+paperless_ai_version: "latest"
+paperless_ai_port: 3090
+paperless_ai_compose_dir: /opt/paperless-ai
+
+# LM Studio on spraycheese
+paperless_ai_provider: "custom"
+paperless_ai_lmstudio_url: "http://192.168.20.50:1234/v1"
+paperless_ai_model: "qwen/qwen3-14b"
+
+# paperless-ngx connection (localhost since same host)
+paperless_ai_paperless_url: "http://192.168.20.14:8000"
+paperless_ai_paperless_username: "paperless-ai"

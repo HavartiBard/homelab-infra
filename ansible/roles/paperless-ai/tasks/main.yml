@@ -1,0 +1,60 @@
+---
+# paperless-ai — runs on Unraid alongside paperless-ngx
+# Uses raw throughout for Unraid compatibility
+
+- name: Create paperless-ai compose dir
+  ansible.builtin.raw: |
+    mkdir -p {{ paperless_ai_compose_dir }}
+  changed_when: false
+
+- name: Generate paperless-ai env
+  ansible.builtin.set_fact:
+    _paperless_ai_env: "{{ lookup('template', role_path + '/templates/paperless-ai.env.j2') }}"
+
+- name: Write paperless-ai env file
+  ansible.builtin.raw: |
+    cat > {{ paperless_ai_compose_dir }}/.env << 'EOFENV'
+    {{ _paperless_ai_env }}
+    EOFENV
+  changed_when: true
+  no_log: true
+
+- name: Write paperless-ai compose file
+  ansible.builtin.raw: |
+    cat > {{ paperless_ai_compose_dir }}/compose.yml << 'EOFCOMPOSE'
+    services:
+      paperless-ai:
+        image: clusterzx/paperless-ai:{{ paperless_ai_version }}
+        container_name: paperless-ai
+        restart: unless-stopped
+        labels:
+          net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless-ngx.png
+          net.unraid.docker.webui: http://[IP]:[PORT:3000]
+        ports:
+          - "{{ paperless_ai_port }}:3000"
+        env_file:
+          - .env
+        cap_drop:
+          - ALL
+        security_opt:
+          - no-new-privileges:true
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Pull paperless-ai image
+  ansible.builtin.raw: |
+    cd {{ paperless_ai_compose_dir }} && docker compose pull
+  changed_when: true
+
+- name: Deploy paperless-ai
+  ansible.builtin.raw: |
+    cd {{ paperless_ai_compose_dir }} && docker compose up -d
+  changed_when: true
+
+- name: Verify paperless-ai port is reachable
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ paperless_ai_port }}"
+    timeout: 60
+  delegate_to: localhost
+  ignore_errors: true

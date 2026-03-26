@@ -1,0 +1,9 @@
+---
+# Deploy paperless-ai to Unraid (alongside paperless-ngx)
+# Requires: vault_paperless_ai_api_token, vault_ironclaw_lmstudio_api_key
+
+- name: Deploy paperless-ai
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - paperless-ai
