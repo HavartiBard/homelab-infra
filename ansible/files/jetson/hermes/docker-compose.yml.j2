@@ -1,0 +1,16 @@
+services:
+  hermes:
+    image: {{ hermes_image }}
+    container_name: {{ hermes_container_name }}
+    restart: unless-stopped
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+      - {{ hermes_state_dir }}:/home/node/.hermes
+      - {{ hermes_config_file }}:/home/node/.hermes/config.yaml:ro
+      - {{ hermes_codex_auth_file }}:/home/node/.codex/auth.json:ro
+    env_file:
+      - {{ hermes_env_file }}
+    environment:
+      - HERMES_STATE_DIR=/home/node/.hermes

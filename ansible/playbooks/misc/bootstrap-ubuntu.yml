@@ -30,6 +30,9 @@
     bootstrap_timezone: America/Phoenix
     bootstrap_env_file: "{{ bootstrap_user_home }}/.env_container"
     bootstrap_public_key: "{{ lookup('env','HOME') }}/.ssh/id_ed25519_homelab.pub"
+    bootstrap_safe_mode: "{{ lookup('env','BOOTSTRAP_SAFE_MODE') | default('true', true) | bool }}"
+    bootstrap_manage_user_shell_files: "{{ lookup('env','BOOTSTRAP_MANAGE_USER_SHELL_FILES') | default((not bootstrap_safe_mode) | ternary('true', 'false'), true) | bool }}"
+    bootstrap_manage_projects_ownership: "{{ lookup('env','BOOTSTRAP_MANAGE_PROJECTS_OWNERSHIP') | default((not bootstrap_safe_mode) | ternary('true', 'false'), true) | bool }}"
     bootstrap_target_hosts: >-
       {% set raw = target_hosts | default([]) %}
       {% if raw is string %}
@@ -237,6 +240,7 @@
         group: "{{ bootstrap_user }}"
         mode: '0644'
         force: true
+      when: bootstrap_manage_user_shell_files
 
     - name: Deploy env_container from vault variables
       ansible.builtin.template:
@@ -245,6 +249,7 @@
         owner: "{{ bootstrap_user }}"
         group: "{{ bootstrap_user }}"
         mode: '0600'
+      when: bootstrap_manage_user_shell_files
 
     - name: Ensure bashrc sources env_container and Go path
       ansible.builtin.blockinfile:
@@ -258,6 +263,7 @@
           # Go configuration
           export GOPATH="$HOME/go"
           export PATH="$GOPATH/bin:/usr/local/go/bin:$PATH"
+      when: bootstrap_manage_user_shell_files
 
     - name: Ensure oh-my-zsh cache folder exists for user
       ansible.builtin.file:
@@ -273,3 +279,4 @@
         owner: "{{ bootstrap_user }}"
         group: "{{ bootstrap_user }}"
         recurse: true
+      when: bootstrap_manage_projects_ownership
