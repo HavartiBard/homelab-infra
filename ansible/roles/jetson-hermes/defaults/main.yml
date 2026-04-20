@@ -1,11 +1,10 @@
 ---
 # Defaults for the Hermes Agent deployment role.
-# Hermes runs on jetson.lab; LLM inference uses Codex (primary) or spraycheese Ollama (future).
+# Hermes runs on jetson.lab; LLM inference uses local Ollama.
 
 # Deployment paths
 hermes_deploy_dir: /home/james/docker/hermes
 hermes_state_dir: /home/james/.hermes
-hermes_codex_auth_file: /home/james/.codex/auth.json
 
 # Container settings
 hermes_image: nousresearch/hermes-agent:latest
@@ -16,7 +15,6 @@ hermes_gateway_port: 8642
 # File paths (derived)
 hermes_compose_file: "{{ hermes_deploy_dir }}/docker-compose.yml"
 hermes_env_file: "{{ hermes_deploy_dir }}/.env"
-hermes_config_file: "{{ hermes_deploy_dir }}/config/hermes.yaml"
 
 # Docker compose command
 hermes_docker_compose_command: "docker compose"
@@ -28,7 +26,7 @@ hermes_gid: 1000
 # Director playbook URL for this agent
 hermes_director_url: "https://director.klsll.com/hermes/mcp"
 
-# LLM configuration — Codex primary
-hermes_model_provider: codex
+# LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.hermes/auth.json)
+hermes_model_provider: openai-codex
 hermes_model_default: "codex-1"
 hermes_model_context_length: 65536

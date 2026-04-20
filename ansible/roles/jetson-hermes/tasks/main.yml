@@ -17,25 +17,9 @@
     group: "{{ ansible_user }}"
     mode: '0755'
 
-- name: Ensure Hermes config directory exists
-  ansible.builtin.file:
-    path: "{{ hermes_deploy_dir }}/config"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: '0755'
-
 - name: Ensure Hermes state directory exists
   ansible.builtin.file:
     path: "{{ hermes_state_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: '0700'
-
-- name: Ensure Codex auth directory exists
-  ansible.builtin.file:
-    path: "{{ hermes_codex_auth_file | dirname }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -49,13 +33,22 @@
     group: "{{ ansible_user }}"
     mode: '0600'
 
+- name: Deploy SOUL.md persona
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes/SOUL.md"
+    dest: "{{ hermes_state_dir }}/SOUL.md"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    force: false
+
 - name: Render hermes.yaml config
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes/config/hermes.yaml.j2"
-    dest: "{{ hermes_config_file }}"
+    dest: "{{ hermes_state_dir }}/config.yaml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: '0600'
+    mode: '0666'
 
 - name: Render Docker Compose definition
   ansible.builtin.template:
