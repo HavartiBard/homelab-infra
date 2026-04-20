@@ -1,0 +1,28 @@
+---
+# Deploy Hermes Agent to jetson.lab
+#
+# Hermes is a self-improving AI agent (Nous Research) with persistent memory,
+# Slack integration, and MCP server support. LLM inference uses Codex (primary).
+#
+# Required environment variables:
+#   SLACK_BOT_TOKEN     - xoxb- bot token from Slack app
+#   SLACK_APP_TOKEN     - xapp- Socket Mode token from Slack app
+#   SLACK_ALLOWED_USERS - comma-separated Slack member IDs
+#
+# Usage:
+#   SLACK_BOT_TOKEN=xoxb-... SLACK_APP_TOKEN=xapp-... SLACK_ALLOWED_USERS=U... \
+#     ansible-playbook playbooks/misc/deploy-jetson-hermes.yml --limit jetson.lab
+#
+# First-run Codex auth (interactive, after deploy):
+#   ssh james@192.168.20.169 "docker exec -it hermes hermes model"
+#
+# Verify:
+#   ssh james@192.168.20.169 "docker ps | grep hermes"
+#   ssh james@192.168.20.169 "docker logs hermes --tail 20"
+
+- name: Deploy Hermes Agent to Jetson
+  hosts: jetson.lab
+  gather_facts: no
+  become: false
+  roles:
+    - jetson-hermes

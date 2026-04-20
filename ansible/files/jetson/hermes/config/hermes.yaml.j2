@@ -1,0 +1,20 @@
+model:
+  provider: {{ hermes_model_provider }}
+  default: {{ hermes_model_default }}
+  context_length: {{ hermes_model_context_length }}
+
+messaging:
+  slack:
+    enabled: true
+    allowed_users: "{{ hermes_env.SLACK_ALLOWED_USERS }}"
+
+terminal:
+  backend: local
+
+dashboard:
+  port: {{ hermes_dashboard_port }}
+  bind: 0.0.0.0
+
+gateway:
+  port: {{ hermes_gateway_port }}
+  bind: 0.0.0.0

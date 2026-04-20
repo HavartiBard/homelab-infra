@@ -1,0 +1,87 @@
+---
+- name: Fail when Slack tokens are not configured
+  ansible.builtin.fail:
+    msg: |
+      Slack tokens not set for Hermes Agent.
+      Export SLACK_BOT_TOKEN, SLACK_APP_TOKEN, and SLACK_ALLOWED_USERS before running.
+  when: >
+    hermes_env.SLACK_BOT_TOKEN == 'CHANGEME_SLACK_BOT_TOKEN' or
+    hermes_env.SLACK_APP_TOKEN == 'CHANGEME_SLACK_APP_TOKEN' or
+    hermes_env.SLACK_ALLOWED_USERS == 'CHANGEME_SLACK_MEMBER_IDS'
+
+- name: Ensure Hermes deploy directory exists
+  ansible.builtin.file:
+    path: "{{ hermes_deploy_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Ensure Hermes config directory exists
+  ansible.builtin.file:
+    path: "{{ hermes_deploy_dir }}/config"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Ensure Hermes state directory exists
+  ansible.builtin.file:
+    path: "{{ hermes_state_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Ensure Codex auth directory exists
+  ansible.builtin.file:
+    path: "{{ hermes_codex_auth_file | dirname }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Render .env for Hermes container
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes/.env.j2"
+    dest: "{{ hermes_env_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Render hermes.yaml config
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes/config/hermes.yaml.j2"
+    dest: "{{ hermes_config_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Render Docker Compose definition
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes/docker-compose.yml.j2"
+    dest: "{{ hermes_compose_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Deploy Hermes stack with Docker Compose
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ hermes_deploy_dir }}"
+    {{ hermes_docker_compose_command }} pull
+    {{ hermes_docker_compose_command }} up -d
+  register: hermes_deploy
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Validate Hermes container is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker inspect -f {{ '{{.State.Running}}' }} {{ hermes_container_name }}
+  register: hermes_running
+  failed_when: hermes_running.stdout | trim != 'true'
+  changed_when: false
+  args:
+    executable: /bin/bash
