@@ -21,6 +21,13 @@ hermes_config_file: "{{ hermes_deploy_dir }}/config/hermes.yaml"
 # Docker compose command
 hermes_docker_compose_command: "docker compose"
 
+# UID/GID mapping — must match host james user so container can write to mounted volumes
+hermes_uid: 1000
+hermes_gid: 1000
+
+# Director playbook URL for this agent
+hermes_director_url: "https://director.klsll.com/hermes/mcp"
+
 # LLM configuration — Codex primary
 hermes_model_provider: codex
 hermes_model_default: "codex-1"
