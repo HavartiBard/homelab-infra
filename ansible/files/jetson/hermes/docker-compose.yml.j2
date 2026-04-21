@@ -4,7 +4,7 @@ services:
     container_name: {{ hermes_container_name }}
     restart: unless-stopped
     user: "0"
-    entrypoint: ["/bin/sh", "-c", "chown -R ${HERMES_UID}:${HERMES_GID} /home/node/.hermes && exec /opt/hermes/docker/entrypoint.sh gateway run"]
+    entrypoint: ["/bin/sh", "-c", "chown -R {{ hermes_uid }}:{{ hermes_gid }} /home/node/.hermes && /opt/hermes/docker/entrypoint.sh dashboard --port {{ hermes_dashboard_port }} --host 0.0.0.0 --insecure & exec /opt/hermes/docker/entrypoint.sh gateway run"]
     command: []
     network_mode: host
     stdin_open: true
@@ -17,3 +17,4 @@ services:
       - HERMES_HOME=/home/node/.hermes
       - HERMES_UID={{ hermes_uid }}
       - HERMES_GID={{ hermes_gid }}
+      - HERMES_DASHBOARD_PORT={{ hermes_dashboard_port }}
