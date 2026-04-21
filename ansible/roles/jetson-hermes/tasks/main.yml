@@ -50,6 +50,42 @@
     group: "{{ ansible_user }}"
     mode: '0666'
 
+- name: Ensure Hermes SSH key directory exists
+  ansible.builtin.file:
+    path: "{{ hermes_state_dir }}/ssh"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Deploy homelab SSH private key for Hermes
+  ansible.builtin.copy:
+    src: "~/.ssh/id_ed25519_homelab"
+    dest: "{{ hermes_state_dir }}/ssh/id_ed25519_homelab"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Deploy homelab SSH public key for Hermes
+  ansible.builtin.copy:
+    src: "~/.ssh/id_ed25519_homelab.pub"
+    dest: "{{ hermes_state_dir }}/ssh/id_ed25519_homelab.pub"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Deploy SSH config for Hermes
+  ansible.builtin.copy:
+    dest: "{{ hermes_state_dir }}/ssh/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+    content: |
+      Host *.lab *.klsll.com 192.168.*.*
+          IdentityFile ~/.ssh/id_ed25519_homelab
+          StrictHostKeyChecking accept-new
+          User james
+
 - name: Render Docker Compose definition
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes/docker-compose.yml.j2"
