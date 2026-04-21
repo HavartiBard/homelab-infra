@@ -40,7 +40,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
-    force: false
+    force: true
 
 - name: Render hermes.yaml config
   ansible.builtin.template:

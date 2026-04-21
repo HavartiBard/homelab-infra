@@ -28,5 +28,5 @@ hermes_director_url: "https://director.klsll.com/hermes/mcp"
 
 # LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.hermes/auth.json)
 hermes_model_provider: openai-codex
-hermes_model_default: "codex-mini-latest"
+hermes_model_default: "gpt-5.4-mini"
 hermes_model_context_length: 65536
