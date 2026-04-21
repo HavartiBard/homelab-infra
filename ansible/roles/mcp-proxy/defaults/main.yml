@@ -38,5 +38,14 @@ mcp_proxy_servers:
       - src/index.js
     transport_type: stdio
 
+  - name: onepassword
+    command: docker
+    args:
+      - exec
+      - -i
+      - onepassword-mcp
+      - 1password-mcp
+    transport_type: stdio
+
 # Timezone
 timezone: "America/Phoenix"
