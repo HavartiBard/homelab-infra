@@ -6,6 +6,8 @@
 hermes_deploy_dir: /home/james/docker/hermes
 hermes_state_dir: /home/james/.hermes
 hermes_codex_auth_file: /home/james/.codex/auth.json
+hermes_obsidian_host_dir: /mnt/user/appdata/obsidian/vaults
+hermes_obsidian_container_dir: /vault
 
 # Container settings
 hermes_image: nousresearch/hermes-agent:latest
@@ -21,7 +23,7 @@ hermes_config_file: "{{ hermes_deploy_dir }}/config/hermes.yaml"
 # Docker compose command
 hermes_docker_compose_command: "docker compose"
 
-# LLM configuration — Codex primary
-hermes_model_provider: codex
-hermes_model_default: "codex-1"
+# LLM configuration — matches the deployed Hermes runtime
+hermes_model_provider: openai-codex
+hermes_model_default: "gpt-5.4-mini"
 hermes_model_context_length: 65536
