@@ -1,0 +1,567 @@
+---
+# Seed NetBox with homelab inventory
+#
+# Populates: site, prefixes, device roles, platforms, manufacturers,
+#            device types, locations, rack, cluster types, clusters,
+#            physical devices, VMs (LXC + Docker), interfaces, IPs.
+#
+# Physical devices: unraid-server, pve-01, pve-02, spraycheese, jetson,
+#                   mikrotik-css610, jetkvm, bambulab-p1s, pihole
+# Locations: Office (Bookcase, Desk, Media Closet), Living Room, Garage,
+#            Kitchen, Dining Room, bedrooms, Den, Pantry
+# Rack: Mini Rack (6U, Bookcase) — U2 Mikrotik, U3-5 PVE/Jetson, U6 JetKVM
+# VMs (Proxmox LXC): tt1, tt2, agh1, agh2, automation
+# VMs (Docker): all significant service containers
+#
+# Idempotent — safe to re-run. Uses netbox.netbox collection.
+#
+# Run:
+#   ansible-playbook playbooks/misc/seed-netbox.yml \
+#     --vault-password-file ~/.vault-pass
+
+- name: Seed NetBox homelab inventory
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    netbox_url: "http://192.168.20.14:8001"
+    netbox_token: "{{ vault_netbox_api_token }}"
+
+  tasks:
+
+    # ── Site ──────────────────────────────────────────────────────────────────
+
+    - name: Create site
+      netbox.netbox.netbox_site:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: Homelab
+          slug: homelab
+          status: active
+          description: Home lab — Unraid, Proxmox, edge devices
+        state: present
+
+    # ── IP Prefixes ───────────────────────────────────────────────────────────
+
+    - name: Create IP prefixes
+      netbox.netbox.netbox_prefix:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          prefix: "{{ item.prefix }}"
+          site: Homelab
+          status: active
+          description: "{{ item.description }}"
+        state: present
+      loop:
+        - { prefix: "192.168.1.0/24",  description: "VLAN 1 — Management" }
+        - { prefix: "192.168.20.0/24", description: "VLAN 20 — Servers" }
+        - { prefix: "192.168.30.0/24", description: "VLAN 30 — IoT/Guest" }
+
+    # ── Device Roles ──────────────────────────────────────────────────────────
+
+    - name: Create device roles
+      netbox.netbox.netbox_device_role:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          color: "{{ item.color }}"
+          vm_role: "{{ item.vm_role | default(false) }}"
+        state: present
+      loop:
+        # Physical roles
+        - { name: NAS,             slug: nas,             color: "aa1409", vm_role: false }
+        - { name: Hypervisor,      slug: hypervisor,      color: "2196f3", vm_role: false }
+        - { name: GPU Workstation, slug: gpu-workstation, color: "9c27b0", vm_role: false }
+        - { name: Edge Device,     slug: edge-device,     color: "ff9800", vm_role: false }
+        # More physical roles
+        - { name: Network Switch,  slug: network-switch,  color: "3f51b5", vm_role: false }
+        - { name: KVM,             slug: kvm,             color: "607d8b", vm_role: false }
+        - { name: 3D Printer,      slug: 3d-printer,      color: "ff5722", vm_role: false }
+        # VM roles
+        - { name: DNS Server,      slug: dns-server,      color: "4caf50", vm_role: true }
+        - { name: DNS Filter,      slug: dns-filter,      color: "009688", vm_role: true }
+        - { name: Application,     slug: application,     color: "607d8b", vm_role: true }
+        - { name: MCP Server,      slug: mcp-server,      color: "795548", vm_role: true }
+        - { name: LLM Service,     slug: llm-service,     color: "e91e63", vm_role: true }
+
+    # ── Platforms ─────────────────────────────────────────────────────────────
+
+    - name: Create platforms
+      netbox.netbox.netbox_platform:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+        state: present
+      loop:
+        - { name: Unraid,       slug: unraid }
+        - { name: Proxmox VE,   slug: proxmox-ve }
+        - { name: Ubuntu 24.04, slug: ubuntu-24-04 }
+        - { name: Windows 11,   slug: windows-11 }
+        - { name: JetPack,      slug: jetpack }
+        - { name: Docker,       slug: docker }
+        - { name: RouterOS,     slug: routeros }
+
+    # ── Manufacturers & Device Types ──────────────────────────────────────────
+
+    - name: Create manufacturers
+      netbox.netbox.netbox_manufacturer:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+        state: present
+      loop:
+        - { name: Generic,              slug: generic }
+        - { name: NVIDIA,               slug: nvidia }
+        - { name: MikroTik,             slug: mikrotik }
+        - { name: JetKVM,               slug: jetkvm }
+        - { name: Bambu Lab,            slug: bambu-lab }
+        - { name: Raspberry Pi Foundation, slug: raspberry-pi-foundation }
+
+    - name: Create device types
+      netbox.netbox.netbox_device_type:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          model: "{{ item.model }}"
+          slug: "{{ item.slug }}"
+          manufacturer: "{{ item.manufacturer }}"
+        state: present
+      loop:
+        - { model: Generic Server,      slug: generic-server,      manufacturer: Generic }
+        - { model: Generic Workstation, slug: generic-workstation, manufacturer: Generic }
+        - { model: Jetson Orin Nano,    slug: jetson-orin-nano,    manufacturer: NVIDIA }
+        - { model: CSS610-8G-2S IN,          slug: css610-8g-2s-in,      manufacturer: MikroTik }
+        - { model: JetKVM,                   slug: jetkvm,               manufacturer: JetKVM }
+        - { model: P1S,                      slug: p1s,                  manufacturer: Bambu Lab }
+        - { model: Raspberry Pi 3 Model B+,  slug: raspberry-pi-3-model-b, manufacturer: Raspberry Pi Foundation }
+
+    # ── Cluster Types & Clusters ──────────────────────────────────────────────
+
+    - name: Create cluster types
+      netbox.netbox.netbox_cluster_type:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+        state: present
+      loop:
+        - { name: Proxmox, slug: proxmox }
+        - { name: Docker,  slug: docker }
+
+    - name: Create clusters
+      netbox.netbox.netbox_cluster:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster_type: "{{ item.cluster_type }}"
+          site: Homelab
+          description: "{{ item.description }}"
+        state: present
+      loop:
+        - { name: pve-cluster,        cluster_type: Proxmox, description: "Proxmox VE cluster (pve-01 + pve-02)" }
+        - { name: unraid-docker,      cluster_type: Docker,  description: "Docker on Unraid (192.168.20.14)" }
+        - { name: automation-docker,  cluster_type: Docker,  description: "Docker on automation LXC (192.168.20.50) — NPM, Uptime Kuma" }
+        - { name: jetson-docker,      cluster_type: Docker,  description: "Docker on Jetson Orin Nano edge device" }
+
+    # ── Locations ─────────────────────────────────────────────────────────────
+
+    - name: Create top-level room locations
+      netbox.netbox.netbox_location:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          site: Homelab
+          status: active
+        state: present
+      loop:
+        - { name: Office,           slug: office }
+        - { name: Living Room,      slug: living-room }
+        - { name: Garage,           slug: garage }
+        - { name: Kitchen,          slug: kitchen }
+        - { name: Dining Room,      slug: dining-room }
+        - { name: Madison Bedroom,  slug: madison-bedroom }
+        - { name: Parker Bedroom,   slug: parker-bedroom }
+        - { name: Emma Bedroom,     slug: emma-bedroom }
+        - { name: Master Bedroom,   slug: master-bedroom }
+        - { name: Den,              slug: den }
+        - { name: Pantry,           slug: pantry }
+
+    - name: Create Office sub-locations
+      netbox.netbox.netbox_location:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          slug: "{{ item.slug }}"
+          site: Homelab
+          parent_location: Office
+          status: active
+        state: present
+      loop:
+        - { name: Bookcase,     slug: bookcase }
+        - { name: Desk,         slug: desk }
+        - { name: Media Closet, slug: media-closet }
+
+    # ── Rack ──────────────────────────────────────────────────────────────────
+
+    - name: Create Mini Rack
+      netbox.netbox.netbox_rack:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: Mini Rack
+          site: Homelab
+          location: Bookcase
+          status: active
+          u_height: 6
+          desc_units: true
+        state: present
+
+    # ── Physical Devices ──────────────────────────────────────────────────────
+
+    - name: Remove LXC hosts that were incorrectly created as physical devices
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item }}"
+          site: Homelab
+          device_type: Generic Server
+          device_role: DNS Server
+        state: absent
+      loop: [tt1, tt2, agh1, agh2]
+      ignore_errors: true
+
+    - name: Create physical devices
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          site: Homelab
+          device_type: "{{ item.device_type }}"
+          device_role: "{{ item.device_role }}"
+          platform: "{{ item.platform | default(omit) }}"
+          cluster: "{{ item.cluster | default(omit) }}"
+          location: "{{ item.location | default(omit) }}"
+          rack: "{{ item.rack | default(omit) }}"
+          position: "{{ item.position | default(omit) }}"
+          face: "{{ item.face | default(omit) }}"
+          status: active
+        state: present
+      loop:
+        # Bookcase — not racked
+        - { name: unraid-server,   device_type: Generic Server,      device_role: NAS,            platform: Unraid,    location: Bookcase }
+        - { name: bambulab-p1s,    device_type: P1S,                 device_role: 3D Printer,                          location: Bookcase }
+        # Mini Rack (U2-6, desc_units — U1 is top)
+        - { name: mikrotik-css610, device_type: CSS610-8G-2S IN,     device_role: Network Switch, platform: RouterOS,  rack: Mini Rack, position: 2, face: front }
+        - { name: pve-01,          device_type: Generic Server,      device_role: Hypervisor,     platform: Proxmox VE, cluster: pve-cluster, rack: Mini Rack, position: 3, face: front }
+        - { name: pve-02,          device_type: Generic Server,      device_role: Hypervisor,     platform: Proxmox VE, cluster: pve-cluster, rack: Mini Rack, position: 4, face: front }
+        - { name: jetson,          device_type: Jetson Orin Nano,    device_role: Edge Device,    platform: JetPack,   rack: Mini Rack, position: 5, face: front }
+        - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,                                 rack: Mini Rack, position: 6, face: front }
+        - { name: pihole,          device_type: Raspberry Pi 3 Model B+, device_role: Application,    location: Bookcase }
+        # Desk
+        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11, location: Desk }
+
+    - name: Create physical device interfaces
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          device: "{{ item.device }}"
+          name: eth0
+          type: 1000base-t
+          mac_address: "{{ item.mac | default(omit) }}"
+        state: present
+      loop:
+        - { device: unraid-server }
+        - { device: pve-01 }
+        - { device: pve-02 }
+        - { device: spraycheese,     mac: "D8:BB:C1:0D:2D:D8" }
+        - { device: jetson,          mac: "4C:BB:47:32:F3:2F" }
+        - { device: mikrotik-css610 }
+        - { device: jetkvm,          mac: "80:34:28:65:B4:B9" }
+        - { device: bambulab-p1s,    mac: "24:58:7C:E2:1E:38" }
+        - { device: pihole,          mac: "DC:A6:32:64:F8:63" }
+
+    # .50 was incorrectly assigned to spraycheese — delete it so automation LXC can claim it
+    - name: Remove stale spraycheese IP (192.168.20.50 belongs to automation LXC)
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "192.168.20.50/24"
+        state: absent
+
+    - name: Assign IPs to physical device interfaces
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "{{ item.address }}"
+          interface:
+            device: "{{ item.device }}"
+            name: eth0
+          status: active
+          dns_name: "{{ item.dns }}"
+        state: present
+      loop:
+        - { device: unraid-server,   address: "192.168.20.14/24",  dns: "unraid-server" }
+        - { device: pve-01,          address: "192.168.20.100/24", dns: "pve-01" }
+        - { device: pve-02,          address: "192.168.20.101/24", dns: "pve-02" }
+        - { device: spraycheese,     address: "192.168.20.154/24", dns: "spraycheese" }
+        - { device: jetson,          address: "192.168.20.169/24", dns: "jetson.lab" }
+        - { device: mikrotik-css610, address: "192.168.1.11/24",   dns: "mikrotik-css610" }
+        - { device: jetkvm,          address: "192.168.20.8/24",   dns: "jetkvm" }
+        - { device: bambulab-p1s,    address: "192.168.20.194/24", dns: "bambulab-p1s" }
+        - { device: pihole,          address: "192.168.20.155/24", dns: "pihole" }
+      register: _phys_ip_result
+      failed_when: false
+
+    - name: Verify physical IP assignments (any failure must be already-assigned)
+      ansible.builtin.assert:
+        that:
+          - '"interface does not exist on existing object" in (item.msg | default(""))'
+        fail_msg: "Unexpected IP assignment failure: {{ item.msg | default('unknown') }}"
+      loop: "{{ _phys_ip_result.results | selectattr('failed', 'defined') | selectattr('failed') | list }}"
+
+    - name: Set primary IPs on physical devices
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          site: Homelab
+          device_type: "{{ item.device_type }}"
+          device_role: "{{ item.device_role }}"
+          primary_ip4: "{{ item.address }}"
+          status: active
+        state: present
+      loop:
+        - { name: unraid-server,   device_type: Generic Server,      device_role: NAS,            address: "192.168.20.14/24" }
+        - { name: pve-01,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.100/24" }
+        - { name: pve-02,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.101/24" }
+        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, address: "192.168.20.154/24" }
+        - { name: jetson,          device_type: Jetson Orin Nano,    device_role: Edge Device,    address: "192.168.20.169/24" }
+        - { name: mikrotik-css610, device_type: CSS610-8G-2S IN,     device_role: Network Switch, address: "192.168.1.11/24" }
+        - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,            address: "192.168.20.8/24" }
+        - { name: bambulab-p1s,    device_type: P1S,                 device_role: 3D Printer,     address: "192.168.20.194/24" }
+        - { name: pihole,          device_type: Raspberry Pi 3 Model B+, device_role: Application, address: "192.168.20.155/24" }
+
+    # ── Proxmox LXC Virtual Machines ─────────────────────────────────────────
+
+    - name: Create Proxmox LXC VMs
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: pve-cluster
+          virtual_machine_role: "{{ item.role }}"
+          platform: Ubuntu 24.04
+          status: active
+          comments: "{{ item.comments }}"
+        state: present
+      loop:
+        - { name: tt1,        role: DNS Server,  comments: "Technitium primary DNS — LXC on pve-01 (vmid 5010)" }
+        - { name: tt2,        role: DNS Server,  comments: "Technitium secondary DNS — LXC on pve-02 (vmid 5011)" }
+        - { name: agh1,       role: DNS Filter,  comments: "AdGuard Home primary — LXC on pve-01 (vmid 5012)" }
+        - { name: agh2,       role: DNS Filter,  comments: "AdGuard Home secondary — LXC on pve-02 (vmid 5013)" }
+        - { name: automation, role: Application, comments: "Platform LXC — NPM, Uptime Kuma (vmid 104, pve-01, 192.168.20.50)" }
+
+    - name: Create LXC VM interfaces
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          virtual_machine: "{{ item.vm }}"
+          name: eth0
+          mac_address: "{{ item.mac | default(omit) }}"
+        state: present
+      loop:
+        - { vm: tt1 }
+        - { vm: tt2 }
+        - { vm: agh1 }
+        - { vm: agh2 }
+        - { vm: automation, mac: "BC:24:11:C9:AC:03" }
+
+    # LXC IPs are always deleted+recreated so they're always assigned to the VM interfaces
+    # (not the old physical device interfaces from before the LXC hosts were converted to VMs)
+    - name: Remove stale LXC IPs (may exist from prior run when these were physical devices)
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "{{ item }}"
+        state: absent
+      loop:
+        - "192.168.20.2/24"
+        - "192.168.20.3/24"
+        - "192.168.20.4/24"
+        - "192.168.20.5/24"
+
+    - name: Assign IPs to LXC VMs
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "{{ item.address }}"
+          assigned_object:
+            virtual_machine: "{{ item.vm }}"
+            name: eth0
+          status: active
+          dns_name: "{{ item.dns }}"
+        state: present
+      loop:
+        - { vm: tt1,        address: "192.168.20.2/24",  dns: "tt1" }
+        - { vm: tt2,        address: "192.168.20.3/24",  dns: "tt2" }
+        - { vm: agh1,       address: "192.168.20.4/24",  dns: "agh1" }
+        - { vm: agh2,       address: "192.168.20.5/24",  dns: "agh2" }
+        - { vm: automation, address: "192.168.20.50/24", dns: "automation" }
+
+    - name: Set primary IPs on LXC VMs
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: pve-cluster
+          virtual_machine_role: "{{ item.role }}"
+          platform: Ubuntu 24.04
+          primary_ip4: "{{ item.address }}"
+          status: active
+        state: present
+      loop:
+        - { name: tt1,        role: DNS Server,  address: "192.168.20.2/24" }
+        - { name: tt2,        role: DNS Server,  address: "192.168.20.3/24" }
+        - { name: agh1,       role: DNS Filter,  address: "192.168.20.4/24" }
+        - { name: agh2,       role: DNS Filter,  address: "192.168.20.5/24" }
+        - { name: automation, role: Application, address: "192.168.20.50/24" }
+
+    # ── Docker Virtual Machines — Unraid ──────────────────────────────────────
+
+    - name: Create Docker VMs on Unraid
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: unraid-docker
+          virtual_machine_role: "{{ item.role }}"
+          platform: Docker
+          status: active
+          comments: "{{ item.comments | default('') }}"
+        state: present
+      loop:
+        # Applications
+        - { name: netbox,         role: Application, comments: "DCIM/IPAM — http://192.168.20.14:8001" }
+        - { name: paperless,      role: Application, comments: "Document management — http://192.168.20.14:8000" }
+        - { name: ironclaw,       role: Application, comments: "AI assistant — macvlan 192.168.20.56:3000" }
+        - { name: director,       role: Application, comments: "MCP proxy director — http://192.168.20.14:8080" }
+        - { name: homepage,       role: Application, comments: "Dashboard — macvlan 192.168.20.55:3000" }
+        - { name: couchdb,        role: Application, comments: "Obsidian LiveSync backend — http://192.168.20.14:5984" }
+        - { name: soullayer,      role: LLM Service, comments: "Personality/memory MCP — via mcp-proxy :6980" }
+        # MCP servers
+        - { name: mcp-proxy,      role: MCP Server,  comments: "stdio-to-HTTP MCP bridge — http://192.168.20.14:6980" }
+        - { name: gitea-mcp,      role: MCP Server,  comments: "Gitea issues/PRs/repos — http://192.168.20.14:6976" }
+        - { name: obsidian-mcp,   role: MCP Server,  comments: "Obsidian vault HTTP MCP — http://192.168.20.14:6977" }
+        - { name: searxng-mcp,    role: MCP Server,  comments: "Privacy metasearch MCP — http://192.168.20.14:6978" }
+        - { name: onepassword-mcp,role: MCP Server,  comments: "1Password secrets MCP — http://192.168.20.14:6975" }
+        - { name: homelab-mcp,    role: MCP Server,  comments: "Orbi/NPM homelab MCP — http://192.168.20.14:6971" }
+        - { name: gsuite-mcp,     role: MCP Server,  comments: "Google Workspace MCP — http://192.168.20.14:8092" }
+        - { name: unraid-mcp,     role: MCP Server,  comments: "Unraid API MCP" }
+        - { name: proxmox-mcp,    role: MCP Server,  comments: "Proxmox VE MCP" }
+
+    # ── Docker Virtual Machines — automation LXC ──────────────────────────────
+
+    - name: Create Docker VMs on automation LXC
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: automation-docker
+          virtual_machine_role: "{{ item.role }}"
+          platform: Docker
+          status: active
+          comments: "{{ item.comments | default('') }}"
+        state: present
+      loop:
+        - { name: npm,          role: Application, comments: "Nginx Proxy Manager — http://192.168.20.50:81" }
+        - { name: uptime-kuma,  role: Application, comments: "Uptime monitoring — http://192.168.20.50:3001" }
+
+    # ── Docker Virtual Machines — Jetson ──────────────────────────────────────
+
+    - name: Create Docker VMs on Jetson
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: jetson-docker
+          virtual_machine_role: "{{ item.role }}"
+          platform: Docker
+          status: active
+          comments: "{{ item.comments | default('') }}"
+        state: present
+      loop:
+        - { name: openclaw,     role: Application, comments: "AI agent control plane — http://192.168.20.169:18789" }
+        - { name: ollama-jetson,role: LLM Service, comments: "Edge LLM inference — http://192.168.20.169:11434" }
+
+    # ── IPs for Docker VMs with dedicated macvlan addresses ───────────────────
+
+    - name: Create interfaces for macvlan Docker VMs
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          virtual_machine: "{{ item.vm }}"
+          name: eth0
+        state: present
+      loop:
+        - { vm: ironclaw }
+        - { vm: homepage }
+
+    - name: Assign dedicated IPs to macvlan Docker VMs
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          address: "{{ item.address }}"
+          assigned_object:
+            virtual_machine: "{{ item.vm }}"
+            name: eth0
+          status: active
+          dns_name: "{{ item.dns }}"
+        state: present
+      loop:
+        - { vm: homepage, address: "192.168.20.55/24", dns: "homepage" }
+        - { vm: ironclaw, address: "192.168.20.56/24", dns: "ironclaw.klsll.com" }
+
+    - name: Set primary IPs on macvlan Docker VMs
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: unraid-docker
+          virtual_machine_role: "{{ item.role }}"
+          platform: Docker
+          primary_ip4: "{{ item.address }}"
+          status: active
+        state: present
+      loop:
+        - { name: homepage, role: Application, address: "192.168.20.55/24" }
+        - { name: ironclaw, role: Application, address: "192.168.20.56/24" }

@@ -1,0 +1,29 @@
+---
+# Deploy NetBox DCIM/IPAM on Unraid
+#
+# Prerequisites:
+#   - vault.yml contains vault_netbox_* entries
+#   - /mnt/user/appdata/netbox share path exists on Unraid (created by role)
+#
+# After deployment:
+#   Web UI:    http://192.168.20.14:8001    (direct)
+#              https://netbox.klsll.com    (via NPM)
+#   Login:     admin / vault_netbox_superuser_password
+
+- name: Deploy NetBox
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: netbox
+
+  post_tasks:
+    - name: Deployment summary
+      ansible.builtin.debug:
+        msg: |
+          NetBox deployed successfully!
+          Web UI:     http://{{ ansible_host }}:{{ netbox_port }}
+          NPM proxy:  https://netbox.klsll.com (configure NPM separately)
+          Login:      {{ netbox_superuser_name }} / <vault_netbox_superuser_password>
+          Logs:       docker logs netbox -f
+          Restart:    cd {{ netbox_compose_dir }} && docker compose restart
