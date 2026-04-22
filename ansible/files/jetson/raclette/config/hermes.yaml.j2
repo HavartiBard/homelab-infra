@@ -1,7 +1,7 @@
 model:
-  provider: {{ hermes_model_provider }}
-  default: {{ hermes_model_default }}
-  context_length: {{ hermes_model_context_length }}
+  provider: {{ raclette_model_provider }}
+  default: {{ raclette_model_default }}
+  context_length: {{ raclette_model_context_length }}
   base_url: https://chatgpt.com/backend-api/codex
 providers: {}
 fallback_providers: []
@@ -61,7 +61,7 @@ agent:
 messaging:
   slack:
     enabled: true
-    allowed_users: "{{ hermes_env.SLACK_ALLOWED_USERS }}"
+    allowed_users: "{{ raclette_env.SLACK_ALLOWED_USERS }}"
 terminal:
   backend: docker
   modal_mode: auto
@@ -71,9 +71,9 @@ terminal:
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
   docker_forward_env: []
   docker_env:
-    OBSIDIAN_VAULT_PATH: {{ hermes_obsidian_container_dir }}
+    OBSIDIAN_VAULT_PATH: {{ raclette_obsidian_container_dir }}
   docker_volumes:
-  - {{ hermes_obsidian_host_dir }}:{{ hermes_obsidian_container_dir }}:rw
+  - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
   singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
   modal_image: nikolaik/python-nodejs:python3.11-nodejs20
   daytona_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -201,11 +201,11 @@ display:
   tool_progress: all
   background_process_notifications: all
 dashboard:
-  port: {{ hermes_dashboard_port }}
+  port: {{ raclette_dashboard_port }}
   bind: 0.0.0.0
   theme: default
 gateway:
-  port: {{ hermes_gateway_port }}
+  port: {{ raclette_gateway_port }}
   bind: 0.0.0.0
 privacy:
   redact_pii: false
@@ -350,4 +350,4 @@ platform_toolsets:
   - hermes-qqbot
 mcp_servers:
   director:
-    url: {{ hermes_director_url }}
+    url: {{ raclette_director_url }}

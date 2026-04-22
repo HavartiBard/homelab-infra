@@ -1,10 +1,9 @@
 ---
-# Defaults for the Hermes Agent deployment role.
-# Hermes runs on jetson.lab; LLM inference uses local Ollama.
+# Defaults for the Raclette (Hermes Agent) deployment role.
 
 # Deployment paths
-raclette_deploy_dir: /home/james/docker/hermes
-raclette_state_dir: /home/james/.hermes
+raclette_deploy_dir: /home/james/docker/raclette
+raclette_state_dir: /home/james/.raclette
 
 # Obsidian vault mount (NFS-mounted from Unraid on Jetson)
 raclette_obsidian_host_dir: /mnt/user/appdata/obsidian/vaults
@@ -12,7 +11,7 @@ raclette_obsidian_container_dir: /vault
 
 # Container settings
 raclette_image: nousresearch/hermes-agent:latest
-raclette_container_name: hermes
+raclette_container_name: raclette
 raclette_dashboard_port: 9119
 raclette_gateway_port: 8642
 
@@ -30,7 +29,7 @@ raclette_gid: 1000
 # Director playbook URL for this agent
 raclette_director_url: "https://director.klsll.com/hermes/mcp"
 
-# LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.hermes/auth.json)
+# LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.raclette/auth.json)
 raclette_model_provider: openai-codex
 raclette_model_default: "gpt-5.4-mini"
 raclette_model_context_length: 65536
