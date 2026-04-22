@@ -11,6 +11,7 @@ services:
     tty: true
     volumes:
       - {{ hermes_state_dir }}:/home/node/.hermes
+      - {{ hermes_obsidian_host_dir }}:{{ hermes_obsidian_container_dir }}:rw
     env_file:
       - {{ hermes_env_file }}
     environment:

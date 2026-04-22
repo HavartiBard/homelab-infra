@@ -81,6 +81,9 @@
     group: "{{ ansible_user }}"
     mode: '0600'
     content: |
+      Host unraid.lab unraid-server 192.168.20.14
+          IdentityFile ~/.ssh/id_ed25519_homelab
+          User root
       Host *.lab *.klsll.com 192.168.*.*
           IdentityFile ~/.ssh/id_ed25519_homelab
           StrictHostKeyChecking accept-new

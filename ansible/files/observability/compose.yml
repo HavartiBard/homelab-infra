@@ -1,0 +1,125 @@
+# Observability Stack — Unraid
+# Managed by Ansible: ansible/playbooks/platform/deploy-observability.yml
+# All services on observability-net (internal)
+# Exposed: Grafana :3000, syslog-ng UDP/TCP :5514 (514 taken by Unraid rsyslogd)
+
+services:
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/config.yml
+    networks:
+      - observability-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - observability-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "3030:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - TZ=America/Phoenix
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.klsll.com
+    networks:
+      - observability-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  syslog-ng:
+    image: balabit/syslog-ng:4.8.0
+    container_name: syslog-ng
+    restart: unless-stopped
+    ports:
+      - "5514:514/udp"
+      - "5514:514/tcp"
+    volumes:
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
+    networks:
+      - observability-net
+    healthcheck:
+      test: ["CMD", "syslog-ng-ctl", "stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    volumes:
+      - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - observability-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  observability-net:
+    driver: bridge
+    name: observability-net
+
+volumes:
+  loki-data:
+    name: loki-data
+  prometheus-data:
+    name: prometheus-data
+  grafana-data:
+    name: grafana-data
+  alertmanager-data:
+    name: alertmanager-data

@@ -1,0 +1,22 @@
+---
+# Deploy observability agents to all homelab hosts
+# node_exporter + promtail: all hosts
+# cadvisor: Docker hosts only (unraid, edge_devices, windows_gpu)
+
+- name: Deploy node_exporter to all hosts
+  hosts: unraid:pve:tt:agh:edge_devices:windows_gpu
+  gather_facts: false
+  roles:
+    - node_exporter
+
+- name: Deploy Promtail to all hosts
+  hosts: unraid:pve:tt:agh:edge_devices:windows_gpu
+  gather_facts: false
+  roles:
+    - promtail
+
+- name: Deploy cAdvisor to Docker hosts
+  hosts: unraid:edge_devices:windows_gpu
+  gather_facts: false
+  roles:
+    - cadvisor

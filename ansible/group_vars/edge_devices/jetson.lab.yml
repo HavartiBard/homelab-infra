@@ -31,6 +31,7 @@ jetson_openclaw_env:
 
 # Hermes Agent
 hermes_env:
+  OBSIDIAN_VAULT_PATH: /vault
   SLACK_BOT_TOKEN: >-
     {{ lookup('env', 'SLACK_BOT_TOKEN') | default('CHANGEME_SLACK_BOT_TOKEN', true) }}
   SLACK_APP_TOKEN: >-

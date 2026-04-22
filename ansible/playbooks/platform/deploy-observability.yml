@@ -1,0 +1,8 @@
+---
+- name: Deploy observability stack on Unraid
+  hosts: unraid
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../../group_vars/all/vault.yml"
+  roles:
+    - observability

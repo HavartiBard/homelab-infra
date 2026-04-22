@@ -6,6 +6,10 @@
 hermes_deploy_dir: /home/james/docker/hermes
 hermes_state_dir: /home/james/.hermes
 
+# Obsidian vault mount (NFS-mounted from Unraid on Jetson)
+hermes_obsidian_host_dir: /mnt/user/appdata/obsidian/vaults
+hermes_obsidian_container_dir: /vault
+
 # Container settings
 hermes_image: nousresearch/hermes-agent:latest
 hermes_container_name: hermes
