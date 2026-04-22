@@ -148,7 +148,7 @@ Use `*.klsll.com` hostnames in NPM and create matching DNS records in Technitium
 | `prometheus.klsll.com` | http://prometheus:9090 | NPM Access List | Reserve; Prometheus not deployed yet |
 | `ollama.klsll.com` | <worker-ip>:11434 | NPM Access List | GPU worker |
 | `chat.klsll.com` | <worker-ip>:8080 | Built-in | GPU worker |
-| `openclaw.klsll.com` | http://192.168.20.169:18789 | Built-in | Jetson OpenClaw Control UI (NPM adds the configured session token). |
+| `raclette.klsll.com` | http://192.168.20.169:9119 | Built-in | Raclette (Hermes Agent) dashboard |
 | `ironclaw.klsll.com` | http://192.168.20.56:3000 | Built-in | IronClaw AI assistant (macvlan) |
 | `netbox.klsll.com` | <unraid-ip>:8001 | Built-in | Unraid |
 | `adguard.klsll.com` | <unraid-ip>:8053 | Built-in | Unraid |

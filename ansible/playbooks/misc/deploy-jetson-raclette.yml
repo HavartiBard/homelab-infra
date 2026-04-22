@@ -14,11 +14,11 @@
 #   ansible-playbook playbooks/misc/deploy-jetson-raclette.yml --limit jetson.lab
 #
 # First-run Codex auth (interactive, after deploy):
-#   ssh james@192.168.20.169 "docker exec -it hermes hermes model"
+#   ssh james@192.168.20.169 "docker exec -it raclette hermes model"
 #
 # Verify:
-#   ssh james@192.168.20.169 "docker ps | grep hermes"
-#   ssh james@192.168.20.169 "docker logs hermes --tail 20"
+#   ssh james@192.168.20.169 "docker ps | grep raclette"
+#   ssh james@192.168.20.169 "docker logs raclette --tail 20"
 
 - name: Deploy Raclette to Jetson
   hosts: jetson.lab
