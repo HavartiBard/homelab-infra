@@ -1,0 +1,28 @@
+---
+# Deploy Raclette (Hermes Agent) to jetson.lab
+#
+# Raclette is the homelab coordinator agent (Nous Research Hermes) with persistent
+# memory, Slack integration, and MCP server support. LLM inference uses Codex (primary).
+#
+# Required environment variables (raclette-specific):
+#   RACLETTE_SLACK_BOT_TOKEN     - xoxb- bot token from Slack app
+#   RACLETTE_SLACK_APP_TOKEN     - xapp- Socket Mode token from Slack app
+#   RACLETTE_SLACK_ALLOWED_USERS - comma-separated Slack member IDs
+#
+# Usage:
+#   source ~/.env_container
+#   ansible-playbook playbooks/misc/deploy-jetson-raclette.yml --limit jetson.lab
+#
+# First-run Codex auth (interactive, after deploy):
+#   ssh james@192.168.20.169 "docker exec -it hermes hermes model"
+#
+# Verify:
+#   ssh james@192.168.20.169 "docker ps | grep hermes"
+#   ssh james@192.168.20.169 "docker logs hermes --tail 20"
+
+- name: Deploy Raclette to Jetson
+  hosts: jetson.lab
+  gather_facts: no
+  become: false
+  roles:
+    - jetson-raclette

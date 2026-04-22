@@ -1,10 +1,10 @@
 ---
-# Hermes Agent
-hermes_env:
+# Raclette (Hermes Agent) — Slack tokens sourced from RACLETTE_* env vars on the controller
+raclette_env:
   OBSIDIAN_VAULT_PATH: /vault
   SLACK_BOT_TOKEN: >-
-    {{ lookup('env', 'SLACK_BOT_TOKEN') | default('CHANGEME_SLACK_BOT_TOKEN', true) }}
+    {{ lookup('env', 'RACLETTE_SLACK_BOT_TOKEN') | default('CHANGEME_RACLETTE_SLACK_BOT_TOKEN', true) }}
   SLACK_APP_TOKEN: >-
-    {{ lookup('env', 'SLACK_APP_TOKEN') | default('CHANGEME_SLACK_APP_TOKEN', true) }}
+    {{ lookup('env', 'RACLETTE_SLACK_APP_TOKEN') | default('CHANGEME_RACLETTE_SLACK_APP_TOKEN', true) }}
   SLACK_ALLOWED_USERS: >-
-    {{ lookup('env', 'SLACK_ALLOWED_USERS') | default('CHANGEME_SLACK_MEMBER_IDS', true) }}
+    {{ lookup('env', 'RACLETTE_SLACK_ALLOWED_USERS') | default('CHANGEME_SLACK_MEMBER_IDS', true) }}
