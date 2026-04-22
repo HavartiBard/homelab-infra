@@ -468,7 +468,6 @@
         # Applications
         - { name: netbox,         role: Application, comments: "DCIM/IPAM — http://192.168.20.14:8001" }
         - { name: paperless,      role: Application, comments: "Document management — http://192.168.20.14:8000" }
-        - { name: ironclaw,       role: Application, comments: "AI assistant — macvlan 192.168.20.56:3000" }
         - { name: director,       role: Application, comments: "MCP proxy director — http://192.168.20.14:8080" }
         - { name: homepage,       role: Application, comments: "Dashboard — macvlan 192.168.20.55:3000" }
         - { name: couchdb,        role: Application, comments: "Obsidian LiveSync backend — http://192.168.20.14:5984" }
@@ -517,7 +516,6 @@
           comments: "{{ item.comments | default('') }}"
         state: present
       loop:
-        - { name: openclaw,     role: Application, comments: "AI agent control plane — http://192.168.20.169:18789" }
         - { name: ollama-jetson,role: LLM Service, comments: "Edge LLM inference — http://192.168.20.169:11434" }
 
     # ── IPs for Docker VMs with dedicated macvlan addresses ───────────────────
@@ -531,7 +529,6 @@
           name: eth0
         state: present
       loop:
-        - { vm: ironclaw }
         - { vm: homepage }
 
     - name: Assign dedicated IPs to macvlan Docker VMs
@@ -548,7 +545,6 @@
         state: present
       loop:
         - { vm: homepage, address: "192.168.20.55/24", dns: "homepage" }
-        - { vm: ironclaw, address: "192.168.20.56/24", dns: "ironclaw.klsll.com" }
 
     - name: Set primary IPs on macvlan Docker VMs
       netbox.netbox.netbox_virtual_machine:
@@ -564,4 +560,3 @@
         state: present
       loop:
         - { name: homepage, role: Application, address: "192.168.20.55/24" }
-        - { name: ironclaw, role: Application, address: "192.168.20.56/24" }

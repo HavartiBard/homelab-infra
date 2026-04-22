@@ -1,6 +1,7 @@
 model:
-  default: gpt-5.4-mini
-  provider: openai-codex
+  provider: {{ raclette_model_provider }}
+  default: {{ raclette_model_default }}
+  context_length: {{ raclette_model_context_length }}
   base_url: https://chatgpt.com/backend-api/codex
 providers: {}
 fallback_providers: []
@@ -57,6 +58,10 @@ agent:
       \ you today! Every question is AMAZING and we're gonna CRUSH IT together! This\
       \ is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! \U0001F4AA\U0001F624\
       \U0001F680"
+messaging:
+  slack:
+    enabled: true
+    allowed_users: "{{ raclette_env.SLACK_ALLOWED_USERS }}"
 terminal:
   backend: docker
   modal_mode: auto
@@ -66,9 +71,9 @@ terminal:
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
   docker_forward_env: []
   docker_env:
-    OBSIDIAN_VAULT_PATH: /vault
+    OBSIDIAN_VAULT_PATH: {{ raclette_obsidian_container_dir }}
   docker_volumes:
-  - /mnt/user/appdata/obsidian/vaults:/vault:rw
+  - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
   singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
   modal_image: nikolaik/python-nodejs:python3.11-nodejs20
   daytona_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -76,7 +81,6 @@ terminal:
   container_memory: 5120
   container_disk: 51200
   container_persistent: true
-  # docker_volumes configured above
   docker_mount_cwd_to_workspace: false
   persistent_shell: true
   lifetime_seconds: 300
@@ -197,7 +201,12 @@ display:
   tool_progress: all
   background_process_notifications: all
 dashboard:
+  port: {{ raclette_dashboard_port }}
+  bind: 0.0.0.0
   theme: default
+gateway:
+  port: {{ raclette_gateway_port }}
+  bind: 0.0.0.0
 privacy:
   redact_pii: false
 tts:
@@ -339,4 +348,6 @@ platform_toolsets:
   - hermes-homeassistant
   qqbot:
   - hermes-qqbot
-SLACK_HOME_CHANNEL: C0AU0620ATX
+mcp_servers:
+  director:
+    url: {{ raclette_director_url }}

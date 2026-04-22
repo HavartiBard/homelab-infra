@@ -1,0 +1,21 @@
+services:
+  raclette:
+    image: {{ raclette_image }}
+    container_name: {{ raclette_container_name }}
+    restart: unless-stopped
+    user: "0"
+    entrypoint: ["/bin/sh", "-c", "command -v ssh >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y --no-install-recommends openssh-client); chown -R {{ raclette_uid }}:{{ raclette_gid }} /home/node/.hermes; mkdir -p /opt/data/.ssh && cp /home/node/.hermes/ssh/id_ed25519_homelab /opt/data/.ssh/ 2>/dev/null; cp /home/node/.hermes/ssh/config /opt/data/.ssh/ 2>/dev/null; chown -R {{ raclette_uid }}:{{ raclette_gid }} /opt/data/.ssh; chmod 700 /opt/data/.ssh; chmod 600 /opt/data/.ssh/id_ed25519_homelab 2>/dev/null; /opt/hermes/docker/entrypoint.sh dashboard --port {{ raclette_dashboard_port }} --host 0.0.0.0 --insecure & exec /opt/hermes/docker/entrypoint.sh gateway run"]
+    command: []
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+      - {{ raclette_state_dir }}:/home/node/.hermes
+      - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
+    env_file:
+      - {{ raclette_env_file }}
+    environment:
+      - HERMES_HOME=/home/node/.hermes
+      - HERMES_UID={{ raclette_uid }}
+      - HERMES_GID={{ raclette_gid }}
+      - HERMES_DASHBOARD_PORT={{ raclette_dashboard_port }}

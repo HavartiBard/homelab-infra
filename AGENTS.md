@@ -89,7 +89,7 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 | Obsidian MCP | Unraid | 6977 | - | Service catalog HTTP MCP (LAN-only) |
 | Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://localhost:11434/api/tags` |
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
-| IronClaw | Unraid | 8090 | `ironclaw.klsll.com` | `curl http://localhost:8090/` |
+| Raclette | Jetson | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |
 
 ## Directory Structure
 

@@ -1,0 +1,119 @@
+---
+- name: Fail when Slack tokens are not configured
+  ansible.builtin.fail:
+    msg: |
+      Slack tokens not set for Raclette.
+      Export RACLETTE_SLACK_BOT_TOKEN, RACLETTE_SLACK_APP_TOKEN, and RACLETTE_SLACK_ALLOWED_USERS before running.
+  when: >
+    raclette_env.SLACK_BOT_TOKEN == 'CHANGEME_RACLETTE_SLACK_BOT_TOKEN' or
+    raclette_env.SLACK_APP_TOKEN == 'CHANGEME_RACLETTE_SLACK_APP_TOKEN' or
+    raclette_env.SLACK_ALLOWED_USERS == 'CHANGEME_SLACK_MEMBER_IDS'
+
+- name: Ensure Raclette deploy directory exists
+  ansible.builtin.file:
+    path: "{{ raclette_deploy_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Ensure Raclette state directory exists
+  ansible.builtin.file:
+    path: "{{ raclette_state_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Render .env for Raclette container
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/.env.j2"
+    dest: "{{ raclette_env_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Deploy SOUL.md persona
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/SOUL.md"
+    dest: "{{ raclette_state_dir }}/SOUL.md"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    force: true
+
+- name: Render raclette config.yaml
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/config/hermes.yaml.j2"
+    dest: "{{ raclette_state_dir }}/config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0666'
+
+- name: Ensure Raclette SSH key directory exists
+  ansible.builtin.file:
+    path: "{{ raclette_state_dir }}/ssh"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Deploy homelab SSH private key for Raclette
+  ansible.builtin.copy:
+    src: "~/.ssh/id_ed25519_homelab"
+    dest: "{{ raclette_state_dir }}/ssh/id_ed25519_homelab"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Deploy homelab SSH public key for Raclette
+  ansible.builtin.copy:
+    src: "~/.ssh/id_ed25519_homelab.pub"
+    dest: "{{ raclette_state_dir }}/ssh/id_ed25519_homelab.pub"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Deploy SSH config for Raclette
+  ansible.builtin.copy:
+    dest: "{{ raclette_state_dir }}/ssh/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+    content: |
+      Host unraid.lab unraid-server 192.168.20.14
+          IdentityFile ~/.ssh/id_ed25519_homelab
+          User root
+      Host *.lab *.klsll.com 192.168.*.*
+          IdentityFile ~/.ssh/id_ed25519_homelab
+          StrictHostKeyChecking accept-new
+          User james
+
+- name: Render Docker Compose definition
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/docker-compose.yml.j2"
+    dest: "{{ raclette_compose_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Deploy Raclette stack with Docker Compose
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ raclette_deploy_dir }}"
+    {{ raclette_docker_compose_command }} pull
+    {{ raclette_docker_compose_command }} up -d
+  register: raclette_deploy
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Validate Raclette container is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker inspect -f {{ '{{.State.Running}}' }} {{ raclette_container_name }}
+  register: raclette_running
+  failed_when: raclette_running.stdout | trim != 'true'
+  changed_when: false
+  args:
+    executable: /bin/bash
