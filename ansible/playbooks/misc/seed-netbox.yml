@@ -517,7 +517,6 @@
           comments: "{{ item.comments | default('') }}"
         state: present
       loop:
-        - { name: openclaw,     role: Application, comments: "AI agent control plane — http://192.168.20.169:18789" }
         - { name: ollama-jetson,role: LLM Service, comments: "Edge LLM inference — http://192.168.20.169:11434" }
 
     # ── IPs for Docker VMs with dedicated macvlan addresses ───────────────────

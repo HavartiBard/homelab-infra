@@ -6,8 +6,7 @@
 #         directories, CUDA PATH in shell rc files, and .env_container.
 #
 # Idempotent — safe to re-run on an already-configured Jetson.
-# Does NOT touch vLLM, OpenClaw, or any running containers.
-# After bootstrap, run deploy-openclaw.yml to deploy the OpenClaw stack.
+# Does NOT touch vLLM or any running containers.
 #
 # Usage:
 #   ansible-playbook playbooks/jetson/bootstrap-jetson.yml \
@@ -49,7 +48,7 @@
       - "{{ bootstrap_user_home }}/docker"
       - "{{ bootstrap_user_home }}/models"
       - "{{ bootstrap_user_home }}/bots"
-      - "{{ bootstrap_user_home }}/.openclaw"
+
       - "{{ bootstrap_user_home }}/projects"
       - "{{ bootstrap_user_home }}/.cache/oh-my-zsh"
     # Maps jetson vault var to the existing env_container template variable name
@@ -385,8 +384,6 @@
         mode: '0644'
 
     # ── .vault-pass ───────────────────────────────────────────────────────────
-    # Required by Ansible running inside the openclaw container (mounted read-only).
-    # Sourced from the controller's ~/.vault-pass.
 
     - name: Deploy .vault-pass from controller
       ansible.builtin.copy:
@@ -397,8 +394,6 @@
         mode: '0600'
 
     # ── Homelab SSH key ───────────────────────────────────────────────────────
-    # Required by OpenClaw/Raclette for git ops and SSH to homelab hosts.
-    # Mounted read-only into the openclaw container.
 
     - name: Deploy homelab SSH private key from controller
       ansible.builtin.copy:
