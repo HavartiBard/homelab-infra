@@ -68,7 +68,7 @@
         href: https://github.com/HavartiBard/chiffon
 
 - AI:
-    - IronClaw:
+    - Raclette:
         icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ai.png
-        href: https://ironclaw.klsll.com
-        description: Local AI assistant — web UI, Slack, webhooks (Unraid)
+        href: https://raclette.klsll.com
+        description: Homelab coordinator agent — Slack, MCP, Obsidian (Jetson)

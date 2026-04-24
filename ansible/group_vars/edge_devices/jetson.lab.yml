@@ -1,32 +1,10 @@
 ---
-trtllm_models_host_dir: /home/james/models/tensorrt_llm
-trtllm_cache_host_dir: /home/james/.cache/huggingface
-trtllm_app_dir: /opt/trtllm
-
-# OpenClaw
-jetson_openclaw_deploy_dir: /home/james/docker/openclaw
-jetson_openclaw_state_dir: /home/james/.openclaw
-jetson_openclaw_workspace_dir: /home/james/bots/raclette
-jetson_openclaw_image: ghcr.io/openclaw/openclaw:latest
-jetson_openclaw_port: 18789
-
-# Model provider endpoints
-jetson_vllm_base_url: http://127.0.0.1:8000/v1
-jetson_lmstudio_base_url: "{{ lookup('env', 'LMSTUDIO_BASE_URL') | default('http://spraycheese.lab.klsll.com:1234/v1', true) }}"
-
-# .env rendered into ~/docker/openclaw/.env
-# Secrets sourced from env vars (present in ~/.env_container on Jetson,
-# and required as env vars on the Ansible controller at playbook run time)
-jetson_openclaw_env:
-  LMSTUDIO_API_KEY: >-
-    {{ lookup('env', 'LMSTUDIO_API_KEY') | default('CHANGEME_LMSTUDIO_API_KEY', true) }}
-  LMSTUDIO_BASE_URL: "{{ jetson_lmstudio_base_url }}"
-  OPENAI_BASE_URL: "{{ jetson_vllm_base_url }}"
-  OPENCLAW_GATEWAY_MODE: local
-  OPENCLAW_GATEWAY_BIND: lan
-  OPENCLAW_GATEWAY_TOKEN: >-
-    {{ lookup('env', 'OPENCLAW_GATEWAY_TOKEN') | default('CHANGEME_OPENCLAW_GATEWAY_TOKEN', true) }}
+# Raclette (Hermes Agent) — Slack tokens sourced from RACLETTE_* env vars on the controller
+raclette_env:
+  OBSIDIAN_VAULT_PATH: /vault
   SLACK_BOT_TOKEN: >-
-    {{ lookup('env', 'SLACK_BOT_TOKEN') | default('CHANGEME_SLACK_BOT_TOKEN', true) }}
+    {{ lookup('env', 'RACLETTE_SLACK_BOT_TOKEN') | default('CHANGEME_RACLETTE_SLACK_BOT_TOKEN', true) }}
   SLACK_APP_TOKEN: >-
-    {{ lookup('env', 'SLACK_APP_TOKEN') | default('CHANGEME_SLACK_APP_TOKEN', true) }}
+    {{ lookup('env', 'RACLETTE_SLACK_APP_TOKEN') | default('CHANGEME_RACLETTE_SLACK_APP_TOKEN', true) }}
+  SLACK_ALLOWED_USERS: >-
+    {{ lookup('env', 'RACLETTE_SLACK_ALLOWED_USERS') | default('CHANGEME_SLACK_MEMBER_IDS', true) }}

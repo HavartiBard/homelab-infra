@@ -1,0 +1,69 @@
+---
+# Deploy NetBox DCIM/IPAM — all tasks use raw since Unraid lacks Python
+
+- name: Create appdata directories
+  ansible.builtin.raw: |
+    mkdir -p {{ netbox_appdata_dir }}/postgres
+    mkdir -p {{ netbox_appdata_dir }}/redis
+    mkdir -p {{ netbox_appdata_dir }}/media
+    mkdir -p {{ netbox_appdata_dir }}/reports
+    mkdir -p {{ netbox_appdata_dir }}/scripts
+    mkdir -p {{ netbox_compose_dir }}
+  changed_when: false
+
+- name: Generate docker-compose.yml content
+  ansible.builtin.set_fact:
+    _netbox_compose_content: "{{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}"
+  no_log: true
+
+- name: Write docker-compose.yml
+  ansible.builtin.raw: |
+    cat > {{ netbox_compose_dir }}/docker-compose.yml << 'EOFCOMPOSE'
+    {{ _netbox_compose_content }}
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Generate netbox.env content
+  ansible.builtin.set_fact:
+    _netbox_env_content: "{{ lookup('template', role_path + '/templates/netbox.env.j2') }}"
+  no_log: true
+
+- name: Write netbox.env (no_log to protect secrets)
+  ansible.builtin.raw: |
+    cat > {{ netbox_compose_dir }}/netbox.env << 'EOFENV'
+    {{ _netbox_env_content }}
+    EOFENV
+    chmod 600 {{ netbox_compose_dir }}/netbox.env
+  changed_when: true
+  no_log: true
+
+- name: Pull NetBox images
+  ansible.builtin.raw: |
+    cd {{ netbox_compose_dir }} && docker compose pull
+  changed_when: true
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ netbox_compose_dir }} && docker compose down && docker compose up -d
+  changed_when: true
+
+- name: Wait for NetBox web to be healthy (up to 3 minutes)
+  ansible.builtin.raw: |
+    for i in $(seq 1 36); do
+      if curl -sf http://localhost:{{ netbox_port }}/login/ > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for netbox" >&2; exit 1
+  changed_when: false
+
+- name: Display container status
+  ansible.builtin.raw: |
+    docker ps --filter name=netbox 2>&1
+  register: netbox_ps
+  changed_when: false
+
+- name: Show container status
+  ansible.builtin.debug:
+    msg: "{{ netbox_ps.stdout_lines | default([]) }}"

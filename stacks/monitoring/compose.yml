@@ -120,6 +120,23 @@ services:
       timeout: 10s
       retries: 3
 
+  # =============================================================================
+  # SNMP Exporter - Network Device Metrics
+  # =============================================================================
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.26.0
+    container_name: snmp-exporter
+    restart: unless-stopped
+    ports:
+      - "${SNMP_EXPORTER_PORT:-9116}:9116"
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9116/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   monitoring-net:
     driver: bridge

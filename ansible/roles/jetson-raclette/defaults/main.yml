@@ -1,0 +1,35 @@
+---
+# Defaults for the Raclette (Hermes Agent) deployment role.
+
+# Deployment paths
+raclette_deploy_dir: /home/james/docker/raclette
+raclette_state_dir: /home/james/.raclette
+
+# Obsidian vault mount (NFS-mounted from Unraid on Jetson)
+raclette_obsidian_host_dir: /mnt/user/appdata/obsidian/vaults
+raclette_obsidian_container_dir: /vault
+
+# Container settings
+raclette_image: nousresearch/hermes-agent:latest
+raclette_container_name: raclette
+raclette_dashboard_port: 9119
+raclette_gateway_port: 8642
+
+# File paths (derived)
+raclette_compose_file: "{{ raclette_deploy_dir }}/docker-compose.yml"
+raclette_env_file: "{{ raclette_deploy_dir }}/.env"
+
+# Docker compose command
+raclette_docker_compose_command: "docker compose"
+
+# UID/GID mapping — must match host james user so container can write to mounted volumes
+raclette_uid: 1000
+raclette_gid: 1000
+
+# Director playbook URL for this agent
+raclette_director_url: "https://director.klsll.com/hermes/mcp"
+
+# LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.raclette/auth.json)
+raclette_model_provider: openai-codex
+raclette_model_default: "gpt-5.4-mini"
+raclette_model_context_length: 65536

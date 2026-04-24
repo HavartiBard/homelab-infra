@@ -1,0 +1,37 @@
+---
+# NetBox role defaults
+
+# Paths
+netbox_appdata_dir: /mnt/user/appdata/netbox
+netbox_compose_dir: /opt/docker/netbox
+
+# Image version
+netbox_image_tag: "v4.1.11"
+
+# Container names
+netbox_container: netbox
+netbox_worker_container: netbox-worker
+netbox_db_container: netbox-postgres
+netbox_redis_container: netbox-redis
+
+# Network
+netbox_network: netbox-net
+
+# Ports
+netbox_port: 8001
+
+# Application config
+netbox_time_zone: America/Phoenix
+netbox_url: https://netbox.klsll.com
+netbox_allowed_hosts: "netbox.klsll.com 192.168.20.14 localhost 127.0.0.1"
+
+# Database
+netbox_db_name: netbox
+netbox_db_user: netbox
+
+# Superuser
+netbox_superuser_name: admin
+netbox_superuser_email: admin@klsll.com
+
+# Unraid labels
+netbox_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/netbox.png

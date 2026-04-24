@@ -63,7 +63,6 @@ N/A - No deployment changes made. This is validation of existing Ollama service.
 ### Documentation
 
 - **Full validation report:** `docs/jetson-ollama-validation.md`
-- **Integration guide:** `docs/openclaw-jetson-integration.md` (pending)
 - **Architecture overview:** `docs/jetson-reasoning-llm.md`
 
 ---

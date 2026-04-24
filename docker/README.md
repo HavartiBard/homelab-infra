@@ -2,7 +2,6 @@
 
 This directory contains Docker Compose stack definitions for the homelab.
 
-- `netbox-unraid.yml` – NetBox + Postgres + Redis stack for Unraid.
 - `openhands-unraid/` – OpenHands AI agent control plane for Unraid.
 - `dev-environment/` – SSH-accessible dev container with Claude Code, opencode, and full dev tooling (macvlan on br0).
 

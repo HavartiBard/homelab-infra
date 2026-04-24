@@ -7,6 +7,11 @@
     "gsuite": {
       "type": "http",
       "url": "http://192.168.20.14:8092/mcp"
+    },
+    "raclette": {
+      "type": "stdio",
+      "command": "ssh",
+      "args": ["-i", "/home/james/.ssh/id_ed25519", "-o", "StrictHostKeyChecking=no", "james@192.168.20.169", "docker", "exec", "-i", "raclette", "/opt/hermes/.venv/bin/hermes", "mcp", "serve"]
     }
   }
 }

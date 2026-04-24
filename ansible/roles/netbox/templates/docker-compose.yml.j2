@@ -1,0 +1,84 @@
+services:
+  {{ netbox_redis_container }}:
+    image: redis:7-alpine
+    container_name: {{ netbox_redis_container }}
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - {{ netbox_appdata_dir }}/redis:/data
+    networks:
+      - {{ netbox_network }}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  {{ netbox_db_container }}:
+    image: postgres:15-alpine
+    container_name: {{ netbox_db_container }}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: {{ netbox_db_name }}
+      POSTGRES_USER: {{ netbox_db_user }}
+      POSTGRES_PASSWORD: "{{ vault_netbox_db_password }}"
+    volumes:
+      - {{ netbox_appdata_dir }}/postgres:/var/lib/postgresql/data
+    networks:
+      - {{ netbox_network }}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ netbox_db_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  {{ netbox_container }}:
+    image: netboxcommunity/netbox:{{ netbox_image_tag }}
+    container_name: {{ netbox_container }}
+    restart: unless-stopped
+    depends_on:
+      {{ netbox_db_container }}:
+        condition: service_healthy
+      {{ netbox_redis_container }}:
+        condition: service_healthy
+    ports:
+      - "{{ netbox_port }}:8080"
+    env_file:
+      - {{ netbox_compose_dir }}/netbox.env
+    volumes:
+      - {{ netbox_appdata_dir }}/media:/opt/netbox/netbox/media
+      - {{ netbox_appdata_dir }}/reports:/opt/netbox/netbox/reports
+      - {{ netbox_appdata_dir }}/scripts:/opt/netbox/netbox/scripts
+    networks:
+      - {{ netbox_network }}
+    labels:
+      net.unraid.docker.icon: "{{ netbox_icon }}"
+      net.unraid.docker.webui: "{{ netbox_url }}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  {{ netbox_worker_container }}:
+    image: netboxcommunity/netbox:{{ netbox_image_tag }}
+    container_name: {{ netbox_worker_container }}
+    restart: unless-stopped
+    depends_on:
+      {{ netbox_container }}:
+        condition: service_healthy
+    command: /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py rqworker
+    env_file:
+      - {{ netbox_compose_dir }}/netbox.env
+    volumes:
+      - {{ netbox_appdata_dir }}/media:/opt/netbox/netbox/media
+      - {{ netbox_appdata_dir }}/reports:/opt/netbox/netbox/reports
+      - {{ netbox_appdata_dir }}/scripts:/opt/netbox/netbox/scripts
+    networks:
+      - {{ netbox_network }}
+
+networks:
+  {{ netbox_network }}:
+    driver: bridge
+    name: {{ netbox_network }}

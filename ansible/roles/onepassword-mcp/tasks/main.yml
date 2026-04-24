@@ -1,12 +1,22 @@
 ---
-# Deploy 1Password MCP Server container
+# Deploy 1Password MCP Server container (stdio, proxied via mcp-proxy)
 # Uses raw commands since Unraid lacks Python
 
-- name: Pull container image
+- name: Create build directory on Unraid
+  ansible.builtin.raw: mkdir -p /tmp/onepassword-mcp-build
+  changed_when: false
+
+- name: Copy Dockerfile to Unraid
+  ansible.builtin.copy:
+    src: "{{ onepassword_mcp_dockerfile_dir }}/Dockerfile"
+    dest: /tmp/onepassword-mcp-build/Dockerfile
+    mode: '0644'
+
+- name: Build onepassword-mcp image locally on Unraid
   ansible.builtin.raw: |
-    docker pull {{ onepassword_mcp_image }}
-  changed_when: pull_result.stdout is search('Downloaded newer image') or pull_result.stdout is search('Pulling from')
-  register: pull_result
+    docker build -t {{ onepassword_mcp_image }} /tmp/onepassword-mcp-build/
+  register: build_result
+  changed_when: "'Successfully built' in build_result.stdout or 'writing image' in build_result.stdout"
 
 - name: Stop existing container (if running)
   ansible.builtin.raw: |
@@ -24,22 +34,15 @@
       --name {{ onepassword_mcp_container_name }} \
       --restart unless-stopped \
       --label net.unraid.docker.icon='{{ onepassword_mcp_icon }}' \
-      --label net.unraid.docker.webui='{{ onepassword_mcp_webui_url }}' \
-      -p {{ onepassword_mcp_port }}:{{ onepassword_mcp_port }} \
       -e OP_SERVICE_ACCOUNT_TOKEN='{{ op_service_account_token }}' \
       -e OP_VAULT='{{ op_vault }}' \
-      -e MCP_TRANSPORT='{{ onepassword_mcp_transport }}' \
-      -e MCP_HOST='{{ onepassword_mcp_host }}' \
-      -e MCP_PORT='{{ onepassword_mcp_port }}' \
-      -e MCP_PATH='{{ onepassword_mcp_path }}' \
       -e TZ='{{ timezone }}' \
       {{ onepassword_mcp_image }}
   register: container_result
   changed_when: container_result.rc == 0
 
 - name: Wait for container to start
-  ansible.builtin.raw: |
-    sleep 3
+  ansible.builtin.raw: sleep 3
   changed_when: false
 
 - name: Check container is running
@@ -49,12 +52,15 @@
   failed_when: running_check.stdout | trim == ""
   changed_when: false
 
-- name: Get container logs
+- name: Smoke-test 1password-mcp tool list
   ansible.builtin.raw: |
-    docker logs --tail 10 {{ onepassword_mcp_container_name }} 2>&1
-  register: container_logs
+    echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' \
+    | docker exec -i {{ onepassword_mcp_container_name }} 1password-mcp 2>/dev/null \
+    | head -1
+  register: smoke_test
   changed_when: false
+  failed_when: "'protocolVersion' not in smoke_test.stdout"
 
-- name: Display container logs
+- name: Display smoke test result
   ansible.builtin.debug:
-    msg: "{{ container_logs.stdout_lines }}"
+    msg: "1password-mcp smoke test passed: {{ smoke_test.stdout[:120] }}"
