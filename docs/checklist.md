@@ -57,6 +57,18 @@ curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .l
 curl http://localhost:3000/api/health
 ```
 
+### Observability Smoke Harness
+```bash
+# Static config validation (Ansible-managed observability tree)
+python scripts/test-observability-alerting.py static
+
+# Live external checks
+python scripts/test-observability-alerting.py live
+
+# Full check set, including Loki/Prometheus/Alertmanager via docker exec
+python scripts/test-observability-alerting.py full --docker-exec
+```
+
 ---
 
 ## Failure Modes & Troubleshooting

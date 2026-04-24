@@ -1,0 +1,22 @@
+name: observability-smoke
+
+on:
+  push:
+    branches:
+      - feat/observability-smoke-test
+      - feature/observability
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run observability smoke checks
+        run: |
+          python scripts/test-observability-alerting.py static
+          python scripts/test-observability-alerting.py live --docker-exec

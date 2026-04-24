@@ -11,6 +11,8 @@ Gitea Runners are self-hosted agents that execute GitHub Actions-compatible work
 - **Container Builds**: Docker-in-Docker support for building and pushing images
 - **Cost Control**: No external SaaS billing for CI runs
 
+The observability smoke workflow in `.gitea/workflows/observability-smoke.yml` expects a self-hosted runner with Docker access and network reachability to the Unraid observability stack, because it validates live Grafana/Loki/Prometheus/Alertmanager endpoints in addition to static config.
+
 ## Prerequisites
 
 1. **Gitea Instance**: Must be deployed and accessible at `https://gitea.klsll.com`

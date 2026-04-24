@@ -109,11 +109,20 @@ Recent additions:
 
 ## Deploy a Stack
 
+Most infrastructure now deploys through Ansible playbooks, with the observability stack living under `ansible/files/observability` and the deployment entrypoint at `ansible/playbooks/platform/deploy-observability.yml`.
+
 ```bash
-cd stacks/<stack-name>
-cp .env.example .env
-# Edit .env with your values
-docker compose up -d
+cd ansible
+ansible-playbook playbooks/platform/deploy-observability.yml --syntax-check
+ansible-playbook playbooks/platform/deploy-observability.yml --diff
+```
+
+For the observability smoke harness, run:
+
+```bash
+python scripts/test-observability-alerting.py static
+python scripts/test-observability-alerting.py live --docker-exec
+python scripts/test-observability-alerting.py full --docker-exec
 ```
 
 ## Scripts
