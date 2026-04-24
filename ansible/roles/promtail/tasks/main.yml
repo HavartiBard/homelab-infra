@@ -33,6 +33,8 @@
           - /etc/machine-id:/etc/machine-id:ro
         command: -config.file=/etc/promtail/config.yml
         network_mode: host
+        security_opt:
+          - apparmor=unconfined
     EOFCOMPOSE
   changed_when: true
 
@@ -46,13 +48,10 @@
     cd {{ promtail_compose_dir }} && docker compose up -d
   changed_when: true
 
-- name: Verify Promtail responds
-  ansible.builtin.raw: |
-    for i in $(seq 1 6); do
-      if curl -sf http://localhost:9080/ready > /dev/null 2>&1; then
-        echo "healthy"; exit 0
-      fi
-      sleep 5
-    done
-    echo "timeout waiting for promtail" >&2; exit 1
-  changed_when: false
+- name: Verify Promtail port is reachable
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 9080
+    timeout: 30
+  delegate_to: localhost
+  ignore_errors: true

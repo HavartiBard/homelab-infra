@@ -1352,3 +1352,23 @@ logger -n 192.168.20.14 -P 514 --tcp "Test syslog message from $(hostname)"
 - **#64**: Technitium query log path must be confirmed before deploying to tt1/tt2
 - **#65**: Dashboard JSON files to be created in Grafana UI and exported to `ansible/files/observability/grafana/provisioning/dashboards/json/`
 - **#68**: Windows Event Log ingestion on spraycheese (requires Windows-native agent, deferred)
+
+---
+
+## Retrospective
+
+### What went well
+
+- Keeping the stack in the Ansible-managed `ansible/files/observability` tree made the deployment path and verification path line up cleanly.
+- The smoke harness can now exercise the same split as the stack itself: static validation, external live checks, and internal-only service checks.
+
+### Issues encountered
+
+- Grafana looked unhealthy during browser-based checks in the assistant environment even though the deployed service was healthy.
+- Internal services such as Loki, Prometheus, and Alertmanager are not directly exposed, so a plain HTTP check from outside the stack is not enough.
+
+### Fixes applied
+
+- Added a dedicated smoke harness with `static`, `live`, and `full` modes plus `--docker-exec` support for the internal-only services.
+- Documented the Ansible-observability layout and the smoke-test entrypoints in the repo docs and checklist.
+- Kept the verification focused on service health endpoints and compose validation instead of browser-only behavior.

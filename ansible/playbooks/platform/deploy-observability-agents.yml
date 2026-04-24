@@ -1,22 +1,27 @@
 ---
-# Deploy observability agents to all homelab hosts
-# node_exporter + promtail: all hosts
-# cadvisor: Docker hosts only (unraid, edge_devices, windows_gpu)
+# Deploy observability agents to homelab hosts
+# node_exporter + promtail: all Docker-capable hosts
+# cadvisor: Docker hosts only (unraid, edge_devices)
+# Excludes: pve (no Docker), windows_gpu (no SSH on port 22)
+# Note: tt/agh require sudo password — set ANSIBLE_BECOME_PASS env var or use --ask-become-pass
 
 - name: Deploy node_exporter to all hosts
-  hosts: unraid:pve:tt:agh:edge_devices:windows_gpu
+  hosts: unraid:tt:agh:edge_devices
   gather_facts: false
+  become: true
   roles:
     - node_exporter
 
 - name: Deploy Promtail to all hosts
-  hosts: unraid:pve:tt:agh:edge_devices:windows_gpu
+  hosts: unraid:tt:agh:edge_devices
   gather_facts: false
+  become: true
   roles:
     - promtail
 
 - name: Deploy cAdvisor to Docker hosts
-  hosts: unraid:edge_devices:windows_gpu
+  hosts: unraid:edge_devices
   gather_facts: false
+  become: true
   roles:
     - cadvisor

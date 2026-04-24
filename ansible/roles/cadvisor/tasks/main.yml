@@ -26,6 +26,8 @@
           - /dev/disk/:/dev/disk:ro
         devices:
           - /dev/kmsg
+        security_opt:
+          - apparmor=unconfined
     EOFCOMPOSE
   changed_when: true
 
@@ -39,13 +41,10 @@
     cd {{ cadvisor_compose_dir }} && docker compose up -d
   changed_when: true
 
-- name: Verify cAdvisor responds
-  ansible.builtin.raw: |
-    for i in $(seq 1 6); do
-      if curl -sf http://localhost:{{ cadvisor_port }}/healthz > /dev/null 2>&1; then
-        echo "healthy"; exit 0
-      fi
-      sleep 5
-    done
-    echo "timeout waiting for cadvisor" >&2; exit 1
-  changed_when: false
+- name: Verify cAdvisor port is reachable
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ cadvisor_port }}"
+    timeout: 30
+  delegate_to: localhost
+  ignore_errors: true

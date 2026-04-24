@@ -1,13 +1,16 @@
 # Observability Stack — Unraid
 # Managed by Ansible: ansible/playbooks/platform/deploy-observability.yml
 # All services on observability-net (internal)
-# Exposed: Grafana :3000, syslog-ng UDP/TCP :5514 (514 taken by Unraid rsyslogd)
+# Exposed: Grafana :3030, syslog-ng UDP/TCP :5514 (514 taken by Unraid rsyslogd)
 
 services:
   loki:
     image: grafana/loki:3.3.2
     container_name: loki
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/loki.png
+      net.unraid.docker.webui: http://[IP]:[PORT:3100]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
       - loki-data:/loki
@@ -25,6 +28,9 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: prometheus
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png
+      net.unraid.docker.webui: http://[IP]:[PORT:9090]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/rules:/etc/prometheus/rules:ro
@@ -52,6 +58,9 @@ services:
         condition: service_healthy
       prometheus:
         condition: service_healthy
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/grafana.png
+      net.unraid.docker.webui: https://grafana.klsll.com
     ports:
       - "3030:3000"
     volumes:
@@ -76,6 +85,8 @@ services:
     image: balabit/syslog-ng:4.8.0
     container_name: syslog-ng
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/syslog-ng.png
     ports:
       - "5514:514/udp"
       - "5514:514/tcp"
@@ -94,6 +105,9 @@ services:
     image: prom/alertmanager:v0.27.0
     container_name: alertmanager
     restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/alertmanager.png
+      net.unraid.docker.webui: http://[IP]:[PORT:9093]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
