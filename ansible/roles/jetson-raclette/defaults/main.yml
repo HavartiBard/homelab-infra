@@ -27,7 +27,7 @@ raclette_uid: 1000
 raclette_gid: 1000
 
 # Director playbook URL for this agent
-raclette_director_url: "https://director.klsll.com/hermes/mcp"
+raclette_director_url: "https://director.klsll.com/raclette/mcp"
 
 # LLM configuration — OpenAI Codex (OAuth, auth stored in ~/.raclette/auth.json)
 raclette_model_provider: openai-codex
