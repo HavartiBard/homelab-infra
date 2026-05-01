@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: gitea.klsll.com/havartibard/agent-control-plane-backend:latest
+    image: code.klsll.com/havartibard/agent-control-plane-backend:latest
     environment:
       DATABASE_URL: postgresql://agent_cp:${POSTGRES_PASSWORD}@postgres:5432/agent_cp
       LANGGRAPH_API_URL: ${LANGGRAPH_API_URL}
@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: gitea.klsll.com/havartibard/agent-control-plane-web:latest
+    image: code.klsll.com/havartibard/agent-control-plane-web:latest
     ports:
       - "3101:80"
     depends_on:
