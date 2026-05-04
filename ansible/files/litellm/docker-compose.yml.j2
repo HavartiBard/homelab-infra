@@ -9,6 +9,8 @@ services:
       - /mnt/user/appdata/litellm/config.yaml:/app/config.yaml:ro
     environment:
       LITELLM_MASTER_KEY: "{{ vault_litellm_master_key }}"
+      UI_USERNAME: admin
+      UI_PASSWORD: "{{ vault_litellm_master_key }}"
     networks:
       - litellm-net
 
