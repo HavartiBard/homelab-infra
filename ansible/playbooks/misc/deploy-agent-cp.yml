@@ -1,0 +1,69 @@
+---
+# Deploy agent-control-plane (backend + web + postgres) on Unraid
+#
+# Prerequisites:
+#   - vault.yml contains vault_agent_cp_* entries
+#   - Images pushed to gitea.klsll.com/havartibard/
+#
+# After deployment:
+#   Backend:   http://192.168.20.14:3100/health
+#   Web UI:    http://192.168.20.14:3101
+#
+# Usage:
+#   ansible-playbook playbooks/misc/deploy-agent-cp.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
+
+- name: Deploy agent-control-plane
+  hosts: unraid
+  gather_facts: false
+
+  vars:
+    agent_cp_dir: /mnt/user/appdata/agent-cp
+
+  tasks:
+    - name: Create appdata directory
+      raw: mkdir -p {{ agent_cp_dir }}
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ playbook_dir }}/../../files/agent-cp/docker-compose.yml"
+        dest: "{{ agent_cp_dir }}/docker-compose.yml"
+
+    - name: Write .env file
+      copy:
+        content: |
+          POSTGRES_PASSWORD={{ vault_agent_cp_postgres_password }}
+          LANGGRAPH_API_URL=http://192.168.20.14:8000
+          RACLETTE_API_URL=http://192.168.20.169:9119
+          RACLETTE_SESSION_TOKEN={{ vault_agent_cp_raclette_session_token }}
+          SLACK_BOT_TOKEN={{ vault_agent_cp_slack_bot_token }}
+          SLACK_APP_TOKEN={{ vault_agent_cp_slack_app_token }}
+          SLACK_CHANNEL_ID=C0AU0620ATX
+        dest: "{{ agent_cp_dir }}/.env"
+        mode: '0600'
+
+    - name: Create SSH key directory for agent-cp
+      raw: mkdir -p {{ agent_cp_dir }}/ssh && chmod 700 {{ agent_cp_dir }}/ssh
+
+    - name: Copy homelab SSH key to agent-cp
+      raw: cp ~/.ssh/id_ed25519_homelab {{ agent_cp_dir }}/ssh/id_ed25519_homelab && chmod 600 {{ agent_cp_dir }}/ssh/id_ed25519_homelab
+
+    - name: Pull latest images
+      raw: cd {{ agent_cp_dir }} && docker compose pull
+
+    - name: Start stack
+      raw: cd {{ agent_cp_dir }} && docker compose up -d
+
+    - name: Wait for backend health
+      raw: >
+        for i in $(seq 1 12); do
+          curl -sf http://localhost:3100/health && exit 0;
+          sleep 5;
+        done; exit 1
+
+    - name: Deployment summary
+      debug:
+        msg: |
+          agent-control-plane deployed successfully!
+          Backend health: http://{{ ansible_host }}:3100/health
+          Web UI:         http://{{ ansible_host }}:3101
+          Logs:           docker compose -f {{ agent_cp_dir }}/docker-compose.yml logs -f

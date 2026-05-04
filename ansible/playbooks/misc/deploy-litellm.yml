@@ -1,0 +1,49 @@
+---
+# Deploy LiteLLM proxy on Unraid (port 4000)
+#
+# LiteLLM provides an OpenAI-compatible endpoint that unifies Claude, OpenAI, and Ollama.
+#
+# Prerequisites:
+#   - vault.yml contains vault_litellm_* entries (update CHANGEME_ placeholders first)
+#   - Replace CHANGEME_ values in vault.yml before running
+#
+# After deployment:
+#   LiteLLM:  http://192.168.20.14:4000/health
+#   Models:   http://192.168.20.14:4000/models
+#
+# Usage:
+#   ansible-playbook playbooks/misc/deploy-litellm.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
+
+- name: Deploy LiteLLM on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  vars:
+    litellm_dir: /mnt/user/appdata/litellm
+
+  tasks:
+    - name: Create LiteLLM appdata directory
+      raw: mkdir -p {{ litellm_dir }}
+
+    - name: Copy LiteLLM compose file
+      copy:
+        src: "{{ playbook_dir }}/../../files/litellm/docker-compose.yml"
+        dest: "{{ litellm_dir }}/docker-compose.yml"
+
+    - name: Template LiteLLM config
+      template:
+        src: "{{ playbook_dir }}/../../files/litellm/config.yaml.j2"
+        dest: "{{ litellm_dir }}/config.yaml"
+        mode: '0600'
+
+    - name: Pull and start LiteLLM
+      raw: cd {{ litellm_dir }} && docker compose pull && docker compose up -d
+
+    - name: Wait for LiteLLM health
+      raw: sleep 10 && curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health
+      register: health_check
+      failed_when: false
+
+    - name: Show health check result
+      debug:
+        msg: "LiteLLM health check: {{ health_check.stdout }}"
