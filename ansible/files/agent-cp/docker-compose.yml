@@ -24,6 +24,10 @@ services:
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       SLACK_CHANNEL_ID: ${SLACK_CHANNEL_ID:-C0AU0620ATX}
+      SSH_KEY_PATH: /app/ssh/id_ed25519_homelab
+      SSH_USER: root
+    volumes:
+      - /mnt/user/appdata/agent-cp/ssh:/app/ssh:ro
     ports:
       - "3100:3100"
     depends_on:

@@ -41,6 +41,12 @@
         dest: "{{ agent_cp_dir }}/.env"
         mode: '0600'
 
+    - name: Create SSH key directory for agent-cp
+      raw: mkdir -p {{ agent_cp_dir }}/ssh && chmod 700 {{ agent_cp_dir }}/ssh
+
+    - name: Copy homelab SSH key to agent-cp
+      raw: cp ~/.ssh/id_ed25519_homelab {{ agent_cp_dir }}/ssh/id_ed25519_homelab && chmod 600 {{ agent_cp_dir }}/ssh/id_ed25519_homelab
+
     - name: Pull latest images
       raw: cd {{ agent_cp_dir }} && docker compose pull
 
