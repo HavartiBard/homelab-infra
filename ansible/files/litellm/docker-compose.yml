@@ -1,13 +1,12 @@
 services:
   litellm:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-stable
     restart: unless-stopped
+    command: ["--port", "4000", "--config", "/app/config.yaml"]
     ports:
       - "4000:4000"
     volumes:
       - /mnt/user/appdata/litellm/config.yaml:/app/config.yaml:ro
-    environment:
-      LITELLM_CONFIG: /app/config.yaml
     networks:
       - litellm-net
 

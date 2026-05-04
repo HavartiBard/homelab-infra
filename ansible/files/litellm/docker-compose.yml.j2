@@ -1,0 +1,42 @@
+services:
+  litellm-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: "{{ vault_litellm_db_password }}"
+      POSTGRES_DB: litellm
+    volumes:
+      - litellm-db-data:/var/lib/postgresql/data
+    networks:
+      - litellm-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    restart: unless-stopped
+    command: ["--port", "4000", "--config", "/app/config.yaml"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - /mnt/user/appdata/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      LITELLM_MASTER_KEY: "{{ vault_litellm_master_key }}"
+      UI_USERNAME: admin
+      UI_PASSWORD: "{{ vault_litellm_master_key }}"
+      DATABASE_URL: "postgresql://litellm:{{ vault_litellm_db_password }}@litellm-db:5432/litellm"
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    networks:
+      - litellm-net
+
+volumes:
+  litellm-db-data:
+
+networks:
+  litellm-net:
