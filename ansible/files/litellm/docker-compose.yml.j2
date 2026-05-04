@@ -7,6 +7,8 @@ services:
       - "4000:4000"
     volumes:
       - /mnt/user/appdata/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      LITELLM_MASTER_KEY: "{{ vault_litellm_master_key }}"
     networks:
       - litellm-net
 
