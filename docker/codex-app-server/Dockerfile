@@ -14,7 +14,7 @@ RUN git clone --depth=1 https://github.com/openai/codex.git .
 WORKDIR /build/codex-rs
 ENV CODEX_SKIP_VENDORED_BWRAP=1
 ENV CARGO_PROFILE_RELEASE_LTO=off
-RUN cargo build --release --bin codex-app-server
+RUN cargo build --release --bin codex-app-server --bin codex
 
 FROM debian:bookworm-slim
 
@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /build/codex-rs/target/release/codex-app-server /usr/local/bin/codex-app-server
+COPY --from=builder /build/codex-rs/target/release/codex /usr/local/bin/codex
 
 VOLUME ["/root/.codex"]
 
