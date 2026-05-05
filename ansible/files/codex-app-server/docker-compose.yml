@@ -1,0 +1,17 @@
+services:
+  codex-app-server:
+    image: code.klsll.com/havartibard/codex-app-server:latest
+    container_name: codex-app-server
+    restart: unless-stopped
+    ports:
+      - "10101:10101"
+    volumes:
+      - ${CODEX_CONFIG_DIR:?required}:/root/.codex
+    environment:
+      TZ: America/Phoenix
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:10101/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

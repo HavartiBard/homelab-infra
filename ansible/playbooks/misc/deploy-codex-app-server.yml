@@ -1,0 +1,66 @@
+---
+# Deploy codex-app-server (OpenAI Codex WebSocket bridge) on a target host.
+#
+# Supports Unraid, Proxmox VMs, or Jetson (arm64). Build the image first:
+#   docker build -t code.klsll.com/havartibard/codex-app-server:latest \
+#     docker/codex-app-server/
+#   docker push code.klsll.com/havartibard/codex-app-server:latest
+#
+# First-run auth (device flow — one time per host):
+#   docker run -it --rm -v /mnt/user/appdata/codex-app-server:/root/.codex \
+#     code.klsll.com/havartibard/codex-app-server:latest \
+#     --transport stdio login
+#
+# After deployment:
+#   WebSocket: ws://<host>:10101
+#   Health:    http://<host>:10101/healthz
+#
+# Usage:
+#   ansible-playbook playbooks/misc/deploy-codex-app-server.yml \
+#     --diff --limit unraid -v --vault-password-file ~/.vault-pass
+
+- name: Deploy codex-app-server
+  hosts: "{{ target_hosts | default('unraid') }}"
+  gather_facts: false
+
+  vars:
+    codex_dir: /mnt/user/appdata/codex-app-server
+
+  tasks:
+    - name: Create appdata directory
+      raw: mkdir -p {{ codex_dir }}
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ playbook_dir }}/../../files/codex-app-server/docker-compose.yml"
+        dest: "{{ codex_dir }}/docker-compose.yml"
+
+    - name: Write .env file
+      copy:
+        content: |
+          CODEX_CONFIG_DIR={{ codex_dir }}
+        dest: "{{ codex_dir }}/.env"
+        mode: '0600'
+
+    - name: Pull latest image
+      raw: cd {{ codex_dir }} && docker compose pull
+
+    - name: Start stack
+      raw: cd {{ codex_dir }} && docker compose up -d
+
+    - name: Wait for health
+      raw: >
+        for i in $(seq 1 12); do
+          curl -sf http://localhost:10101/healthz && exit 0;
+          sleep 5;
+        done; exit 1
+
+    - name: Deployment summary
+      debug:
+        msg: |
+          codex-app-server deployed!
+          WebSocket: ws://{{ ansible_host }}:10101
+          Health:    http://{{ ansible_host }}:10101/healthz
+          Auth:      docker run -it --rm -v {{ codex_dir }}:/root/.codex \
+                       code.klsll.com/havartibard/codex-app-server:latest \
+                       --transport stdio login
