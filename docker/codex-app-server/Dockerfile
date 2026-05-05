@@ -34,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD curl -sf http://localhost:10101/healthz || exit 1
 
 ENTRYPOINT ["codex-app-server"]
-CMD ["--transport", "websocket", "--ws-port", "10101"]
+CMD ["--listen", "ws://0.0.0.0:10101"]
