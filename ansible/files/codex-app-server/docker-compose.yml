@@ -3,6 +3,7 @@ services:
     image: code.klsll.com/havartibard/codex-app-server:latest
     container_name: codex-app-server
     restart: unless-stopped
+    command: ["--listen", "ws://0.0.0.0:10101"]
     ports:
       - "10101:10101"
     volumes:
