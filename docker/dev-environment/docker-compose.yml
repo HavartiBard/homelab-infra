@@ -61,6 +61,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    security_opt:
+      - seccomp:unconfined
 
 networks:
   # Use the existing br0 macvlan network on Unraid
@@ -69,4 +71,3 @@ networks:
   # Use the Ansible playbook's macvlan shim if host<->container comms are needed.
   br0:
     external: true
-
