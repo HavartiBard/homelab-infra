@@ -78,18 +78,74 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 
 ## Key Services
 
+Full service inventory with Obsidian docs at `/mnt/user/appdata/obsidian/vaults/homelab/services/`.
+Dependency map: `services/homelab-dependency-map.md`.
+
+### Platform / Infrastructure (Unraid: 192.168.20.14)
+
+| Service | Port | URL | Notes |
+|---------|------|-----|-------|
+| Nginx Proxy Manager | 80/443/81 | `npm.klsll.com` | Reverse proxy, HTTPS termination |
+| Gitea | — | `code.klsll.com` | Git, CI/CD, container registry |
+| NetBox | 8001 | `netbox.klsll.com` | IPAM + device inventory |
+| Paperless-ngx | 8000 | `paperless.klsll.com` | Document management + OCR |
+| Homepage | — | `home.klsll.com` | Dashboard |
+| CouchDB | 5984 | LAN-only | Obsidian LiveSync backend |
+| mcp-proxy | 6980 | LAN-only | stdio→SSE bridge (SoulLayer) |
+
+### AI / Agent Services (Unraid)
+
+| Service | Port | URL | Notes |
+|---------|------|-----|-------|
+| Agent Control Plane | 3101 (UI), 3100 (API) | `agent-cp.klsll.com` | LLM agent dashboard + approvals |
+| Codex App Server | 10101 | LAN-only (ws://) | OpenAI Codex CLI server mode |
+| LiteLLM | 4000 | `litellm.klsll.com` | Multi-provider LLM proxy |
+| Director | 8080 | LAN-only | MCP aggregator/proxy |
+| Chiffon Executor | — | — | Background AI task executor |
+| SoulLayer | via mcp-proxy | `…:6980/servers/soullayer/sse` | Personality/memory MCP |
+
+### MCP Servers (Unraid)
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Unraid MCP | 6970 | Unraid system management |
+| Homelab MCP | 6971 | Homelab-specific tools |
+| Proxmox MCP | 6974 | Proxmox VM/LXC management |
+| Gitea MCP | 6976 | Gitea issues, PRs, repos |
+| Obsidian MCP | 6977 | Vault read/write/search |
+| SearXNG MCP | 6978 | Web search via SearXNG |
+| GSuite MCP | 8092 | Google Workspace tools |
+| Notion MCP | 3000 | Notion workspace access |
+| 1Password MCP | internal | Secret retrieval (read-only) |
+
+### Observability (Unraid)
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Grafana | 3030 | `grafana.klsll.com` — dashboards |
+| Prometheus | 9090 | Metrics collection (internal) |
+| Alertmanager | 9093 | Alert routing (internal) |
+| Loki | 3100 | Log aggregation (internal) |
+| cAdvisor | 8081 | Container metrics |
+| node_exporter | — | Host metrics |
+| syslog-ng | 5514 | Syslog receiver → Loki |
+
+### External Hosts
+
 | Service | Host | Port | URL | Health Check |
 |---------|------|------|-----|-------------|
-| NPM | Platform VM | 80/443/81 | `npm.klsll.com` (admin) | `curl http://localhost:81/api/` |
+| NPM | Platform VM | 80/443/81 | `npm.klsll.com` | `curl http://localhost:81/api/` |
 | Uptime Kuma | Platform VM | 3001 | `status.klsll.com` | `curl http://localhost:3001/api/info` |
-| mcp-proxy | Unraid | 6980 | - | stdio-to-HTTP MCP bridge |
-| SoulLayer | Unraid | 6980 | `http://192.168.20.14:6980/servers/soullayer/sse` | MCP personality/memory (via mcp-proxy) |
-| Gitea MCP | Unraid | 6976 | - | LAN-only |
-| CouchDB | Unraid | 5984 | - | Obsidian sync backend (LAN-only) |
-| Obsidian MCP | Unraid | 6977 | - | Service catalog HTTP MCP (LAN-only) |
-| Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://localhost:11434/api/tags` |
+| Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://spraycheese:11434/api/tags` |
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
-| Raclette | Jetson | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |
+| Raclette | Jetson (192.168.20.169) | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |
+
+### DNS Infrastructure (Proxmox LXCs)
+
+| Service | Hosts | Purpose |
+|---------|-------|---------|
+| Technitium | tt1/tt2 | Authoritative DNS for `klsll.com`, DHCP |
+| AdGuard Home | agh1/agh2 | Client-facing DNS with filtering |
 
 ## Directory Structure
 
