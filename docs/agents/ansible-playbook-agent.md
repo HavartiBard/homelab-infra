@@ -37,7 +37,7 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
 | --- | --- | --- | --- |
 | `ansible/playbooks/mcp/deploy-unraid-mcp.yml` | `unraid`/`unraid-server` | `UNRAID_API_KEY` | `wait_for port=6970`, `docker ps` for `unraid-mcp`, `curl http://<host>:6970/mcp` |
 | `ansible/playbooks/mcp/deploy-homelab-mcp.yml` | `unraid`/`unraid-server` | `ORBI_PASSWORD` | `wait_for port=6971`, `docker ps` for `homelab-mcp`, `curl http://<host>:6971/mcp` |
-| `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` | `unraid`/`unraid-server` | `OP_SERVICE_ACCOUNT_TOKEN` | `wait_for port=6975`, `docker ps` for `onepassword-mcp`, `curl http://<host>:6975/mcp` |
+| `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` | `unraid`/`unraid-server` | `OP_SERVICE_ACCOUNT_TOKEN` | `docker ps` for `onepassword-mcp` and `mcp-proxy`, `curl -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1"}}}' http://<host>:6980/servers/onepassword/mcp` |
 | `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` | `unraid-server` | `group_vars/unraid/vault.yml` values set (Proxmox host/user/token) | `wait_for port=6974`, `docker ps` for `mcp-proxmox` |
 | `ansible/playbooks/platform/deploy-openhands.yml` | `unraid`/`unraid-server` | `.env` with `OPENHANDS_SECRET_KEY`, `OLLAMA_HOST_IP` | `wait_for port=3000`, `docker ps` for `openhands`, `curl http://<host>:3000/health` |
 | `ansible/playbooks/platform/deploy-ollama.yml` | `windows-gpu` hosts | `.env` on target (copied from example) | `curl http://<host>:11434/api/tags`, `docker ps` for `ollama-windows` |

@@ -38,6 +38,7 @@
           SLACK_BOT_TOKEN={{ vault_agent_cp_slack_bot_token }}
           SLACK_APP_TOKEN={{ vault_agent_cp_slack_app_token }}
           SLACK_CHANNEL_ID=C0AU0620ATX
+          SECRET_ENCRYPTION_KEY={{ vault_agent_cp_secret_encryption_key }}
         dest: "{{ agent_cp_dir }}/.env"
         mode: '0600'
 

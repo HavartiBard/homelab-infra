@@ -5,7 +5,7 @@
 #            device types, locations, rack, cluster types, clusters,
 #            physical devices, VMs (LXC + Docker), interfaces, IPs.
 #
-# Physical devices: unraid-server, pve-01, pve-02, spraycheese, jetson,
+# Physical devices: unraid-server, pve-01, pve-02, spraycheese, goudai, jetson,
 #                   mikrotik-css610, jetkvm, bambulab-p1s, pihole
 # Locations: Office (Bookcase, Desk, Media Closet), Living Room, Garage,
 #            Kitchen, Dining Room, bedrooms, Den, Pantry
@@ -102,6 +102,7 @@
         - { name: Unraid,       slug: unraid }
         - { name: Proxmox VE,   slug: proxmox-ve }
         - { name: Ubuntu 24.04, slug: ubuntu-24-04 }
+        - { name: Ubuntu 26.04, slug: ubuntu-26-04 }
         - { name: Windows 11,   slug: windows-11 }
         - { name: JetPack,      slug: jetpack }
         - { name: Docker,       slug: docker }
@@ -117,9 +118,11 @@
           name: "{{ item.name }}"
           slug: "{{ item.slug }}"
         state: present
+      ignore_errors: true
       loop:
         - { name: Generic,              slug: generic }
         - { name: NVIDIA,               slug: nvidia }
+        - { name: Corsair,              slug: corsair }
         - { name: MikroTik,             slug: mikrotik }
         - { name: JetKVM,               slug: jetkvm }
         - { name: Bambu Lab,            slug: bambu-lab }
@@ -135,9 +138,10 @@
           manufacturer: "{{ item.manufacturer }}"
         state: present
       loop:
-        - { model: Generic Server,      slug: generic-server,      manufacturer: Generic }
-        - { model: Generic Workstation, slug: generic-workstation, manufacturer: Generic }
-        - { model: Jetson Orin Nano,    slug: jetson-orin-nano,    manufacturer: NVIDIA }
+        - { model: Generic Server,              slug: generic-server,              manufacturer: Generic }
+        - { model: Generic Workstation,         slug: generic-workstation,         manufacturer: Generic }
+        - { model: AI Workstation 300,          slug: ai-workstation-300,          manufacturer: Corsair }
+        - { model: Jetson Orin Nano,            slug: jetson-orin-nano,            manufacturer: NVIDIA }
         - { model: CSS610-8G-2S IN,          slug: css610-8g-2s-in,      manufacturer: MikroTik }
         - { model: JetKVM,                   slug: jetkvm,               manufacturer: JetKVM }
         - { model: P1S,                      slug: p1s,                  manufacturer: Bambu Lab }
@@ -172,6 +176,7 @@
         - { name: unraid-docker,      cluster_type: Docker,  description: "Docker on Unraid (192.168.20.14)" }
         - { name: automation-docker,  cluster_type: Docker,  description: "Docker on automation LXC (192.168.20.50) — NPM, Uptime Kuma" }
         - { name: jetson-docker,      cluster_type: Docker,  description: "Docker on Jetson Orin Nano edge device" }
+        - { name: goudai-docker,      cluster_type: Docker,  description: "Docker on goudai AI workstation (192.168.20.150)" }
 
     # ── Locations ─────────────────────────────────────────────────────────────
 
@@ -231,6 +236,18 @@
 
     # ── Physical Devices ──────────────────────────────────────────────────────
 
+    - name: Remove stale corsair device (renamed to goudai)
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: corsair
+          site: Homelab
+          device_type: Generic Workstation
+          device_role: GPU Workstation
+        state: absent
+      ignore_errors: true
+
     - name: Remove LXC hosts that were incorrectly created as physical devices
       netbox.netbox.netbox_device:
         netbox_url: "{{ netbox_url }}"
@@ -273,7 +290,8 @@
         - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,                                 rack: Mini Rack, position: 6, face: front }
         - { name: pihole,          device_type: Raspberry Pi 3 Model B+, device_role: Application,    location: Bookcase }
         # Desk
-        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11, location: Desk }
+        - { name: spraycheese, device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11,   location: Desk }
+        - { name: goudai,      device_type: AI Workstation 300,  device_role: GPU Workstation, platform: Ubuntu 26.04, location: Desk }
 
     - name: Create physical device interfaces
       netbox.netbox.netbox_device_interface:
@@ -289,7 +307,8 @@
         - { device: unraid-server }
         - { device: pve-01 }
         - { device: pve-02 }
-        - { device: spraycheese,     mac: "D8:BB:C1:0D:2D:D8" }
+        - { device: spraycheese, mac: "D8:BB:C1:0D:2D:D8" }
+        - { device: goudai }
         - { device: jetson,          mac: "4C:BB:47:32:F3:2F" }
         - { device: mikrotik-css610 }
         - { device: jetkvm,          mac: "80:34:28:65:B4:B9" }
@@ -321,7 +340,8 @@
         - { device: unraid-server,   address: "192.168.20.14/24",  dns: "unraid-server" }
         - { device: pve-01,          address: "192.168.20.100/24", dns: "pve-01" }
         - { device: pve-02,          address: "192.168.20.101/24", dns: "pve-02" }
-        - { device: spraycheese,     address: "192.168.20.154/24", dns: "spraycheese" }
+        - { device: spraycheese, address: "192.168.20.154/24", dns: "spraycheese" }
+        - { device: goudai,      address: "192.168.20.150/24", dns: "goudai.lab.klsll.com" }
         - { device: jetson,          address: "192.168.20.169/24", dns: "jetson.lab" }
         - { device: mikrotik-css610, address: "192.168.1.11/24",   dns: "mikrotik-css610" }
         - { device: jetkvm,          address: "192.168.20.8/24",   dns: "jetkvm" }
@@ -353,7 +373,8 @@
         - { name: unraid-server,   device_type: Generic Server,      device_role: NAS,            address: "192.168.20.14/24" }
         - { name: pve-01,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.100/24" }
         - { name: pve-02,          device_type: Generic Server,      device_role: Hypervisor,     address: "192.168.20.101/24" }
-        - { name: spraycheese,     device_type: Generic Workstation, device_role: GPU Workstation, address: "192.168.20.154/24" }
+        - { name: spraycheese, device_type: Generic Workstation, device_role: GPU Workstation, address: "192.168.20.154/24" }
+        - { name: goudai,      device_type: AI Workstation 300,  device_role: GPU Workstation, address: "192.168.20.150/24" }
         - { name: jetson,          device_type: Jetson Orin Nano,    device_role: Edge Device,    address: "192.168.20.169/24" }
         - { name: mikrotik-css610, device_type: CSS610-8G-2S IN,     device_role: Network Switch, address: "192.168.1.11/24" }
         - { name: jetkvm,          device_type: JetKVM,              device_role: KVM,            address: "192.168.20.8/24" }
@@ -477,7 +498,7 @@
         - { name: gitea-mcp,      role: MCP Server,  comments: "Gitea issues/PRs/repos — http://192.168.20.14:6976" }
         - { name: obsidian-mcp,   role: MCP Server,  comments: "Obsidian vault HTTP MCP — http://192.168.20.14:6977" }
         - { name: searxng-mcp,    role: MCP Server,  comments: "Privacy metasearch MCP — http://192.168.20.14:6978" }
-        - { name: onepassword-mcp,role: MCP Server,  comments: "1Password secrets MCP — http://192.168.20.14:6975" }
+        - { name: onepassword-mcp,role: MCP Server,  comments: "1Password secrets MCP — via mcp-proxy http://192.168.20.14:6980/servers/onepassword/mcp" }
         - { name: homelab-mcp,    role: MCP Server,  comments: "Orbi/NPM homelab MCP — http://192.168.20.14:6971" }
         - { name: gsuite-mcp,     role: MCP Server,  comments: "Google Workspace MCP — http://192.168.20.14:8092" }
         - { name: unraid-mcp,     role: MCP Server,  comments: "Unraid API MCP" }
@@ -500,6 +521,24 @@
       loop:
         - { name: npm,          role: Application, comments: "Nginx Proxy Manager — http://192.168.20.50:81" }
         - { name: uptime-kuma,  role: Application, comments: "Uptime monitoring — http://192.168.20.50:3001" }
+
+    # ── Docker Virtual Machines — goudai ─────────────────────────────────────
+
+    - name: Create Docker VMs on goudai
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: goudai-docker
+          virtual_machine_role: "{{ item.role }}"
+          platform: Docker
+          status: active
+          comments: "{{ item.comments | default('') }}"
+        state: present
+      loop:
+        - { name: ollama-goudai, role: LLM Service, comments: "Primary LLM inference — http://192.168.20.150:11434" }
+        - { name: open-webui,    role: LLM Service, comments: "Web UI for LLMs — http://192.168.20.150:8080" }
 
     # ── Docker Virtual Machines — Jetson ──────────────────────────────────────
 

@@ -53,9 +53,10 @@ This document lists all ports used by homelab stacks with access requirements.
 | Service | Port | Protocol | Access | Description |
 |---------|------|----------|--------|-------------|
 | **NetBox** | 8001 | TCP | 🌐 Proxied | DCIM/IPAM |
-| **1Password MCP** | 6975 | TCP | 🔒 LAN-Only | MCP server |
+| **mcp-proxy** | 6980 | HTTP/SSE | 🔒 LAN-Only | MCP bridge for SoulLayer and 1Password (`/servers/<name>/mcp`) |
 | **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
 | **Homelab MCP** | 6971 | TCP | 🔒 LAN-Only | MCP server (Orbi, NPM, etc.) |
+| **Obsidian MCP** | 6977 | HTTP | 🔒 LAN-Only | MCP server (vault read/write/search) |
 | **SearXNG MCP** | 6978 | HTTP | 🔒 LAN-Only | MCP server — privacy-respecting metasearch |
 | **AdGuard Home** | 53 | UDP/TCP | 🔒 LAN-Only | DNS queries |
 | AdGuard Home | 3080 | TCP | 🔒⚠️ LAN-Only | Initial setup UI |

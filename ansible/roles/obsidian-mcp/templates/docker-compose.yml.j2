@@ -13,6 +13,9 @@ services:
       - {{ obsidian_vault_path }}:/vault
     ports:
       - "{{ obsidian_mcp_port }}:{{ obsidian_mcp_port }}"
+    labels:
+      net.unraid.docker.icon: "{{ obsidian_mcp_icon }}"
+      net.unraid.docker.webui: "{{ obsidian_mcp_webui_url }}"
     restart: unless-stopped
     networks:
       - homelab

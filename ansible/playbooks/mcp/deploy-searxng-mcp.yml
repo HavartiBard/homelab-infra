@@ -1,6 +1,27 @@
 ---
-- name: Deploy SearXNG MCP
+# Deploy SearXNG MCP Server to Unraid
+#
+# Deploys SearXNG (self-hosted search engine) and the MCP server that wraps it.
+# Transport: streamable-http on port 6978.
+# SearXNG web UI is available on port 8080 (internal, not proxied).
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-searxng-mcp.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
+- name: Deploy SearXNG MCP to Unraid
   hosts: unraid
   gather_facts: false
+
   roles:
     - role: searxng-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          SearXNG MCP deployed successfully!
+          MCP endpoint:  http://{{ ansible_host }}:{{ searxng_mcp_port }}/mcp
+          Health:        curl http://{{ ansible_host }}:{{ searxng_mcp_port }}/mcp
+          SearXNG UI:    http://{{ ansible_host }}:8080
+          Logs:          docker logs searxng-mcp -f

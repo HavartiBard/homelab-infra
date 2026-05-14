@@ -1,13 +1,41 @@
 ---
+# Deploy Obsidian Stack to Unraid (CouchDB + Obsidian MCP Server)
+#
+# CouchDB: backend for Obsidian LiveSync (desktop ↔ server vault sync)
+# Obsidian MCP: HTTP server exposing vault read/write/search as MCP tools
+#
+# Transport: http on port 6977 (direct, no mcp-proxy needed).
+# Vault path: /mnt/user/appdata/obsidian/vaults/homelab
+#
+# Prerequisites:
+#   - vault.yml contains vault_couchdb_* entries
+#   - Obsidian MCP Docker image built from docker/obsidian-mcp-server/
+#     (the role builds it automatically)
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-obsidian-stack.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
 - name: Deploy Obsidian Stack (CouchDB + MCP Server)
   hosts: unraid
   gather_facts: false
 
   tasks:
     - name: Deploy CouchDB
-      include_role:
+      ansible.builtin.include_role:
         name: couchdb
 
     - name: Deploy Obsidian MCP Server
-      include_role:
+      ansible.builtin.include_role:
         name: obsidian-mcp
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Obsidian stack deployed successfully!
+          MCP endpoint:  http://{{ ansible_host }}:{{ obsidian_mcp_port }}/mcp
+          Health:        curl http://{{ ansible_host }}:{{ obsidian_mcp_port }}/mcp
+          CouchDB:       http://{{ ansible_host }}:5984/_utils
+          Vault path:    {{ obsidian_vault_path }}
+          Logs:          docker logs {{ obsidian_mcp_container_name }} -f

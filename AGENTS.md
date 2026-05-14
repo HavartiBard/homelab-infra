@@ -152,10 +152,21 @@ Dependency map: `services/homelab-dependency-map.md`.
 ```
 homelab-infra/
 ├── ansible/
-│   ├── playbooks/          # Deployment orchestration
-│   ├── roles/              # Service-specific roles (MCP servers, etc.)
+│   ├── playbooks/
+│   │   ├── bootstrap/      # Host provisioning: ubuntu init, SSH keys, goudai setup
+│   │   ├── dns/            # Technitium + AdGuard
+│   │   ├── jetson/         # Jetson device-specific: bootstrap, TRT, model conversion
+│   │   ├── mcp/            # MCP servers + Director + SoulLayer
+│   │   ├── ai/             # AI inference + agent services: ollama, open-webui, qdrant,
+│   │   │                   #   openhands, litellm, agent-cp, codex, sprite-smith
+│   │   ├── observability/  # Prometheus, Grafana, Loki, alerting, exporters
+│   │   ├── platform/       # Core infra: gitea, gitea-runners, npm, netbox, seed-netbox
+│   │   ├── services/       # User-facing services (paperless) + NPM proxy registrations
+│   │   └── windows/        # Windows-specific
+│   ├── roles/              # Service-specific roles
 │   ├── files/              # Compose files for Ansible deployments
 │   │   ├── dns/            # Technitium/AdGuard compose templates
+│   │   ├── goudai/         # goudai AI workstation compose files
 │   │   ├── openhands/      # OpenHands compose + config
 │   │   └── ollama/         # Ollama (Windows) compose
 │   └── inventory/          # Host definitions
@@ -169,7 +180,7 @@ homelab-infra/
 ```
 
 **Deployment ownership:**
-- `ansible/` → Primary deployment mechanism (MCP servers, DNS, OpenHands, Ollama)
+- `ansible/` → Primary deployment mechanism (MCP servers, DNS, AI services, observability)
 - `stacks/` → Reference Docker Compose stacks (Platform VM services)
 - `docker/` → Custom Dockerfiles only (no compose files)
 

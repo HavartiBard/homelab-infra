@@ -12,6 +12,12 @@
     dest: /tmp/onepassword-mcp-build/Dockerfile
     mode: '0644'
 
+- name: Copy wrapper script to Unraid
+  ansible.builtin.copy:
+    src: "{{ onepassword_mcp_dockerfile_dir }}/onepassword-mcp-wrapper.js"
+    dest: /tmp/onepassword-mcp-build/onepassword-mcp-wrapper.js
+    mode: '0755'
+
 - name: Build onepassword-mcp image locally on Unraid
   ansible.builtin.raw: |
     docker build -t {{ onepassword_mcp_image }} /tmp/onepassword-mcp-build/
@@ -55,7 +61,7 @@
 - name: Smoke-test 1password-mcp tool list
   ansible.builtin.raw: |
     echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' \
-    | docker exec -i {{ onepassword_mcp_container_name }} 1password-mcp 2>/dev/null \
+    | docker exec -i {{ onepassword_mcp_container_name }} onepassword-mcp-wrapper 2>/dev/null \
     | head -1
   register: smoke_test
   changed_when: false

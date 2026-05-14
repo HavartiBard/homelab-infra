@@ -9,17 +9,10 @@
   ansible.builtin.raw: mkdir -p {{ mcp_proxy_appdata_dir }}/config
   changed_when: false
 
-- name: Template servers.json locally
-  ansible.builtin.template:
-    src: servers.json.j2
-    dest: /tmp/mcp-proxy-servers.json
-    mode: "0644"
-  delegate_to: localhost
-
 - name: Copy servers.json to Unraid via heredoc
   ansible.builtin.raw: |
     cat > {{ mcp_proxy_appdata_dir }}/config/servers.json <<'EOFCONFIG'
-    {{ lookup('file', '/tmp/mcp-proxy-servers.json') }}
+    {{ lookup('template', 'servers.json.j2') }}
     EOFCONFIG
   changed_when: true
 
@@ -72,4 +65,4 @@
 
 - name: Display container logs
   ansible.builtin.debug:
-    msg: "{{ container_logs.stdout_lines }}"
+    msg: "{{ container_logs.stdout_lines | default([]) }}"
