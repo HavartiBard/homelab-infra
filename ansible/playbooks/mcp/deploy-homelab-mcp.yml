@@ -1,7 +1,19 @@
 ---
+# Deploy Homelab MCP Server to Unraid
+#
+# Provides homelab-specific tools (Orbi router management, etc.)
+# Transport: streamable-http on port 6971.
+#
+# Prerequisites:
+#   - vault.yml contains vault_orbi_username and vault_orbi_password
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-homelab-mcp.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
 - name: Deploy Homelab MCP to Unraid
   hosts: unraid
-  gather_facts: no
+  gather_facts: false
 
   roles:
     - homelab-mcp
@@ -11,4 +23,6 @@
       ansible.builtin.debug:
         msg: |
           Homelab MCP deployed successfully!
-          Endpoint: http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
+          Endpoint:  http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
+          Health:    curl http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
+          Logs:      docker logs {{ homelab_mcp_container_name }} -f

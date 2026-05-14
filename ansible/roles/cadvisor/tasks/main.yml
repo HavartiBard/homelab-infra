@@ -28,6 +28,8 @@
           - /dev/kmsg
         security_opt:
           - apparmor=unconfined
+        labels:
+          net.unraid.docker.icon: "{{ cadvisor_icon }}"
     EOFCOMPOSE
   changed_when: true
 

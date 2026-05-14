@@ -1,0 +1,195 @@
+---
+# =============================================================================
+# Declare a proxied LAN service: NPM proxy host + Technitium DNS A record
+#
+# Creates or updates both the NPM proxy host and the DNS A record together.
+# Idempotent — safe to re-run; only changes what differs.
+#
+# Required vars:
+#   npm_domain        FQDN for the service (e.g. "chat.klsll.com")
+#   npm_forward_host  Upstream host/IP  (e.g. "192.168.20.150")
+#   npm_forward_port  Upstream port     (e.g. 8080)
+#
+# Optional vars:
+#   npm_dns_target    IP the DNS A record points to (default: NPM platform VM)
+#   dns_zone          Authoritative zone (default: klsll.com)
+#   dns_ttl           A record TTL in seconds (default: 3600)
+#
+# Run:
+#   ansible-playbook playbooks/platform/update-npm-proxy-host.yml \
+#     --vault-password-file ~/.vault-pass \
+#     -e npm_domain=chat.klsll.com \
+#     -e npm_forward_host=192.168.20.150 \
+#     -e npm_forward_port=8080
+# =============================================================================
+
+- name: Declare proxied LAN service (NPM + DNS)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    npm_url: "https://npm.klsll.com"
+    npm_email: "{{ vault_npm_admin_username }}"
+    npm_password: "{{ vault_npm_admin_password }}"
+    # NPM platform VM — all *.klsll.com DNS records point here
+    npm_dns_target: "192.168.20.50"
+    dns_zone: "klsll.com"
+    dns_ttl: 3600
+    technitium_url: "http://192.168.20.2:5380"
+    technitium_token: "{{ vault_technitium_api_token }}"
+
+  tasks:
+
+    # ── NPM proxy host ─────────────────────────────────────────────────────────
+
+    - name: Authenticate with NPM API
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/tokens"
+        method: POST
+        body_format: json
+        body:
+          identity: "{{ npm_email }}"
+          secret: "{{ npm_password }}"
+        status_code: 200
+      register: npm_auth
+      no_log: true
+
+    - name: List all proxy hosts
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        status_code: 200
+      register: npm_hosts
+
+    - name: Find existing proxy host for {{ npm_domain }}
+      ansible.builtin.set_fact:
+        npm_host: >-
+          {{ npm_hosts.json |
+             selectattr('domain_names', 'contains', npm_domain) |
+             list | first | default(None) }}
+
+    - name: Create proxy host (does not exist yet)
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        body_format: json
+        body:
+          domain_names: ["{{ npm_domain }}"]
+          forward_scheme: http
+          forward_host: "{{ npm_forward_host }}"
+          forward_port: "{{ npm_forward_port | int }}"
+          caching_enabled: false
+          block_exploits: true
+          allow_websocket_upgrade: true
+          http2_support: true
+          ssl_forced: true
+          hsts_enabled: true
+          hsts_subdomains: false
+          certificate_id: 3
+          locations: []
+          advanced_config: ""
+          meta: {}
+        status_code: 201
+      when: npm_host is none
+      register: npm_create
+
+    - name: Update forward target (already exists)
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts/{{ npm_host.id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        body_format: json
+        body:
+          domain_names: "{{ npm_host.domain_names }}"
+          forward_scheme: "{{ npm_host.forward_scheme }}"
+          forward_host: "{{ npm_forward_host }}"
+          forward_port: "{{ npm_forward_port | int }}"
+          caching_enabled: "{{ npm_host.caching_enabled }}"
+          block_exploits: "{{ npm_host.block_exploits }}"
+          allow_websocket_upgrade: "{{ npm_host.allow_websocket_upgrade }}"
+          http2_support: "{{ npm_host.http2_support }}"
+          ssl_forced: "{{ npm_host.ssl_forced }}"
+          certificate_id: "{{ npm_host.certificate_id }}"
+          meta: "{{ npm_host.meta }}"
+          locations: "{{ npm_host.locations }}"
+          advanced_config: "{{ npm_host.advanced_config }}"
+        status_code: 200
+      when: npm_host is not none and (npm_host.forward_host != npm_forward_host or npm_host.forward_port != npm_forward_port | int)
+      register: npm_update
+
+    # ── Technitium DNS A record ────────────────────────────────────────────────
+
+    - name: Check for existing DNS A record
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/get"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ npm_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+        status_code: [200, 404]
+      register: dns_check
+      no_log: true
+
+    - name: Parse existing A record
+      ansible.builtin.set_fact:
+        dns_record_ip: >-
+          {{ (dns_check.json.response.records
+              | selectattr('type', 'equalto', 'A')
+              | map(attribute='rData.ipAddress')
+              | list | first) if
+             (dns_check.status == 200 and
+              dns_check.json.status == 'ok' and
+              dns_check.json.response.records | length > 0)
+             else None }}
+
+    - name: Create DNS A record (does not exist yet)
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/add"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ npm_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+          ipAddress: "{{ npm_dns_target }}"
+          ttl: "{{ dns_ttl }}"
+        status_code: 200
+      when: dns_record_ip is none
+      register: dns_create
+      no_log: true
+
+    - name: Update DNS A record (wrong IP)
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/update"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ npm_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+          ipAddress: "{{ npm_dns_target }}"
+          newIpAddress: "{{ npm_dns_target }}"
+          ttl: "{{ dns_ttl }}"
+        status_code: 200
+      when: dns_record_ip is not none and dns_record_ip != npm_dns_target
+      register: dns_update
+      no_log: true
+
+    # ── Summary ────────────────────────────────────────────────────────────────
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "NPM:  {{ npm_domain }} → {{ npm_forward_host }}:{{ npm_forward_port }} ({{ 'created' if (npm_create is not skipped) else 'updated' if (npm_update is not skipped) else 'already correct' }})"
+          - "DNS:  {{ npm_domain }} → {{ npm_dns_target }} ({{ 'created' if (dns_create is not skipped) else 'updated' if (dns_update is not skipped) else 'already correct' }})"

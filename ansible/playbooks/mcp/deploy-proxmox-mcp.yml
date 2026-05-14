@@ -1,7 +1,21 @@
 ---
+# Deploy Proxmox MCP Server to Unraid
+#
+# Provides Proxmox VM/LXC management tools via MCP.
+# Transport: streamable-http on port 6974.
+#
+# Prerequisites:
+#   - vault.yml contains vault_proxmox_mcp_* entries
+#     (host, port, user, token_name, token_value, allow_elevated)
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-proxmox-mcp.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
 - name: Deploy Proxmox MCP to Unraid
-  hosts: unraid-server
+  hosts: unraid
   gather_facts: false
+
   roles:
     - role: proxmox-mcp
 
@@ -10,5 +24,7 @@
       ansible.builtin.debug:
         msg: |
           Proxmox MCP deployed successfully!
+          Endpoint:  http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp
+          Health:    curl http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp
           Container: {{ proxmox_mcp_container_name }}
-          Logs: docker logs {{ proxmox_mcp_container_name }}
+          Logs:      docker logs {{ proxmox_mcp_container_name }} -f

@@ -29,12 +29,6 @@ ROLE_MAP = [
         "path": "/mcp",
     },
     {
-        "role": "onepassword-mcp",
-        "name": "onepassword-mcp",
-        "port_var": "onepassword_mcp_port",
-        "path": "/mcp",
-    },
-    {
         "role": "proxmox-mcp",
         "name": "proxmox-mcp",
         "port_var": "proxmox_mcp_port",
@@ -57,6 +51,18 @@ ROLE_MAP = [
         "name": "gsuite-mcp",
         "port_var": "gsuite_mcp_port",
         "path": "/mcp",
+    },
+    {
+        "role": "obsidian-mcp",
+        "name": "obsidian-mcp",
+        "port_var": "obsidian_mcp_port",
+        "path": "/mcp",
+    },
+    {
+        "role": "mcp-proxy",
+        "name": "onepassword-mcp",
+        "port_var": "mcp_proxy_port",
+        "path": "/servers/onepassword/mcp",
     },
     {
         "role": "mcp-proxy",

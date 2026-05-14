@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   vars:
-    bootstrap_user: "{{ bootstrap_user | default(ansible_user) }}"
+    bootstrap_user: "{{ ansible_user }}"
     bootstrap_user_shell: /bin/zsh
     bootstrap_user_home: "/home/{{ bootstrap_user }}"
     bootstrap_projects_dir: "{{ bootstrap_user_home }}/projects"
@@ -240,7 +240,7 @@
         group: "{{ bootstrap_user }}"
         mode: '0644'
         force: true
-      when: bootstrap_manage_user_shell_files
+      when: bootstrap_manage_user_shell_files | bool
 
     - name: Deploy env_container from vault variables
       ansible.builtin.template:
@@ -249,7 +249,7 @@
         owner: "{{ bootstrap_user }}"
         group: "{{ bootstrap_user }}"
         mode: '0600'
-      when: bootstrap_manage_user_shell_files
+      when: bootstrap_manage_user_shell_files | bool
 
     - name: Ensure bashrc sources env_container and Go path
       ansible.builtin.blockinfile:
@@ -263,7 +263,7 @@
           # Go configuration
           export GOPATH="$HOME/go"
           export PATH="$GOPATH/bin:/usr/local/go/bin:$PATH"
-      when: bootstrap_manage_user_shell_files
+      when: bootstrap_manage_user_shell_files | bool
 
     - name: Ensure oh-my-zsh cache folder exists for user
       ansible.builtin.file:
@@ -279,4 +279,4 @@
         owner: "{{ bootstrap_user }}"
         group: "{{ bootstrap_user }}"
         recurse: true
-      when: bootstrap_manage_projects_ownership
+      when: bootstrap_manage_projects_ownership | bool

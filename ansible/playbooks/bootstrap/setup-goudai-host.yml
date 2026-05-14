@@ -1,0 +1,347 @@
+---
+# =============================================================================
+# Setup goudai AI workstation — host platform layer
+#
+# Installs everything that runs natively on the host:
+#   - Vulkan runtime (Mesa RADV — native RDNA 3.5 support on Ubuntu 26.04)
+#   - llama.cpp (built from source, Vulkan backend only)
+#   Note: ROCm system packages not installed — Ubuntu 26.04 (resolute) not yet
+#         supported by AMD's apt repo. Ollama bundles its own ROCm stack.
+#   - Ollama (native systemd service)
+#   - LM Studio CLI (lms, for Link feature)
+#   - Docker CE (container runtime for the service layer)
+#
+# GPU: Radeon 8060S (gfx1151 RDNA 3.5, 80 CUs)
+# Memory: 128GB LPDDR5 unified — 64GB VRAM + ~31GB GTT ≈ 95GB GPU-accessible
+#
+# Run:
+#   ansible-playbook playbooks/platform/setup-goudai-host.yml \
+#     --vault-password-file ~/.vault-pass --limit goudai
+#
+# Force llama.cpp rebuild:
+#   ... -e llama_cpp_force_rebuild=true
+# =============================================================================
+
+- name: Setup goudai AI workstation host
+  hosts: goudai
+  become: true
+  gather_facts: true
+
+  vars:
+    host_user: james
+
+    # ROCm — Ollama bundles its own ROCm/HIP stack; system ROCm packages not required.
+    # Ubuntu 26.04 (resolute) is not yet supported by AMD's apt repo (noble/jammy only).
+    # llama.cpp uses the Vulkan backend (Mesa RADV, native on RDNA 3.5 / Ubuntu 26.04).
+    # HSA override is kept in the Ollama systemd unit for Ollama's bundled runtime.
+    amdgpu_gfx_override: "11.0.0"
+
+    # NFS — Unraid ai-models share
+    ai_models_nfs_src: "192.168.20.14:/mnt/user/ai-models"
+    ai_models_mount: /mnt/ai-models
+
+    # llama.cpp
+    llama_cpp_repo: https://github.com/ggerganov/llama.cpp.git
+    llama_cpp_src: /opt/llama.cpp
+    llama_cpp_force_rebuild: false
+
+    # Ollama
+    ollama_host: "0.0.0.0"
+    ollama_port: 11434
+    ollama_max_loaded_models: 2
+    ollama_num_parallel: 4
+    ollama_keep_alive: "10m"
+
+    # LM Studio CLI — https://lmstudio.ai/docs/developer/core/headless_llmster
+    lmstudio_port: 1234
+    lmstudio_bin: /usr/local/bin/lms
+
+  pre_tasks:
+    - name: Refresh apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+  tasks:
+
+    # ── NFS mount — Unraid ai-models share ────────────────────────────────────
+
+    - name: Install NFS client
+      ansible.builtin.apt:
+        name: nfs-common
+        state: present
+
+    - name: Create AI models mount point
+      ansible.builtin.file:
+        path: "{{ ai_models_mount }}"
+        state: directory
+        mode: '0755'
+
+    - name: Mount Unraid ai-models share (fstab + immediate)
+      ansible.posix.mount:
+        src: "{{ ai_models_nfs_src }}"
+        path: "{{ ai_models_mount }}"
+        fstype: nfs
+        opts: "rw,hard,intr,rsize=131072,wsize=131072,timeo=600,_netdev"
+        state: mounted
+
+    # ── Build tools & Vulkan runtime ───────────────────────────────────────────
+
+    - name: Install build tools and Vulkan runtime
+      ansible.builtin.apt:
+        name:
+          - cmake
+          - ninja-build
+          - gcc
+          - g++
+          - git
+          - pkg-config
+          - libvulkan-dev
+          - vulkan-tools
+          - mesa-vulkan-drivers
+          - glslc                 # GLSL→SPIR-V compiler — required for llama.cpp Vulkan
+          - spirv-headers         # SPIRV C++ headers — required for ggml-vulkan.cpp
+          - python3-dev
+        state: present
+
+    # ── GPU access ────────────────────────────────────────────────────────────
+    # ROCm system packages are not installed (Ubuntu 26.04 not yet supported).
+    # Vulkan (Mesa RADV) handles GPU compute for llama.cpp; Ollama uses its own bundled stack.
+
+    - name: Add {{ host_user }} to GPU access groups
+      ansible.builtin.user:
+        name: "{{ host_user }}"
+        groups: render,video
+        append: true
+
+    - name: Ensure apt keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    # ── llama.cpp ──────────────────────────────────────────────────────────────
+
+    - name: Clone or update llama.cpp
+      ansible.builtin.git:
+        repo: "{{ llama_cpp_repo }}"
+        dest: "{{ llama_cpp_src }}"
+        update: true
+        force: false
+      register: llama_cpp_git
+
+    - name: Configure llama.cpp (Vulkan backend — Mesa RADV for RDNA 3.5)
+      ansible.builtin.command:
+        cmd: >
+          cmake -B build -GNinja
+          -DCMAKE_BUILD_TYPE=Release
+          -DGGML_VULKAN=ON
+        chdir: "{{ llama_cpp_src }}"
+      when: llama_cpp_git.changed or llama_cpp_force_rebuild | bool
+
+    - name: Build llama.cpp
+      ansible.builtin.command:
+        cmd: cmake --build build -j{{ ansible_processor_vcpus }}
+        chdir: "{{ llama_cpp_src }}"
+      when: llama_cpp_git.changed or llama_cpp_force_rebuild | bool
+
+    - name: Install llama.cpp binaries to /usr/local
+      ansible.builtin.command:
+        cmd: cmake --install build --prefix /usr/local
+        chdir: "{{ llama_cpp_src }}"
+      when: llama_cpp_git.changed or llama_cpp_force_rebuild | bool
+
+    - name: Refresh shared library cache after llama.cpp install
+      ansible.builtin.command: ldconfig
+      when: llama_cpp_git.changed or llama_cpp_force_rebuild | bool
+
+    # ── Ollama (native) ───────────────────────────────────────────────────────
+
+    - name: Check if Ollama is already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/ollama
+      register: ollama_binary
+
+    - name: Install Ollama via official install script
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://ollama.com/install.sh | sh
+      when: not ollama_binary.stat.exists
+
+    - name: Add ollama service user to GPU groups
+      ansible.builtin.user:
+        name: ollama
+        groups: render,video
+        append: true
+
+    - name: Ensure Ollama systemd override directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/ollama.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure Ollama systemd override
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ollama.service.d/override.conf
+        mode: '0644'
+        content: |
+          [Service]
+          Environment="OLLAMA_HOST={{ ollama_host }}:{{ ollama_port }}"
+          Environment="OLLAMA_MODELS={{ ai_models_mount }}/ollama"
+          Environment="OLLAMA_MAX_LOADED_MODELS={{ ollama_max_loaded_models }}"
+          Environment="OLLAMA_NUM_PARALLEL={{ ollama_num_parallel }}"
+          Environment="OLLAMA_KEEP_ALIVE={{ ollama_keep_alive }}"
+          Environment="HSA_OVERRIDE_GFX_VERSION={{ amdgpu_gfx_override }}"
+          Environment="PATH=/usr/local/bin:/usr/bin:/bin:/opt/rocm/bin"
+      notify: Restart Ollama
+
+    - name: Enable and start Ollama
+      ansible.builtin.systemd:
+        name: ollama
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    # ── LM Studio CLI ─────────────────────────────────────────────────────────
+
+    - name: Check if lms CLI is already installed
+      ansible.builtin.stat:
+        path: "/home/{{ host_user }}/.lmstudio/bin/lms"
+      register: lms_binary
+
+    - name: Install LM Studio CLI
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://lmstudio.ai/install.sh | bash
+      when: not lms_binary.stat.exists
+      become: false  # runs as host_user; installer manages its own PATH
+
+    - name: Symlink lms to /usr/local/bin for systemd
+      ansible.builtin.file:
+        src: "/home/{{ host_user }}/.lmstudio/bin/lms"
+        dest: "{{ lmstudio_bin }}"
+        state: link
+        force: true
+
+    - name: Create LM Studio models directory on NFS share
+      ansible.builtin.file:
+        path: "{{ ai_models_mount }}/lmstudio"
+        state: directory
+        mode: '0755'
+      become: false
+
+    - name: Read LM Studio settings
+      ansible.builtin.slurp:
+        src: "/home/{{ host_user }}/.lmstudio/settings.json"
+      register: lms_settings_raw
+      become: false
+
+    - name: Point LM Studio downloads folder at NFS share
+      ansible.builtin.copy:
+        dest: "/home/{{ host_user }}/.lmstudio/settings.json"
+        content: >-
+          {{ lms_settings_raw.content | b64decode | from_json
+             | combine({'downloadsFolder': ai_models_mount + '/lmstudio'})
+             | to_nice_json }}
+        owner: "{{ host_user }}"
+        group: "{{ host_user }}"
+        mode: '0644'
+      become: false
+      when: (lms_settings_raw.content | b64decode | from_json).downloadsFolder != ai_models_mount + '/lmstudio'
+      notify: Restart lmstudio-server
+
+    - name: Deploy lmstudio-server systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/lmstudio-server.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=LM Studio daemon (llmster — Link target for LAN clients)
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          # lms daemon up starts llmster (the server-native LM Studio core).
+          # It daemonizes itself, so Type=forking. The HTTP API listens on
+          # port {{ lmstudio_port }} and is OpenAI-compatible (/v1/models, /v1/chat/completions).
+          # JIT loading enabled: models auto-load on first inference request.
+          Type=forking
+          User={{ host_user }}
+          ExecStart={{ lmstudio_bin }} daemon up
+          ExecStop={{ lmstudio_bin }} daemon down
+          Restart=on-failure
+          RestartSec=10
+          Environment="HSA_OVERRIDE_GFX_VERSION={{ amdgpu_gfx_override }}"
+          Environment="PATH=/usr/local/bin:/usr/bin:/bin:/opt/rocm/bin"
+          Environment="LMS_JIT_LOADING=true"
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd
+
+    - name: Enable lmstudio-server
+      ansible.builtin.systemd:
+        name: lmstudio-server
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    # ── Docker CE ─────────────────────────────────────────────────────────────
+
+    - name: Download Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /tmp/docker.gpg
+        mode: '0644'
+
+    - name: Dearmor Docker GPG key
+      ansible.builtin.command: >
+        gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg /tmp/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: >
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg]
+          https://download.docker.com/linux/ubuntu
+          {{ ansible_distribution_release }} stable
+        filename: docker
+        state: present
+
+    - name: Install Docker CE
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Add {{ host_user }} to docker group
+      ansible.builtin.user:
+        name: "{{ host_user }}"
+        groups: docker
+        append: true
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart Ollama
+      ansible.builtin.systemd:
+        name: ollama
+        state: restarted
+        daemon_reload: true
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart lmstudio-server
+      ansible.builtin.systemd:
+        name: lmstudio-server
+        state: restarted
+        daemon_reload: true

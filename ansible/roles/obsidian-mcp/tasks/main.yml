@@ -19,6 +19,27 @@
   raw: mkdir -p {{ obsidian_mcp_appdata_dir }}
   changed_when: false
 
+- name: Create Obsidian MCP build directory
+  ansible.builtin.raw: mkdir -p {{ obsidian_mcp_build_dir }}/src
+  changed_when: false
+
+- name: Copy Obsidian MCP build files to Unraid
+  ansible.builtin.raw: |
+    echo '{{ lookup("file", obsidian_mcp_source_dir + "/" + item) | b64encode }}' | base64 -d > {{ obsidian_mcp_build_dir }}/{{ item }}
+  loop:
+    - Dockerfile
+    - package.json
+    - package-lock.json
+    - src/index.js
+    - src/tools.js
+  changed_when: false
+
+- name: Build Obsidian MCP image
+  ansible.builtin.raw: |
+    cd {{ obsidian_mcp_build_dir }} && docker build -t {{ obsidian_mcp_image }} .
+  register: obsidian_mcp_build
+  changed_when: obsidian_mcp_build.rc == 0
+
 - name: Copy Docker Compose file
   ansible.builtin.template:
     src: docker-compose.yml.j2
@@ -42,3 +63,12 @@
     exit 1
   register: obsidian_mcp_health
   changed_when: false
+
+- name: Show Obsidian MCP logs
+  ansible.builtin.raw: docker logs --tail 20 {{ obsidian_mcp_container_name }} 2>&1
+  register: obsidian_mcp_logs
+  changed_when: false
+
+- name: Display Obsidian MCP logs
+  ansible.builtin.debug:
+    msg: "{{ obsidian_mcp_logs.stdout_lines }}"

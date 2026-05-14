@@ -28,23 +28,13 @@ mcp_proxy_servers:
       - serve
     transport_type: stdio
 
-  - name: obsidian-mcp
-    command: docker
-    args:
-      - exec
-      - -i
-      - obsidian-mcp
-      - node
-      - src/index.js
-    transport_type: stdio
-
   - name: onepassword
     command: docker
     args:
       - exec
       - -i
       - onepassword-mcp
-      - 1password-mcp
+      - onepassword-mcp-wrapper
     transport_type: stdio
 
 # Timezone

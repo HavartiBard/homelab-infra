@@ -13,6 +13,9 @@ services:
     volumes:
       - {{ couchdb_data_dir }}:/opt/couchdb/data
       - {{ couchdb_config_dir }}:/opt/couchdb/etc/local.d
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/couchdb.png"
+      net.unraid.docker.webui: "http://{{ ansible_host }}:{{ couchdb_port }}/_utils"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]

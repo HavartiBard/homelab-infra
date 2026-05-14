@@ -1,48 +1,53 @@
 ---
-# Deploy google_workspace_mcp (Gmail + Calendar + Drive MCP server) on Unraid
-#
-# Prerequisites:
-#   - /mnt/user/appdata/gsuite-mcp/gauth.json  (Web Application OAuth client JSON
-#     downloaded from Google Cloud Console → APIs & Services → Credentials)
-#   - The OAuth client must have https://gsuite-auth.klsll.com/oauth2callback
-#     registered as an authorized redirect URI in Google Cloud Console
+# Deploy GSuite MCP (Gmail + Calendar + Drive) to Unraid
 #
 # The server exposes a native HTTP MCP endpoint (streamable-http transport).
-# No mcp-proxy bridging needed — clients connect directly.
+# No mcp-proxy bridging needed — clients connect directly on port 8092.
+#
+# Prerequisites:
+#   - /mnt/user/appdata/gsuite-mcp/gauth.json must exist on Unraid
+#     (Web Application OAuth client JSON from Google Cloud Console)
+#   - The OAuth client must have https://gsuite-auth.klsll.com/oauth2callback
+#     registered as an authorized redirect URI
 #
 # After deployment, complete OAuth once:
 #   1. Call the start_google_auth MCP tool to get an authorization URL
-#   2. Open that URL in a browser and authorize the app
+#   2. Open the URL in a browser and authorize
 #   3. Google redirects to https://gsuite-auth.klsll.com/oauth2callback
 #   Tokens are stored in /mnt/user/appdata/gsuite-mcp/store_creds/
 #
-# MCP endpoint (for .mcp.json / Claude config):
-#   http://192.168.20.14:8092/mcp
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-gsuite-mcp.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
 
-- name: Deploy gsuite-mcp container and update mcp-proxy
+- name: Deploy gsuite-mcp to Unraid
   hosts: unraid
   gather_facts: false
+
+  pre_tasks:
+    - name: Verify gauth.json exists on Unraid
+      ansible.builtin.raw: test -f /mnt/user/appdata/gsuite-mcp/gauth.json
+      changed_when: false
+      failed_when: false
+      register: gauth_check
+
+    - name: Fail when gauth.json is missing
+      ansible.builtin.fail:
+        msg: >-
+          /mnt/user/appdata/gsuite-mcp/gauth.json not found on Unraid.
+          Download the Web Application OAuth client JSON from Google Cloud Console
+          and place it there before running this playbook.
+      when: gauth_check.rc != 0
+
   roles:
     - gsuite-mcp
-    - role: mcp-proxy
-      vars:
-        mcp_proxy_servers:
-          - name: soullayer
-            command: docker
-            args:
-              - exec
-              - -i
-              - soullayer
-              - soullayer
-              - serve
-            transport_type: stdio
 
-          - name: obsidian-mcp
-            command: docker
-            args:
-              - exec
-              - -i
-              - obsidian-mcp
-              - node
-              - src/index.js
-            transport_type: stdio
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          GSuite MCP deployed successfully!
+          Endpoint:  http://{{ ansible_host }}:{{ gsuite_mcp_port }}/mcp
+          Health:    curl http://{{ ansible_host }}:{{ gsuite_mcp_port }}/mcp
+          Logs:      docker logs {{ gsuite_mcp_container_name }} -f
+          OAuth:     call start_google_auth tool to complete authorization
