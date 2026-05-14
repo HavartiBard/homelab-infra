@@ -1,0 +1,6 @@
+---
+hister_image: "ghcr.io/asciimoo/hister:latest"
+hister_port: 4433
+hister_appdata: "/mnt/user/appdata/hister"
+hister_compose_dir: "/opt/docker/hister"
+hister_base_url: "https://search.klsll.com"

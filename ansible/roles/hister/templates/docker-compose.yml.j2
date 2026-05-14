@@ -1,0 +1,28 @@
+services:
+  hister:
+    image: "{{ hister_image }}"
+    container_name: hister
+    user: "1000:1000"
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/search.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ hister_port }}"
+    environment:
+      TZ: America/Phoenix
+      HISTER__SERVER__ADDRESS: "0.0.0.0:4433"
+      HISTER__SERVER__BASE_URL: "{{ hister_base_url }}"
+    ports:
+      - "{{ hister_port }}:4433"
+    volumes:
+      - "{{ hister_appdata }}/data:/hister/data"
+    networks:
+      - hister-net
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+
+networks:
+  hister-net:
+    driver: bridge

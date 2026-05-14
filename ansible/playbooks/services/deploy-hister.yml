@@ -1,0 +1,29 @@
+---
+# Deploy Hister personal search engine on Unraid
+#
+# Hister indexes visited websites locally via a browser extension or crawler.
+# Web UI available at https://search.klsll.com (via NPM) or http://192.168.20.14:4433 (direct).
+#
+# Usage:
+#   ansible-playbook playbooks/services/deploy-hister.yml --limit unraid
+#
+# After deployment, register the NPM proxy:
+#   ansible-playbook playbooks/services/update-hister-proxy.yml --limit unraid
+
+- name: Deploy Hister on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: hister
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Hister deployed successfully!
+          Web UI (direct):  http://{{ ansible_host }}:{{ hister_port }}
+          Web UI (proxied): https://search.klsll.com (run update-hister-proxy.yml)
+          Data:             {{ hister_appdata }}/data
+          Logs:             docker logs hister -f
+          Restart:          cd {{ hister_compose_dir }} && docker compose restart
