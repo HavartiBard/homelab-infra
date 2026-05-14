@@ -1,4 +1,0 @@
----
-- name: Restart chiffon-executor container
-  ansible.builtin.raw: docker restart {{ chiffon_executor_container_name }}
-  changed_when: true
