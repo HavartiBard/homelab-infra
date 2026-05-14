@@ -16,7 +16,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Run observability smoke checks
-        run: |
-          python scripts/test-observability-alerting.py static
-          python scripts/test-observability-alerting.py live --docker-exec
+      - name: Static checks (config validation — always)
+        run: python3 scripts/test-observability-alerting.py static
+      - name: Live checks (requires Unraid stack — push only)
+        if: github.event_name == 'push'
+        run: python3 scripts/test-observability-alerting.py live --docker-exec

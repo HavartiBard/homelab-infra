@@ -1,7 +1,7 @@
 """Smoke-test harness for the observability stack.
 
 The stack is managed by Ansible under ``ansible/files/observability`` and
-published via the deployment playbooks in ``ansible/playbooks/platform``.
+published via the deployment playbooks in ``ansible/playbooks/observability``.
 This harness keeps the checks lightweight and supports three run modes:
 
 - ``static``: validate the checked-in configuration
