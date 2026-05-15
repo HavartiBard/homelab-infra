@@ -2,7 +2,7 @@
 # Using raw commands throughout — Unraid has no Python
 
 - name: Ensure appdata directory exists
-  ansible.builtin.raw: mkdir -p {{ hister_appdata }}/data
+  ansible.builtin.raw: mkdir -p {{ hister_appdata }}/data && chown -R 1000:1000 {{ hister_appdata }}
   changed_when: false
 
 - name: Ensure compose directory exists
