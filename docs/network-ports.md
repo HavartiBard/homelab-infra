@@ -52,6 +52,7 @@ This document lists all ports used by homelab stacks with access requirements.
 
 | Service | Port | Protocol | Access | Description |
 |---------|------|----------|--------|-------------|
+| **Hister** | 4433 | TCP | 🌐 Proxied | Personal search engine (`search.klsll.com`) |
 | **NetBox** | 8001 | TCP | 🌐 Proxied | DCIM/IPAM |
 | **mcp-proxy** | 6980 | HTTP/SSE | 🔒 LAN-Only | MCP bridge for SoulLayer and 1Password (`/servers/<name>/mcp`) |
 | **Gitea MCP** | 6976 | TCP | 🔒 LAN-Only | MCP server (issues, PRs, repos) |
