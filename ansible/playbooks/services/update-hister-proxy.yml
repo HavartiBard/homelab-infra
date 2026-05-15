@@ -4,6 +4,7 @@
   gather_facts: false
   vars:
     npm_proxy_config_paths:
+      - "{{ playbook_dir }}/../../files/npm/services/certificates.yml"
       - "{{ playbook_dir }}/../../files/npm/services/hister.yml"
     npm_manage_proxies: true
     npm_manage_dns: true
