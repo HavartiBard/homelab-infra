@@ -115,7 +115,6 @@ Dependency map: `services/homelab-dependency-map.md`.
 | Obsidian MCP | 6977 | Vault read/write/search |
 | SearXNG MCP | 6978 | Web search via SearXNG |
 | GSuite MCP | 8092 | Google Workspace tools |
-| Notion MCP | 3000 | Notion workspace access |
 | 1Password MCP | internal | Secret retrieval (read-only) |
 
 ### Observability (Unraid)
