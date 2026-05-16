@@ -5,6 +5,36 @@
   ansible.builtin.raw: mkdir -p {{ searxng_mcp_appdata }}/searxng
   changed_when: false
 
+- name: Preserve or generate SearXNG secret key
+  ansible.builtin.raw: |
+    secret=$(grep -m1 secret_key: {{ searxng_mcp_appdata }}/searxng/settings.yml 2>/dev/null | cut -d# -f1 | cut -d: -f2 | tr -dc A-Za-z0-9)
+    if [ -n "$secret" ]; then
+      printf '%s' "$secret"
+    else
+      openssl rand -hex 32
+    fi
+  register: searxng_secret_key_lookup
+  changed_when: false
+
+- name: Set SearXNG secret key fact
+  ansible.builtin.set_fact:
+    searxng_secret_key_effective: "{{ searxng_secret_key | default(searxng_secret_key_lookup.stdout | trim, true) }}"
+  no_log: true
+
+- name: Generate SearXNG settings content
+  ansible.builtin.set_fact:
+    searxng_settings_content: "{{ lookup('template', role_path + '/templates/settings.yml.j2') }}"
+  no_log: true
+
+- name: Write SearXNG settings.yml
+  ansible.builtin.raw: |
+    cat > {{ searxng_mcp_appdata }}/searxng/settings.yml << 'EOFSEARXNG'
+    {{ searxng_settings_content }}
+    EOFSEARXNG
+    chown 977:977 {{ searxng_mcp_appdata }}/searxng/settings.yml
+  changed_when: true
+  no_log: true
+
 - name: Ensure compose directory exists
   ansible.builtin.raw: mkdir -p {{ searxng_mcp_compose_dir }}
   changed_when: false

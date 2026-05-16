@@ -7,6 +7,8 @@ services:
       TZ: America/Phoenix
     volumes:
       - "{{ searxng_mcp_appdata }}/searxng:/etc/searxng"
+    ports:
+      - "{{ searxng_http_port }}:8080"
     networks:
       - searxng-net
     deploy:

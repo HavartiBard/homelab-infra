@@ -1,0 +1,63 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - bing
+      - startpage
+      - wikipedia
+
+general:
+  instance_name: "Homelab Search"
+  enable_metrics: true
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en-US"
+  ban_time_on_fail: 60
+  max_ban_time_on_fail: 86400
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  base_url: false
+  limiter: false
+  public_instance: false
+  secret_key: "{{ searxng_secret_key_effective }}"
+  image_proxy: false
+  method: "GET"
+
+outgoing:
+  request_timeout: 5.0
+  pool_connections: 50
+  pool_maxsize: 20
+  enable_http2: true
+
+engines:
+  - name: bing
+    disabled: false
+    timeout: 5.0
+    weight: 2
+
+  - name: startpage
+    disabled: false
+    timeout: 5.0
+    weight: 1
+
+  - name: wikipedia
+    disabled: false
+    timeout: 5.0
+    weight: 0.5
+
+  - name: duckduckgo
+    disabled: true
+
+  - name: google
+    disabled: true
+
+  - name: brave
+    disabled: true
+
+  - name: qwant
+    disabled: true

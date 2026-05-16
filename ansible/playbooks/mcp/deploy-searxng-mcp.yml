@@ -30,5 +30,5 @@
           SearXNG MCP deployed successfully!
           MCP endpoint:  http://{{ ansible_host }}:{{ searxng_mcp_port }}/mcp
           Health:        curl http://{{ ansible_host }}:{{ searxng_mcp_port }}/mcp
-          SearXNG UI:    http://{{ ansible_host }}:8080
+          SearXNG UI/API: http://{{ ansible_host }}:{{ searxng_http_port }}
           Logs:          docker logs searxng-mcp -f

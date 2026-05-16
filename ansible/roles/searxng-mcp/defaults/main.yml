@@ -1,5 +1,6 @@
 ---
 searxng_mcp_port: 6978
+searxng_http_port: 6979
 searxng_mcp_appdata: "/mnt/user/appdata/searxng-mcp"
 searxng_mcp_compose_dir: "/opt/docker/searxng-mcp"
 searxng_image: "searxng/searxng:2026.2.20-93ac6ceb3"
