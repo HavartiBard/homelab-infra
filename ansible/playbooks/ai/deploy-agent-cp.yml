@@ -71,3 +71,13 @@
           Backend health: http://{{ ansible_host }}:3100/health
           Web UI:         http://{{ ansible_host }}:3101
           Logs:           docker compose -f {{ agent_cp_dir }}/docker-compose.yml logs -f
+
+    - name: Register agent-control-plane in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: agent-cp
+            cluster: unraid-docker
+            role: Application
+            comments: "LLM agent dashboard and approvals — API http://{{ ansible_host }}:3100, UI http://{{ ansible_host }}:3101"

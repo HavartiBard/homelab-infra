@@ -183,3 +183,13 @@
           1. Edit {{ soullayer_dir }}/data/soul.md to define your AI's personality
           2. Add to Director MCP servers or client configs
           3. Monitor logs: docker logs soullayer -f
+
+    - name: Register SoulLayer in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: soullayer
+            cluster: unraid-docker
+            role: LLM Service
+            comments: "Personality/memory MCP — via mcp-proxy :6980"

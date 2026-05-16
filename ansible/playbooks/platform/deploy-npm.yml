@@ -4,3 +4,12 @@
   gather_facts: false
   roles:
     - npm
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: npm
+            cluster: unraid-docker
+            role: Application
+            primary_ip4: "{{ npm_ip }}/24"
+            dns_name: npm
+            comments: "Nginx Proxy Manager — http://{{ npm_ip }}:{{ npm_ui_port }}"

@@ -16,6 +16,13 @@
 
   roles:
     - role: hister
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: hister
+            cluster: unraid-docker
+            role: Application
+            comments: "Personal search engine — http://{{ ansible_host }}:{{ hister_port }}"
 
   post_tasks:
     - name: Display deployment info

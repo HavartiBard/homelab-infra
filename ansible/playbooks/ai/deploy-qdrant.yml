@@ -58,3 +58,13 @@
       until: health.status == 200
       retries: 12
       delay: 5
+
+    - name: Register Qdrant in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: qdrant
+            cluster: goudai-docker
+            role: Application
+            comments: "Vector database — http://{{ ansible_host }}:6333"

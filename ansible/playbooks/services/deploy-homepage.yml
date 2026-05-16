@@ -133,3 +133,15 @@
         msg: |
           Homepage deployed on VLAN {{ homepage_network_name }} ({{ homepage_ip }}).
           Compose dir: {{ homepage_dir }}
+
+    - name: Register Homepage in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: homepage
+            cluster: unraid-docker
+            role: Application
+            primary_ip4: "{{ homepage_ip }}/24"
+            dns_name: homepage
+            comments: "Dashboard — macvlan {{ homepage_ip }}:3000"

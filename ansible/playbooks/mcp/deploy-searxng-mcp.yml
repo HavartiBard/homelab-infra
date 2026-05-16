@@ -15,6 +15,13 @@
 
   roles:
     - role: searxng-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: searxng-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Privacy metasearch MCP — http://{{ ansible_host }}:{{ searxng_mcp_port }}"
 
   post_tasks:
     - name: Display deployment info

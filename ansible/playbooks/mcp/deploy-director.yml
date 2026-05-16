@@ -104,3 +104,13 @@
           Director deployed successfully.
           Directory: {{ director_dir }}
           Endpoint: http://{{ ansible_host }}:8080
+
+    - name: Register Director in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: director
+            cluster: unraid-docker
+            role: Application
+            comments: "MCP proxy director — http://{{ ansible_host }}:8080"

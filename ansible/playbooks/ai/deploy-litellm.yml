@@ -48,3 +48,13 @@
     - name: Show health check result
       debug:
         msg: "LiteLLM health check: {{ health_check.stdout }}"
+
+    - name: Register LiteLLM in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: litellm
+            cluster: unraid-docker
+            role: LLM Service
+            comments: "Multi-provider LLM proxy — http://{{ ansible_host }}:4000"

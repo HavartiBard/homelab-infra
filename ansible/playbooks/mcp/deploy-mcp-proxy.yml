@@ -6,6 +6,13 @@
 
   roles:
     - mcp-proxy
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: mcp-proxy
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "stdio-to-HTTP MCP bridge — http://{{ ansible_host }}:6980"
 
   post_tasks:
     - name: Display access information

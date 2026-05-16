@@ -1,0 +1,123 @@
+---
+- name: Build NetBox service item list
+  ansible.builtin.set_fact:
+    _netbox_service_items: >-
+      {{
+        netbox_services
+        if (netbox_services | length) > 0
+        else [
+          {
+            'name': netbox_service_name | default(''),
+            'cluster': netbox_service_cluster,
+            'role': netbox_service_role | default(''),
+            'platform': netbox_service_platform,
+            'status': netbox_service_status,
+            'comments': netbox_service_comments | default(''),
+            'primary_ip4': netbox_service_primary_ip4 | default(''),
+            'dns_name': netbox_service_dns_name | default(netbox_service_name | default('')),
+            'interface_name': netbox_service_interface_name,
+          }
+        ]
+      }}
+  when: manage_netbox | bool
+
+- name: Validate NetBox service registration variables
+  ansible.builtin.assert:
+    that:
+      - netbox_token is defined
+      - netbox_token | length > 0
+      - _netbox_service_items | length > 0
+      - item.name is defined
+      - item.name | length > 0
+      - item.cluster is defined
+      - item.cluster | length > 0
+      - item.role is defined
+      - item.role | length > 0
+    fail_msg: >-
+      NetBox service registration requires netbox_token plus name, cluster,
+      and role for each item. Set manage_netbox=false to skip registration.
+  loop: "{{ _netbox_service_items | default([]) }}"
+  when: manage_netbox | bool
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Register service VMs in NetBox
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    data:
+      name: "{{ item.name }}"
+      site: "{{ item.site | default(netbox_service_site) }}"
+      cluster: "{{ item.cluster }}"
+      virtual_machine_role: "{{ item.role | default(netbox_service_role) }}"
+      platform: "{{ item.platform | default(netbox_service_platform) }}"
+      status: "{{ item.status | default(netbox_service_status) }}"
+      comments: "{{ item.comments | default('') }}"
+    state: present
+  loop: "{{ _netbox_service_items | default([]) }}"
+  when: manage_netbox | bool
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Register service VM interfaces in NetBox
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    data:
+      virtual_machine: "{{ item.name }}"
+      name: "{{ item.interface_name | default(netbox_service_interface_name) }}"
+    state: present
+  loop: "{{ _netbox_service_items | default([]) }}"
+  when:
+    - manage_netbox | bool
+    - item.primary_ip4 is defined
+    - item.primary_ip4 | length > 0
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Register service VM IP addresses in NetBox
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    data:
+      address: "{{ item.primary_ip4 }}"
+      assigned_object:
+        virtual_machine: "{{ item.name }}"
+        name: "{{ item.interface_name | default(netbox_service_interface_name) }}"
+      status: active
+      dns_name: "{{ item.dns_name | default(item.name) }}"
+    state: present
+  loop: "{{ _netbox_service_items | default([]) }}"
+  when:
+    - manage_netbox | bool
+    - item.primary_ip4 is defined
+    - item.primary_ip4 | length > 0
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Set service VM primary IPv4 in NetBox
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    data:
+      name: "{{ item.name }}"
+      site: "{{ item.site | default(netbox_service_site) }}"
+      cluster: "{{ item.cluster }}"
+      virtual_machine_role: "{{ item.role | default(netbox_service_role) }}"
+      platform: "{{ item.platform | default(netbox_service_platform) }}"
+      primary_ip4: "{{ item.primary_ip4 }}"
+      status: "{{ item.status | default(netbox_service_status) }}"
+      comments: "{{ item.comments | default('') }}"
+    state: present
+  loop: "{{ _netbox_service_items | default([]) }}"
+  when:
+    - manage_netbox | bool
+    - item.primary_ip4 is defined
+    - item.primary_ip4 | length > 0
+  delegate_to: localhost
+  run_once: true
+  become: false

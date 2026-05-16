@@ -117,3 +117,12 @@
           Web UI: http://{{ ansible_host }}:3000
           Health: http://{{ ansible_host }}:3000/health
           Config: {{ openhands_dir }}/config/config.toml
+    - name: Register OpenHands in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: openhands
+            cluster: unraid-docker
+            role: Application
+            comments: "OpenHands control plane — http://{{ ansible_host }}:3000"

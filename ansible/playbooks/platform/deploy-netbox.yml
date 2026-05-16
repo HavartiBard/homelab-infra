@@ -16,6 +16,13 @@
 
   roles:
     - role: netbox
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: netbox
+            cluster: unraid-docker
+            role: Application
+            comments: "DCIM/IPAM — http://{{ ansible_host }}:{{ netbox_port }}"
 
   post_tasks:
     - name: Deployment summary

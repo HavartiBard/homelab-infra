@@ -18,6 +18,13 @@
 
   roles:
     - role: paperless
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: paperless
+            cluster: unraid-docker
+            role: Application
+            comments: "Document management — http://{{ ansible_host }}:{{ paperless_port }}"
 
   post_tasks:
     - name: Deployment summary

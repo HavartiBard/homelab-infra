@@ -19,6 +19,13 @@
 
   roles:
     - role: unraid-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: unraid-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Unraid API MCP — http://{{ ansible_host }}:{{ unraid_mcp_port }}/mcp"
 
   post_tasks:
     - name: Display deployment info

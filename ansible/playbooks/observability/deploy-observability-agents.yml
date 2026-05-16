@@ -11,6 +11,17 @@
   become: true
   roles:
     - node_exporter
+  post_tasks:
+    - name: Register Unraid node_exporter in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: node_exporter
+            cluster: unraid-docker
+            role: Application
+            comments: "Unraid host metrics exporter — http://{{ ansible_host }}:9100/metrics"
+      when: "'unraid' in group_names"
 
 - name: Deploy Promtail to all hosts
   hosts: unraid:tt:agh:edge_devices:workstations
@@ -18,6 +29,17 @@
   become: true
   roles:
     - promtail
+  post_tasks:
+    - name: Register Unraid promtail in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: promtail
+            cluster: unraid-docker
+            role: Application
+            comments: "Unraid log shipper to Loki"
+      when: "'unraid' in group_names"
 
 - name: Deploy cAdvisor to Docker hosts
   hosts: unraid:edge_devices:workstations
@@ -25,3 +47,14 @@
   become: true
   roles:
     - cadvisor
+  post_tasks:
+    - name: Register Unraid cAdvisor in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: cadvisor
+            cluster: unraid-docker
+            role: Application
+            comments: "Container metrics on Unraid — http://{{ ansible_host }}:8081"
+      when: "'unraid' in group_names"

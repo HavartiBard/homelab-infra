@@ -1,0 +1,18 @@
+---
+manage_netbox: true
+
+netbox_url: "http://192.168.20.14:8001"
+netbox_token: "{{ vault_netbox_api_token | default(lookup('env', 'NETBOX_TOKEN'), true) }}"
+
+netbox_service_site: Homelab
+netbox_service_cluster: unraid-docker
+netbox_service_platform: Docker
+netbox_service_status: active
+netbox_service_interface_name: eth0
+
+# Use primary_ip4 only for an address owned by the service/container itself
+# such as a macvlan address. Do not set service primary_ip4 just because a
+# vanity DNS name resolves to NPM; most *.klsll.com A records intentionally
+# point at the NPM proxy IP.
+
+netbox_services: []

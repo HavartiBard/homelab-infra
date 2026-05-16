@@ -18,6 +18,13 @@
 
   roles:
     - role: proxmox-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: proxmox-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Proxmox VE MCP — http://{{ ansible_host }}:{{ proxmox_mcp_port }}/mcp"
 
   post_tasks:
     - name: Display deployment info
