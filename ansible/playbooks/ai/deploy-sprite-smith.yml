@@ -231,3 +231,13 @@
           Sprite Smith deployed successfully!
           Web UI: http://{{ ansible_host }}:{{ sprite_smith_port }}
           Stack dir: {{ sprite_smith_dir }}
+
+    - name: Register Sprite Smith in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: sprite-smith
+            cluster: unraid-docker
+            role: Application
+            comments: "Sprite generation UI — http://{{ ansible_host }}:{{ sprite_smith_port }}"

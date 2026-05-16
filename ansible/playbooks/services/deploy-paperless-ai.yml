@@ -7,3 +7,10 @@
   gather_facts: false
   roles:
     - paperless-ai
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: paperless-ai
+            cluster: unraid-docker
+            role: Application
+            comments: "AI document enrichment for Paperless — http://{{ ansible_host }}:{{ paperless_ai_port }}"

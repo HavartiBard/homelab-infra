@@ -6,3 +6,26 @@
     - "{{ playbook_dir }}/../../group_vars/all/vault.yml"
   roles:
     - observability
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: grafana
+            cluster: unraid-docker
+            role: Application
+            comments: "Dashboards — http://{{ ansible_host }}:3030"
+          - name: prometheus
+            cluster: unraid-docker
+            role: Application
+            comments: "Metrics collection — internal :9090"
+          - name: loki
+            cluster: unraid-docker
+            role: Application
+            comments: "Log aggregation — internal :3100"
+          - name: alertmanager
+            cluster: unraid-docker
+            role: Application
+            comments: "Alert routing — internal :9093"
+          - name: syslog-ng
+            cluster: unraid-docker
+            role: Application
+            comments: "Syslog receiver to Loki — {{ ansible_host }}:5514"

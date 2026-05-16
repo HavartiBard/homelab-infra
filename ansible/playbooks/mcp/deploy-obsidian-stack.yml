@@ -29,6 +29,20 @@
       ansible.builtin.include_role:
         name: obsidian-mcp
 
+    - name: Register Obsidian stack in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: couchdb
+            cluster: unraid-docker
+            role: Application
+            comments: "Obsidian LiveSync backend — http://{{ ansible_host }}:5984"
+          - name: obsidian-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Obsidian vault HTTP MCP — http://{{ ansible_host }}:{{ obsidian_mcp_port }}"
+
   post_tasks:
     - name: Display deployment info
       ansible.builtin.debug:

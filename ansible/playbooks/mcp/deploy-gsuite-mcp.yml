@@ -41,6 +41,13 @@
 
   roles:
     - gsuite-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: gsuite-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Google Workspace MCP — http://{{ ansible_host }}:{{ gsuite_mcp_port }}/mcp"
 
   post_tasks:
     - name: Display deployment info

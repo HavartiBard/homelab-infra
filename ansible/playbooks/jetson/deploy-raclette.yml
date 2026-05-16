@@ -26,3 +26,10 @@
   become: false
   roles:
     - jetson-raclette
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: raclette
+            cluster: jetson-docker
+            role: Application
+            comments: "Hermes agent coordinator — http://{{ ansible_host }}:9119"

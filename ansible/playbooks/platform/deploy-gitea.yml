@@ -4,3 +4,10 @@
   gather_facts: false
   roles:
     - gitea
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: gitea
+            cluster: unraid-docker
+            role: Application
+            comments: "Git, Actions, and container registry — https://code.klsll.com"

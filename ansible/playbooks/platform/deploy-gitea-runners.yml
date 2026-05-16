@@ -51,6 +51,13 @@
     timezone: America/Phoenix
   roles:
     - gitea-runner
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: gitea-runner
+            cluster: unraid-docker
+            role: Application
+            comments: "Gitea Actions runners on Unraid — {{ gitea_runner_count }} container(s)"
   post_tasks:
     - name: Display post-deployment instructions
       ansible.builtin.debug:

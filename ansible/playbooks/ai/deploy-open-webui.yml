@@ -59,3 +59,13 @@
       until: health.status == 200
       retries: 12
       delay: 10
+
+    - name: Register Open WebUI in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: open-webui
+            cluster: goudai-docker
+            role: LLM Service
+            comments: "Web UI for LLMs — http://{{ ansible_host }}:8080"
