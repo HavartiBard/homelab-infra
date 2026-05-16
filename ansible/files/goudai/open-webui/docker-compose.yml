@@ -9,8 +9,36 @@ services:
       - "8080:8080"
     volumes:
       - open-webui-data:/app/backend/data
+      - "{{ open_webui_external_files_dir }}:/app/backend/data/uploads-external"
     environment:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OPENAI_API_BASE_URL: "{{ open_webui_openai_api_base_url }}"
+      OPENAI_API_KEY: "{{ open_webui_openai_api_key }}"
+      WEBUI_URL: https://chat.klsll.com
+      ENABLE_SIGNUP: "false"
+      DEFAULT_USER_ROLE: pending
+      ENABLE_COMMUNITY_SHARING: "false"
+      ENABLE_PERSISTENT_CONFIG: "False"
+      ENABLE_WEB_SEARCH: "true"
+      WEB_SEARCH_ENGINE: searxng
+      SEARXNG_QUERY_URL: "{{ open_webui_searxng_query_url }}"
+      WEB_SEARCH_RESULT_COUNT: "5"
+      WEB_LOADER_CONCURRENT_REQUESTS: "5"
+      WEB_FETCH_MAX_CONTENT_LENGTH: "50000"
+      ENABLE_CODE_INTERPRETER: "true"
+      CODE_INTERPRETER_ENGINE: pyodide
+      ENABLE_CODE_EXECUTION: "true"
+      CODE_EXECUTION_ENGINE: pyodide
+      RAG_EMBEDDING_ENGINE: ollama
+      RAG_EMBEDDING_MODEL: nomic-embed-text
+      RAG_TOP_K: "5"
+      ENABLE_RAG_HYBRID_SEARCH: "true"
+      ENABLE_RAG_HYBRID_SEARCH_ENRICHED_TEXTS: "true"
+      RAG_HYBRID_BM25_WEIGHT: "0.5"
+      DEFAULT_MODEL_METADATA: '{"capabilities":{"web_search":true,"code_interpreter":true}}'
+      USER_PERMISSIONS_FEATURES_WEB_SEARCH: "True"
+      USER_PERMISSIONS_FEATURES_CODE_INTERPRETER: "True"
+      USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS: "False"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
