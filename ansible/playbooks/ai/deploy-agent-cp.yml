@@ -246,7 +246,7 @@
           ssl_forced: "{{ npm_host.ssl_forced }}"
           certificate_id: "{{ npm_host.certificate_id }}"
           meta: "{{ npm_host.meta }}"
-          locations: "{{ npm_host.locations }}"
+          locations: "{{ npm_host.locations | default([]) or [] }}"
           advanced_config: "{{ npm_host.advanced_config }}"
         status_code: 200
       when: npm_host is not none and (npm_host.forward_host != agent_cp_ip or npm_host.forward_port != 80)
