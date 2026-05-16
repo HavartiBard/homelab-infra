@@ -13,6 +13,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - agent-cp-net
 
   backend:
     image: code.klsll.com/havartibard/agent-control-plane-backend:latest
@@ -25,21 +27,35 @@ services:
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       SLACK_CHANNEL_ID: ${SLACK_CHANNEL_ID:-C0AU0620ATX}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AGENT_REPO_ROOT: ${AGENT_REPO_ROOT:-/workspace/repo}
+      AGENT_WORKTREE_ROOT: ${AGENT_WORKTREE_ROOT:-/workspace/agents}
+      GITEA_TOKEN: ${GITEA_TOKEN:-}
       SSH_KEY_PATH: /app/ssh/id_ed25519_homelab
       SSH_USER: root
     volumes:
       - /mnt/user/appdata/agent-cp/ssh:/app/ssh:ro
-    ports:
-      - "3100:3100"
+      - /mnt/user/appdata/agent-cp/workspace:/workspace
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - agent-cp-net
 
   web:
     image: code.klsll.com/havartibard/agent-control-plane-web:latest
-    ports:
-      - "3101:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      agent-cp-br0:
+        ipv4_address: ${AGENT_CP_IP:-192.168.21.2}
+      agent-cp-net: {}
+
+networks:
+  agent-cp-net: {}
+  agent-cp-br0:
+    external: true
+    name: br0

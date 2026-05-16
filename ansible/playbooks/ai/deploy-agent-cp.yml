@@ -1,16 +1,22 @@
 ---
 # Deploy agent-control-plane (backend + web + postgres) on Unraid
 #
+# The web container is assigned a dedicated macvlan IP (192.168.21.2) on the br0 network.
+# NPM proxies agent-cp.klsll.com → http://192.168.21.2:80.
+# The backend is internal-only; web nginx handles the API proxy to backend.
+#
 # Prerequisites:
 #   - vault.yml contains vault_agent_cp_* entries
-#   - Images pushed to gitea.klsll.com/havartibard/
+#   - Images pushed to code.klsll.com/havartibard/
+#   - br0 macvlan network exists on Unraid (docker network ls | grep br0)
 #
 # After deployment:
-#   Backend:   http://192.168.20.14:3100/health
-#   Web UI:    http://192.168.20.14:3101
+#   Backend (internal): http://192.168.21.2/api/ (via web nginx proxy)
+#   Web UI (direct):    http://192.168.21.2:80
+#   Web UI (proxied):   https://agent-cp.klsll.com
 #
 # Usage:
-#   ansible-playbook playbooks/misc/deploy-agent-cp.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
+#   ansible-playbook playbooks/ai/deploy-agent-cp.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
 
 - name: Deploy agent-control-plane
   hosts: unraid
@@ -18,10 +24,20 @@
 
   vars:
     agent_cp_dir: /mnt/user/appdata/agent-cp
+    agent_cp_ip: "192.168.21.2"
+    npm_url: "https://npm.klsll.com"
+    npm_email: "{{ vault_npm_admin_username }}"
+    npm_password: "{{ vault_npm_admin_password }}"
+    technitium_url: "http://192.168.20.2:5380"
+    technitium_token: "{{ vault_technitium_api_token }}"
+    dns_zone: "klsll.com"
+    dns_domain: "agent-cp.klsll.com"
+    # DNS A record points to NPM so HTTPS termination works
+    dns_target: "192.168.20.50"
 
   tasks:
     - name: Create appdata directory
-      raw: mkdir -p {{ agent_cp_dir }}
+      raw: mkdir -p {{ agent_cp_dir }}/workspace
 
     - name: Copy docker-compose.yml
       copy:
@@ -39,6 +55,12 @@
           SLACK_APP_TOKEN={{ vault_agent_cp_slack_app_token }}
           SLACK_CHANNEL_ID=C0AU0620ATX
           SECRET_ENCRYPTION_KEY={{ vault_agent_cp_secret_encryption_key }}
+          ANTHROPIC_API_KEY={{ vault_litellm_anthropic_api_key }}
+          OPENAI_API_KEY={{ vault_litellm_openai_api_key }}
+          AGENT_REPO_ROOT=/workspace/repo
+          AGENT_WORKTREE_ROOT=/workspace/agents
+          GITEA_TOKEN={{ vault_gitea_mcp_token }}
+          AGENT_CP_IP={{ agent_cp_ip }}
         dest: "{{ agent_cp_dir }}/.env"
         mode: '0600'
 
@@ -57,10 +79,10 @@
     - name: Start stack
       raw: cd {{ agent_cp_dir }} && docker compose up -d
 
-    - name: Wait for backend health
+    - name: Wait for web to be reachable
       raw: >
         for i in $(seq 1 12); do
-          curl -sf http://localhost:3100/health && exit 0;
+          curl -sf http://{{ agent_cp_ip }}/ && exit 0;
           sleep 5;
         done; exit 1
 
@@ -68,9 +90,170 @@
       debug:
         msg: |
           agent-control-plane deployed successfully!
-          Backend health: http://{{ ansible_host }}:3100/health
-          Web UI:         http://{{ ansible_host }}:3101
-          Logs:           docker compose -f {{ agent_cp_dir }}/docker-compose.yml logs -f
+          Web UI (direct):  http://{{ agent_cp_ip }}/
+          Web UI (proxied): https://{{ dns_domain }}
+          Logs:             docker compose -f {{ agent_cp_dir }}/docker-compose.yml logs -f
+
+    # ── Technitium DNS A record ─────────────────────────────────────────────────
+
+    - name: Check for existing DNS A record
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/get"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ dns_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+        status_code: [200, 404]
+      register: dns_check
+      no_log: true
+      delegate_to: localhost
+      become: false
+
+    - name: Parse existing A record IP
+      ansible.builtin.set_fact:
+        dns_record_ip: >-
+          {{ (dns_check.json.response.records
+              | selectattr('type', 'equalto', 'A')
+              | map(attribute='rData.ipAddress')
+              | list | first) if
+             (dns_check.status == 200 and
+              dns_check.json.status == 'ok' and
+              dns_check.json.response.records | length > 0)
+             else None }}
+      delegate_to: localhost
+      become: false
+
+    - name: Create DNS A record (does not exist yet)
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/add"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ dns_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+          ipAddress: "{{ dns_target }}"
+          ttl: 3600
+        status_code: 200
+      when: dns_record_ip is none
+      no_log: true
+      delegate_to: localhost
+      become: false
+
+    - name: Update DNS A record (IP mismatch)
+      ansible.builtin.uri:
+        url: "{{ technitium_url }}/api/zones/records/update"
+        method: GET
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_token }}"
+          domain: "{{ dns_domain }}"
+          zone: "{{ dns_zone }}"
+          type: A
+          ipAddress: "{{ dns_record_ip }}"
+          newIpAddress: "{{ dns_target }}"
+          ttl: 3600
+        status_code: 200
+      when: dns_record_ip is not none and dns_record_ip != dns_target
+      no_log: true
+      delegate_to: localhost
+      become: false
+
+    # ── NPM proxy host ──────────────────────────────────────────────────────────
+
+    - name: Authenticate with NPM API
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/tokens"
+        method: POST
+        body_format: json
+        body:
+          identity: "{{ npm_email }}"
+          secret: "{{ npm_password }}"
+        status_code: 200
+      register: npm_auth
+      no_log: true
+      delegate_to: localhost
+      become: false
+
+    - name: List all NPM proxy hosts
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        status_code: 200
+      register: npm_hosts
+      delegate_to: localhost
+      become: false
+
+    - name: Find existing proxy host for {{ dns_domain }}
+      ansible.builtin.set_fact:
+        npm_host: >-
+          {{ npm_hosts.json |
+             selectattr('domain_names', 'contains', dns_domain) |
+             list | first | default(None) }}
+      delegate_to: localhost
+      become: false
+
+    - name: Create NPM proxy host (does not exist yet)
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        body_format: json
+        body:
+          domain_names: ["{{ dns_domain }}"]
+          forward_scheme: http
+          forward_host: "{{ agent_cp_ip }}"
+          forward_port: 80
+          caching_enabled: false
+          block_exploits: true
+          allow_websocket_upgrade: true
+          http2_support: true
+          ssl_forced: true
+          hsts_enabled: true
+          hsts_subdomains: false
+          certificate_id: 3
+          locations: []
+          advanced_config: ""
+          meta: {}
+        status_code: 201
+      when: npm_host is none
+      delegate_to: localhost
+      become: false
+
+    - name: Update NPM proxy forward target (already exists)
+      ansible.builtin.uri:
+        url: "{{ npm_url }}/api/nginx/proxy-hosts/{{ npm_host.id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ npm_auth.json.token }}"
+        body_format: json
+        body:
+          domain_names: "{{ npm_host.domain_names }}"
+          forward_scheme: "{{ npm_host.forward_scheme }}"
+          forward_host: "{{ agent_cp_ip }}"
+          forward_port: 80
+          caching_enabled: "{{ npm_host.caching_enabled }}"
+          block_exploits: "{{ npm_host.block_exploits }}"
+          allow_websocket_upgrade: "{{ npm_host.allow_websocket_upgrade }}"
+          http2_support: "{{ npm_host.http2_support }}"
+          ssl_forced: "{{ npm_host.ssl_forced }}"
+          certificate_id: "{{ npm_host.certificate_id }}"
+          meta: "{{ npm_host.meta }}"
+          locations: "{{ npm_host.locations }}"
+          advanced_config: "{{ npm_host.advanced_config }}"
+        status_code: 200
+      when: npm_host is not none and (npm_host.forward_host != agent_cp_ip or npm_host.forward_port != 80)
+      delegate_to: localhost
+      become: false
+
+    # ── NetBox registration ─────────────────────────────────────────────────────
 
     - name: Register agent-control-plane in NetBox
       ansible.builtin.include_role:
@@ -80,4 +263,7 @@
           - name: agent-cp
             cluster: unraid-docker
             role: Application
-            comments: "LLM agent dashboard and approvals — API http://{{ ansible_host }}:3100, UI http://{{ ansible_host }}:3101"
+            platform: Docker
+            primary_ip4: "{{ agent_cp_ip }}/23"
+            dns_name: "{{ dns_domain }}"
+            comments: "LLM agent dashboard + approvals — https://{{ dns_domain }} / http://{{ agent_cp_ip }}"
