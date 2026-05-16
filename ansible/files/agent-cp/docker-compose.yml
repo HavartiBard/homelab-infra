@@ -50,14 +50,3 @@ services:
     image: code.klsll.com/havartibard/agent-control-plane-web:latest
     depends_on:
       - backend
-    restart: unless-stopped
-    networks:
-      agent-cp-br0:
-        ipv4_address: ${AGENT_CP_IP:-192.168.21.2}
-      agent-cp-net: {}
-
-networks:
-  agent-cp-net: {}
-  agent-cp-br0:
-    external: true
-    name: br0
