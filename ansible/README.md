@@ -170,6 +170,49 @@ ansible-playbook playbooks/platform/deploy-sprite-smith.yml
 **Target:** 192.168.20.14:3001
 **ComfyUI:** `http://spraycheese.lab.klsll.com:8188`
 
+### deploy-personal-agent-llm.yml
+
+Deploys a dedicated Qwen3.6 MTP `llama-server` endpoint on goudai for personal coding agents. This is separate from native Ollama, which remains focused on Open WebUI.
+
+```bash
+ansible-playbook playbooks/ai/deploy-personal-agent-llm.yml --limit goudai -v
+```
+
+**Target:** 192.168.20.150:8010/v1
+**Model:** `ggml-org/Qwen3.6-27B-MTP-GGUF:BF16`
+**LiteLLM alias:** `qwen/qwen3.6-27b-mtp`
+
+### deploy-phoenix.yml
+
+Deploys Arize Phoenix on Unraid for LLM traces, datasets, experiments, and eval score history.
+
+```bash
+ansible-playbook playbooks/ai/deploy-phoenix.yml --limit unraid -v
+```
+
+**Target:** 192.168.20.14:6006
+**OTLP gRPC:** 192.168.20.14:4317
+
+### deploy-promptfoo.yml
+
+Deploys Promptfoo on Unraid for custom prompt/model/use-case comparison runs.
+
+```bash
+ansible-playbook playbooks/ai/deploy-promptfoo.yml --limit unraid -v
+```
+
+**Target:** 192.168.20.14:15500
+
+### deploy-lm-eval-harness.yml
+
+Deploys a persistent EleutherAI lm-evaluation-harness runner on Unraid for standardized model/settings baselines. It exposes no host port; configs, results, and cache live under `/mnt/user/appdata/lm-eval-harness`.
+
+```bash
+ansible-playbook playbooks/ai/deploy-lm-eval-harness.yml --limit unraid -v
+```
+
+**Runner:** `docker exec -it lm-eval-harness bash`
+
 ### 1Password item naming (avoid breakage)
 
 Playbooks and roles assume stable 1Password item names but only consume them via env or pre-populated vault values. Keep these items consistent so the sync helper can populate vault vars:
@@ -229,6 +272,9 @@ Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.templ
 | `onepassword-mcp` | 1Password secrets MCP server | Env vars only |
 | `unraid-mcp` | Unraid GraphQL management MCP server | Env vars only |
 | `searxng-mcp` | Deploy SearXNG metasearch engine + MCP adapter | unraid |
+| `phoenix` | Arize Phoenix LLM observability and eval store | unraid |
+| `promptfoo` | Promptfoo custom model/prompt comparison UI | unraid |
+| `lm-eval-harness` | EleutherAI benchmark runner for model/settings baselines | unraid |
 
 **Note:** Uses `raw` commands since Unraid lacks Python.
 
