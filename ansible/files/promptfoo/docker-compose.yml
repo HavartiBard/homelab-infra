@@ -1,0 +1,23 @@
+services:
+  promptfoo:
+    image: "{{ promptfoo_image }}"
+    container_name: promptfoo
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/promptfoo.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ promptfoo_port }}"
+    environment:
+      TZ: America/Phoenix
+      PROMPTFOO_CONFIG_DIR: /home/promptfoo/.promptfoo
+      PROMPTFOO_SHARE_CHUNK_SIZE: "{{ promptfoo_share_chunk_size }}"
+      PROMPTFOO_DISABLE_TELEMETRY: "{{ promptfoo_telemetry_disabled }}"
+    ports:
+      - "{{ promptfoo_port }}:{{ promptfoo_container_port }}"
+    volumes:
+      - "{{ promptfoo_appdata }}:/home/promptfoo/.promptfoo"
+    networks:
+      - promptfoo-net
+
+networks:
+  promptfoo-net:
+    name: promptfoo-net

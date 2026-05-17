@@ -42,6 +42,15 @@ This document lists all ports used by homelab stacks with access requirements.
 | **Ollama** | 11434 | TCP | 🔒 LAN-Only | LLM API endpoint |
 | **Open WebUI** | 8080 | TCP | 🌐 Proxied | Chat interface |
 
+## AI Evaluation Stack
+
+| Service | Port | Protocol | Access | Description |
+|---------|------|----------|--------|-------------|
+| **Phoenix** | 6006 | TCP/HTTP | 🔒 LAN-Only | Arize Phoenix UI, HTTP traces, datasets, experiments, and eval scores |
+| Phoenix | 4317 | TCP/gRPC | 🔒 LAN-Only | OTLP gRPC trace ingestion |
+| **Promptfoo** | 15500 | TCP/HTTP | 🔒 LAN-Only | Prompt/model comparison UI and custom eval history |
+| **lm-eval-harness** | — | — | 🔒 LAN-Only | Standardized benchmark runner; no host port exposed |
+
 ## Dev Environment (macvlan)
 
 | Service | Port | Protocol | Access | Description |

@@ -1,0 +1,34 @@
+---
+# Deploy Promptfoo on Unraid.
+#
+# Promptfoo stores custom eval runs for model, prompt, RAG, and agent behavior
+# comparisons.
+#
+# Usage:
+#   ansible-playbook playbooks/ai/deploy-promptfoo.yml --syntax-check
+#   ansible-playbook playbooks/ai/deploy-promptfoo.yml --check --diff --limit unraid
+#   ansible-playbook playbooks/ai/deploy-promptfoo.yml --diff --limit unraid -v
+
+- name: Deploy Promptfoo
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: promptfoo
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: promptfoo
+            cluster: unraid-docker
+            role: LLM Evaluation
+            comments: "Promptfoo custom eval UI — http://{{ ansible_host }}:{{ promptfoo_port }}"
+
+  post_tasks:
+    - name: Display Promptfoo deployment info
+      ansible.builtin.debug:
+        msg: |
+          Promptfoo deployed successfully.
+          Web UI:  http://{{ ansible_host }}:{{ promptfoo_port }}
+          Data:    {{ promptfoo_appdata }}
+          Logs:    docker logs promptfoo -f
+          Restart: cd {{ promptfoo_compose_dir }} && docker compose restart
