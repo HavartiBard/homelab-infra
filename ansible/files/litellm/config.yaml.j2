@@ -11,6 +11,11 @@ model_list:
     litellm_params:
       model: ollama/llama3.1:8b
       api_base: http://192.168.20.154:11434
+  - model_name: qwen/qwen3.6-27b-mtp
+    litellm_params:
+      model: openai/qwen/qwen3.6-27b-mtp
+      api_base: http://192.168.20.150:8010/v1
+      api_key: "llama.cpp"
 
 general_settings:
   master_key: "{{ vault_litellm_master_key }}"

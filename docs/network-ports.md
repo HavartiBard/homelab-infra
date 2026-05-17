@@ -41,6 +41,7 @@ This document lists all ports used by homelab stacks with access requirements.
 |---------|------|----------|--------|-------------|
 | **Ollama** | 11434 | TCP | 🔒 LAN-Only | LLM API endpoint |
 | **Open WebUI** | 8080 | TCP | 🌐 Proxied | Chat interface |
+| **Personal Agent LLM** | 8010 | TCP | 🔒 LAN-Only | OpenAI-compatible llama.cpp endpoint for coding agents |
 
 ## AI Evaluation Stack
 

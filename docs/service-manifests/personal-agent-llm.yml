@@ -1,0 +1,27 @@
+# Personal Agent LLM — service manifest
+# Phase 1 produced by: Codex
+# Date: 2026-05-16
+
+service:
+  name: personal-agent-llm
+  display_name: "Personal Agent LLM"
+  description: "Dedicated Qwen3.6 MTP llama.cpp endpoint for personal coding agents"
+  class: utility
+  host: goudai
+
+networking:
+  port: 8010
+  shared_ip: true
+
+container:
+  image: "native-systemd:/usr/local/bin/llama-server"
+  interactive_shell: false
+  stateful: true
+  unraid_icon_url: ""
+
+model:
+  repo: "ggml-org/Qwen3.6-27B-MTP-GGUF"
+  quant: "BF16"
+  alias: "qwen/qwen3.6-27b-mtp"
+  context_tokens: 65536
+  max_output_tokens: 32768
