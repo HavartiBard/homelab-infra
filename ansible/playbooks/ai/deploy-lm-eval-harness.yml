@@ -20,7 +20,7 @@
         netbox_services:
           - name: lm-eval-harness
             cluster: unraid-docker
-            role: LLM Evaluation
+            role: LLM Service
             comments: "EleutherAI lm-evaluation-harness runner; configs/results in {{ lm_eval_harness_appdata }}"
 
   post_tasks:

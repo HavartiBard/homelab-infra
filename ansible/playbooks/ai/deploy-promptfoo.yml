@@ -20,7 +20,7 @@
         netbox_services:
           - name: promptfoo
             cluster: unraid-docker
-            role: LLM Evaluation
+            role: LLM Service
             comments: "Promptfoo custom eval UI — http://{{ ansible_host }}:{{ promptfoo_port }}"
 
   post_tasks:
