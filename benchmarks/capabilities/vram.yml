@@ -1,0 +1,15 @@
+capability:
+  id: vram
+  name: VRAM Footprint
+  category: efficiency
+  description: AMD GPU memory consumed during the run, from Prometheus sysfs metrics.
+  probe:
+    type: prometheus_window
+    queries:
+      vram_gb_peak:    'max_over_time(goudai_gpu_vram_used_bytes{instance="goudai:9100"}[$duration]) / 1e9'
+      vram_gb_steady:  'avg_over_time(goudai_gpu_vram_used_bytes{instance="goudai:9100"}[$duration]) / 1e9'
+      gpu_busy_pct:    'avg_over_time(goudai_gpu_busy_percent{instance="goudai:9100"}[$duration])'
+  outputs:
+    - { id: vram_gb_peak,   unit: GB,      direction: lower_is_better }
+    - { id: vram_gb_steady, unit: GB,      direction: lower_is_better }
+    - { id: gpu_busy_pct,   unit: percent, direction: neutral }

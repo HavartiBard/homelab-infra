@@ -1,0 +1,13 @@
+suite:
+  id: tier1
+  name: Tier 1 Baseline
+  capabilities: [ttft, throughput, vram, arc_challenge, gsm8k, humaneval, ifeval]
+  aggregates:
+    quality_avg:
+      type: mean
+      inputs: [arc_challenge_acc, gsm8k_strict_match, humaneval_pass1, ifeval_strict_acc]
+    speed_score:
+      type: weighted
+      inputs:
+        ttft_p95_ms:           { weight: 0.5, transform: { type: cliff_inverse,   cliff: 5000 } }
+        decode_tokens_per_sec: { weight: 0.5, transform: { type: cliff_normalize, cliff: 100  } }
