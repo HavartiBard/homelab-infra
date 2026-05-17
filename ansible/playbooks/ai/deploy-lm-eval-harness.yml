@@ -1,0 +1,35 @@
+---
+# Deploy EleutherAI lm-evaluation-harness runner on Unraid.
+#
+# This is a persistent utility container for standardized model/settings
+# baselines. It does not expose a UI or host port.
+#
+# Usage:
+#   ansible-playbook playbooks/ai/deploy-lm-eval-harness.yml --syntax-check
+#   ansible-playbook playbooks/ai/deploy-lm-eval-harness.yml --check --diff --limit unraid
+#   ansible-playbook playbooks/ai/deploy-lm-eval-harness.yml --diff --limit unraid -v
+
+- name: Deploy lm-eval-harness
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: lm-eval-harness
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: lm-eval-harness
+            cluster: unraid-docker
+            role: LLM Evaluation
+            comments: "EleutherAI lm-evaluation-harness runner; configs/results in {{ lm_eval_harness_appdata }}"
+
+  post_tasks:
+    - name: Display lm-eval-harness deployment info
+      ansible.builtin.debug:
+        msg: |
+          lm-eval-harness deployed successfully.
+          Container: lm-eval-harness
+          Configs:   {{ lm_eval_harness_configs_dir }}
+          Results:   {{ lm_eval_harness_results_dir }}
+          Cache:     {{ lm_eval_harness_cache_dir }}
+          Shell:     docker exec -it lm-eval-harness bash

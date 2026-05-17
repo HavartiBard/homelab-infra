@@ -1,0 +1,24 @@
+# Phoenix — service manifest
+# Phase 1 produced by: Codex
+# Date: 2026-05-16
+
+service:
+  name: phoenix
+  display_name: "Phoenix"
+  description: "Arize Phoenix LLM trace, dataset, experiment, and eval score store"
+  class: utility
+  host: unraid
+
+networking:
+  port: 6006
+  shared_ip: true
+
+container:
+  image: "arizephoenix/phoenix:latest"
+  interactive_shell: false
+  stateful: true
+  unraid_icon_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/arize.png"
+
+ports:
+  http: 6006
+  otlp_grpc: 4317

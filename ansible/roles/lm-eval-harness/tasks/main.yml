@@ -1,0 +1,59 @@
+---
+# Using raw commands throughout — Unraid has no Python.
+
+- name: Ensure lm-eval-harness appdata directories exist
+  ansible.builtin.raw: |
+    mkdir -p {{ lm_eval_harness_results_dir }} {{ lm_eval_harness_configs_dir }} {{ lm_eval_harness_cache_dir }}
+  changed_when: false
+
+- name: Ensure lm-eval-harness compose directory exists
+  ansible.builtin.raw: mkdir -p {{ lm_eval_harness_compose_dir }}
+  changed_when: false
+
+- name: Generate lm-eval-harness docker-compose.yml content
+  ansible.builtin.set_fact:
+    _lm_eval_harness_compose_content: "{{ lookup('template', playbook_dir + '/../../files/lm-eval-harness/docker-compose.yml') }}"
+
+- name: Generate lm-eval-harness Dockerfile content
+  ansible.builtin.set_fact:
+    _lm_eval_harness_dockerfile_content: "{{ lookup('file', playbook_dir + '/../../files/lm-eval-harness/Dockerfile') }}"
+
+- name: Generate lm-eval-harness runner README content
+  ansible.builtin.set_fact:
+    _lm_eval_harness_readme_content: "{{ lookup('file', playbook_dir + '/../../files/lm-eval-harness/RUNS.md') }}"
+
+- name: Write lm-eval-harness docker-compose.yml
+  ansible.builtin.raw: |
+    cat > {{ lm_eval_harness_compose_dir }}/docker-compose.yml << 'EOFCOMPOSE'
+    {{ _lm_eval_harness_compose_content }}
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Write lm-eval-harness Dockerfile
+  ansible.builtin.raw: |
+    cat > {{ lm_eval_harness_compose_dir }}/Dockerfile << 'EOFDOCKER'
+    {{ _lm_eval_harness_dockerfile_content }}
+    EOFDOCKER
+  changed_when: true
+
+- name: Write lm-eval-harness run notes
+  ansible.builtin.raw: |
+    cat > {{ lm_eval_harness_configs_dir }}/RUNS.md << 'EOFRUNS'
+    {{ _lm_eval_harness_readme_content }}
+    EOFRUNS
+  changed_when: true
+
+- name: Build lm-eval-harness image
+  ansible.builtin.raw: |
+    cd {{ lm_eval_harness_compose_dir }} && docker compose build
+  changed_when: true
+  tags: [image]
+
+- name: Deploy lm-eval-harness runner
+  ansible.builtin.raw: |
+    cd {{ lm_eval_harness_compose_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Verify lm-eval-harness command is available
+  ansible.builtin.raw: docker exec lm-eval-harness lm_eval --help >/dev/null
+  changed_when: false

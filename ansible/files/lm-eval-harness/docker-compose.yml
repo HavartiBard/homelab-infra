@@ -1,0 +1,24 @@
+services:
+  lm-eval-harness:
+    build:
+      context: .
+    image: "{{ lm_eval_harness_image }}"
+    container_name: lm-eval-harness
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/hugging-face.png"
+    environment:
+      TZ: America/Phoenix
+      HF_HOME: "{{ lm_eval_harness_hf_home }}"
+      LM_HARNESS_CACHE_PATH: "{{ lm_eval_harness_lm_cache_path }}"
+    volumes:
+      - "{{ lm_eval_harness_results_dir }}:/results"
+      - "{{ lm_eval_harness_configs_dir }}:/configs"
+      - "{{ lm_eval_harness_cache_dir }}:/cache"
+    networks:
+      - lm-eval-harness-net
+    command: ["sleep", "infinity"]
+
+networks:
+  lm-eval-harness-net:
+    name: lm-eval-harness-net

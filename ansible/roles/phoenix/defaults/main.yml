@@ -1,0 +1,9 @@
+---
+phoenix_image: "arizephoenix/phoenix:latest"
+phoenix_port: 6006
+phoenix_grpc_port: 4317
+phoenix_appdata: "/mnt/user/appdata/phoenix"
+phoenix_compose_dir: "/opt/docker/phoenix"
+phoenix_working_dir: "/mnt/data"
+phoenix_telemetry_enabled: "false"
+phoenix_allow_external_resources: "false"
