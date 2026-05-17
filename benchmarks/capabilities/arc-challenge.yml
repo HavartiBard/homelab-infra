@@ -1,0 +1,12 @@
+capability:
+  id: arc_challenge
+  name: ARC-Challenge
+  category: reasoning
+  description: Reasoning benchmark via lm-evaluation-harness.
+  probe:
+    type: lm_eval_harness
+    task: arc_challenge
+    num_fewshot: 0
+    batch_size: auto
+  outputs:
+    - { id: arc_challenge_acc, unit: accuracy, direction: higher_is_better }

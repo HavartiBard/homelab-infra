@@ -1,0 +1,12 @@
+capability:
+  id: ttft
+  name: Time to First Token
+  category: speed
+  description: Streaming latency from request to first token (50-prompt sample).
+  probe:
+    type: latency
+    fixture: fixtures/latency-prompts.jsonl
+    sample_size: 50
+  outputs:
+    - { id: ttft_p50_ms, unit: ms, direction: lower_is_better }
+    - { id: ttft_p95_ms, unit: ms, direction: lower_is_better }
