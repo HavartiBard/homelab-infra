@@ -1,0 +1,11 @@
+app:
+  access_token: ""
+  
+server:
+  address: "0.0.0.0:4433"
+  base_url: "https://search.klsll.com"
+
+# External search fallback - when Hister doesn't have results
+external_search:
+  url: "http://192.168.20.14:6979/search?q=<query>&format=json"
+  engine: "searxng"

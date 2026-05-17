@@ -13,6 +13,19 @@
   ansible.builtin.set_fact:
     _hister_compose_content: "{{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}"
 
+- name: Generate Hister config file content
+  ansible.builtin.set_fact:
+    _hister_config_content: "{{ lookup('file', playbook_dir + '/../../files/hister/config.yml') }}"
+
+- name: Write Hister config file
+  ansible.builtin.raw: |
+    cat > {{ hister_appdata }}/data/config.yml << 'EOFCONFIG'
+    {{ _hister_config_content }}
+    EOFCONFIG
+    chown 1000:1000 {{ hister_appdata }}/data/config.yml
+    chmod 0644 {{ hister_appdata }}/data/config.yml
+  changed_when: false
+
 - name: Write docker-compose.yml
   ansible.builtin.raw: |
     cat > {{ hister_compose_dir }}/docker-compose.yml << 'EOFCOMPOSE'
