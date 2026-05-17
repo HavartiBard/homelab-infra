@@ -1,0 +1,35 @@
+---
+# Deploy Arize Phoenix on Unraid.
+#
+# Phoenix stores LLM traces, datasets, experiments, and eval scores for agent
+# self-improvement workflows.
+#
+# Usage:
+#   ansible-playbook playbooks/ai/deploy-phoenix.yml --syntax-check
+#   ansible-playbook playbooks/ai/deploy-phoenix.yml --check --diff --limit unraid
+#   ansible-playbook playbooks/ai/deploy-phoenix.yml --diff --limit unraid -v
+
+- name: Deploy Phoenix
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: phoenix
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: phoenix
+            cluster: unraid-docker
+            role: LLM Service
+            comments: "Arize Phoenix traces/evals — http://{{ ansible_host }}:{{ phoenix_port }}"
+
+  post_tasks:
+    - name: Display Phoenix deployment info
+      ansible.builtin.debug:
+        msg: |
+          Phoenix deployed successfully.
+          UI / HTTP OTLP: http://{{ ansible_host }}:{{ phoenix_port }}
+          gRPC OTLP:      {{ ansible_host }}:{{ phoenix_grpc_port }}
+          Data:           {{ phoenix_appdata }}
+          Logs:           docker logs phoenix -f
+          Restart:        cd {{ phoenix_compose_dir }} && docker compose restart

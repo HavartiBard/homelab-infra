@@ -1,0 +1,26 @@
+services:
+  phoenix:
+    image: "{{ phoenix_image }}"
+    container_name: phoenix
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/arize.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ phoenix_port }}"
+    environment:
+      TZ: America/Phoenix
+      PHOENIX_PORT: "{{ phoenix_port }}"
+      PHOENIX_GRPC_PORT: "{{ phoenix_grpc_port }}"
+      PHOENIX_WORKING_DIR: "{{ phoenix_working_dir }}"
+      PHOENIX_TELEMETRY_ENABLED: "{{ phoenix_telemetry_enabled }}"
+      PHOENIX_ALLOW_EXTERNAL_RESOURCES: "{{ phoenix_allow_external_resources }}"
+    ports:
+      - "{{ phoenix_port }}:{{ phoenix_port }}"
+      - "{{ phoenix_grpc_port }}:{{ phoenix_grpc_port }}"
+    volumes:
+      - "{{ phoenix_appdata }}:{{ phoenix_working_dir }}"
+    networks:
+      - phoenix-net
+
+networks:
+  phoenix-net:
+    name: phoenix-net

@@ -1,0 +1,9 @@
+---
+lm_eval_harness_image: "homelab/lm-eval-harness:latest"
+lm_eval_harness_appdata: "/mnt/user/appdata/lm-eval-harness"
+lm_eval_harness_compose_dir: "/opt/docker/lm-eval-harness"
+lm_eval_harness_results_dir: "{{ lm_eval_harness_appdata }}/results"
+lm_eval_harness_configs_dir: "{{ lm_eval_harness_appdata }}/configs"
+lm_eval_harness_cache_dir: "{{ lm_eval_harness_appdata }}/cache"
+lm_eval_harness_hf_home: "/cache/huggingface"
+lm_eval_harness_lm_cache_path: "/cache/lm-eval"
