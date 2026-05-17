@@ -1,0 +1,45 @@
+[Unit]
+Description=Personal Agent LLM (Qwen3.6 MTP via llama.cpp)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ personal_agent_llm_user }}
+Group={{ personal_agent_llm_user }}
+WorkingDirectory={{ personal_agent_llm_runtime_dir }}
+Environment=HOME=/home/{{ personal_agent_llm_user }}
+Environment=HF_HOME={{ personal_agent_llm_cache_dir }}
+Environment=HF_HUB_CACHE={{ personal_agent_llm_cache_dir }}/hub
+Environment=LLAMA_LOG_LEVEL={{ personal_agent_llm_log_level }}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart={{ personal_agent_llm_binary }} \
+  --host {{ personal_agent_llm_host }} \
+  --port {{ personal_agent_llm_port }} \
+  -hf {{ personal_agent_llm_model_ref }} \
+  --alias {{ personal_agent_llm_model_alias }} \
+  --jinja \
+  -ngl {{ personal_agent_llm_gpu_layers }} \
+  -fa on \
+  -sm row \
+  --ctx-size {{ personal_agent_llm_ctx_size }} \
+  --predict {{ personal_agent_llm_predict }} \
+  --parallel {{ personal_agent_llm_parallel }} \
+  --threads {{ personal_agent_llm_threads }} \
+  {% if personal_agent_llm_metrics_enabled | bool %}--metrics \
+  {% endif %}--slots \
+  --temp {{ personal_agent_llm_temp }} \
+  --top-k {{ personal_agent_llm_top_k }} \
+  --top-p {{ personal_agent_llm_top_p }} \
+  --min-p {{ personal_agent_llm_min_p }}{% if personal_agent_llm_cache_type_k is defined and personal_agent_llm_cache_type_k %} \
+  --cache-type-k {{ personal_agent_llm_cache_type_k }} \
+  --cache-type-v {{ personal_agent_llm_cache_type_v }}{% endif %}{% if personal_agent_llm_speculative_enabled | bool %} \
+  --spec-type {{ personal_agent_llm_spec_type }} \
+  --spec-draft-n-max {{ personal_agent_llm_spec_draft_n_max }}{% endif %}
+
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

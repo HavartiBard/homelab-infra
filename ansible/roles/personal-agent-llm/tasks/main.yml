@@ -1,0 +1,100 @@
+---
+- name: Verify llama-server is installed
+  ansible.builtin.stat:
+    path: "{{ personal_agent_llm_binary }}"
+  register: personal_agent_llm_binary_stat
+
+- name: Fail if llama-server is missing
+  ansible.builtin.fail:
+    msg: >
+      {{ personal_agent_llm_binary }} is missing. Run
+      ansible-playbook playbooks/bootstrap/setup-goudai-host.yml --limit goudai
+      first, or rebuild llama.cpp with -e llama_cpp_force_rebuild=true.
+  when: not personal_agent_llm_binary_stat.stat.exists
+
+- name: Ensure runtime directory exists
+  ansible.builtin.file:
+    path: "{{ personal_agent_llm_runtime_dir }}"
+    state: directory
+    owner: "{{ personal_agent_llm_user }}"
+    group: "{{ personal_agent_llm_user }}"
+    mode: '0755'
+
+- name: Ensure model cache directory exists
+  ansible.builtin.file:
+    path: "{{ personal_agent_llm_cache_dir }}"
+    state: directory
+    owner: "{{ personal_agent_llm_user }}"
+    group: "{{ personal_agent_llm_user }}"
+    mode: '0755'
+
+- name: Ensure node_exporter textfile collector directory exists
+  ansible.builtin.file:
+    path: "{{ node_exporter_textfile_dir | default('/var/lib/node_exporter/textfile_collector') }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy goudai LLM metrics collector
+  ansible.builtin.template:
+    src: goudai-llm-metrics.py.j2
+    dest: /usr/local/bin/goudai-llm-metrics
+    mode: '0755'
+
+- name: Deploy goudai LLM metrics systemd service
+  ansible.builtin.template:
+    src: goudai-llm-metrics.service.j2
+    dest: /etc/systemd/system/goudai-llm-metrics.service
+    mode: '0644'
+
+- name: Deploy goudai LLM metrics systemd timer
+  ansible.builtin.template:
+    src: goudai-llm-metrics.timer.j2
+    dest: /etc/systemd/system/goudai-llm-metrics.timer
+    mode: '0644'
+
+- name: Enable and start goudai LLM metrics timer
+  ansible.builtin.systemd:
+    name: goudai-llm-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Deploy personal-agent-llm systemd service
+  ansible.builtin.template:
+    src: personal-agent-llm.service.j2
+    dest: /etc/systemd/system/personal-agent-llm.service
+    mode: '0644'
+  notify: Restart personal-agent-llm
+
+- name: Enable and start personal-agent-llm
+  ansible.builtin.systemd:
+    name: personal-agent-llm
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Wait for personal-agent-llm OpenAI API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ personal_agent_llm_port }}/v1/models"
+    method: GET
+    status_code: 200
+  register: personal_agent_llm_health
+  until: personal_agent_llm_health.status == 200
+  retries: "{{ personal_agent_llm_health_retries }}"
+  delay: "{{ personal_agent_llm_health_delay }}"
+  when:
+    - not ansible_check_mode
+    - personal_agent_llm_wait_for_health | bool
+
+- name: Register personal-agent-llm in NetBox
+  ansible.builtin.include_role:
+    name: netbox-service
+  vars:
+    netbox_services:
+      - name: personal-agent-llm
+        cluster: goudai-docker
+        role: LLM Service
+        comments: "Qwen3.6 27B MTP via llama.cpp — http://{{ ansible_host }}:{{ personal_agent_llm_port }}/v1"
+  when: not ansible_check_mode

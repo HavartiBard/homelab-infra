@@ -1,0 +1,23 @@
+---
+# =============================================================================
+# Deploy Personal Agent LLM on goudai
+#
+# Dedicated OpenAI-compatible llama.cpp endpoint for personal coding agents.
+# Ollama stays available for Open WebUI on port 11434.
+#
+# Run:
+#   ansible-playbook playbooks/ai/deploy-personal-agent-llm.yml \
+#     --limit goudai -v
+#
+# Optional upstream-supported speculative decoding is enabled by default
+# for the MTP model. Override `personal_agent_llm_speculative_enabled=false`
+# if you need to disable it temporarily.
+# =============================================================================
+
+- name: Deploy Personal Agent LLM
+  hosts: goudai
+  become: true
+  gather_facts: true
+
+  roles:
+    - personal-agent-llm
