@@ -4,6 +4,7 @@ import pytest
 
 from bench.store import RunRecord, append_run
 from bench.dashboard.leaderboard import runs_to_dataframe_rows
+from bench.dashboard.logs import read_log_tail
 
 
 def _make_record(uuid: str, model: str, scores: dict) -> RunRecord:
@@ -47,3 +48,24 @@ def test_runs_to_dataframe_renders_null_as_none(tmp_path):
     append_run(runs_path, _make_record("a", "m", {"ttft_p95_ms": None}))
     rows = runs_to_dataframe_rows(runs_path)
     assert rows[0]["ttft_p95_ms"] is None
+
+
+def test_read_log_tail_missing_file_returns_empty(tmp_path):
+    lines, total = read_log_tail(tmp_path / "nope.log", 10)
+    assert lines == []
+    assert total == 0
+
+
+def test_read_log_tail_returns_last_n_lines(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("\n".join(f"line {i}" for i in range(100)) + "\n")
+    lines, total = read_log_tail(log, 10)
+    assert lines == [f"line {i}" for i in range(90, 100)]
+    assert total > 0
+
+
+def test_read_log_tail_n_larger_than_file_returns_all(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("a\nb\nc\n")
+    lines, _ = read_log_tail(log, 1000)
+    assert lines == ["a", "b", "c"]
