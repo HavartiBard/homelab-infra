@@ -1,0 +1,35 @@
+---
+personal_agent_llm_user: james
+personal_agent_llm_port: 8010
+personal_agent_llm_host: "0.0.0.0"
+
+personal_agent_llm_binary: /usr/local/bin/llama-server
+personal_agent_llm_model_repo: "ggml-org/Qwen3.6-27B-MTP-GGUF"
+personal_agent_llm_model_quant: "BF16"
+personal_agent_llm_model_ref: "{{ personal_agent_llm_model_repo }}:{{ personal_agent_llm_model_quant }}"
+personal_agent_llm_model_alias: "qwen/qwen3.6-27b-mtp"
+
+personal_agent_llm_ctx_size: 131072
+personal_agent_llm_predict: 32768
+personal_agent_llm_gpu_layers: 99
+personal_agent_llm_parallel: 1
+personal_agent_llm_threads: "{{ ansible_processor_vcpus | default(16) }}"
+personal_agent_llm_temp: "1.0"
+personal_agent_llm_top_k: 40
+personal_agent_llm_top_p: "0.95"
+personal_agent_llm_min_p: "0"
+
+personal_agent_llm_runtime_dir: /var/lib/personal-agent-llm
+personal_agent_llm_cache_dir: "{{ personal_agent_llm_runtime_dir }}/huggingface"
+personal_agent_llm_log_level: info
+personal_agent_llm_wait_for_health: true
+personal_agent_llm_health_retries: 180
+personal_agent_llm_health_delay: 10
+personal_agent_llm_metrics_enabled: true
+
+# llama.cpp MTP support (PR #22673 and newer)
+personal_agent_llm_speculative_enabled: true
+personal_agent_llm_spec_type: draft-mtp
+personal_agent_llm_spec_draft_n_max: 5
+personal_agent_llm_cache_type_k: q8_0
+personal_agent_llm_cache_type_v: q8_0
