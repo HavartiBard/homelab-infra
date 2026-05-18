@@ -171,24 +171,28 @@ class TestDispatchProbe:
         probe = LatencyProbe(type="latency", fixture="fake.jsonl", sample_size=1)
         with patch("bench.probes.latency.run_latency_probe") as mock:
             mock.return_value = {"ttft_p50_ms": 100.0}
-            result = _dispatch_probe(
+            scores, artifacts = _dispatch_probe(
                 probe, "http://test", model="m", api_key="",
                 root=tmp_path, run_dir=tmp_path,
                 prom_start=None, prom_end=None,
             )
-            assert result == {"ttft_p50_ms": 100.0}
+            assert scores == {"ttft_p50_ms": 100.0}
+            assert artifacts == {}
             mock.assert_called_once()
 
     def test_dispatch_lm_eval_probe(self, tmp_path):
         probe = LmEvalProbe(type="lm_eval_harness", task="arc_challenge")
         with patch("bench.probes.lm_eval.run_lm_eval_probe") as mock:
             mock.return_value = {"arc_challenge_acc": 0.5}
-            result = _dispatch_probe(
+            scores, artifacts = _dispatch_probe(
                 probe, "http://test", model="m", api_key="",
                 root=tmp_path, run_dir=tmp_path,
                 prom_start=None, prom_end=None,
             )
-            assert result == {"arc_challenge_acc": 0.5}
+            assert scores == {"arc_challenge_acc": 0.5}
+            # lm_eval probe records its JSON output path under a descriptive key
+            assert "lm_eval_arc_challenge" in artifacts
+            assert artifacts["lm_eval_arc_challenge"].endswith("lm_eval_arc_challenge.json")
             mock.assert_called_once()
             call_kwargs = mock.call_args[1]
             assert call_kwargs["model"] == "m"
@@ -200,13 +204,14 @@ class TestDispatchProbe:
         )
         with patch("bench.probes.prometheus.run_prometheus_window_probe") as mock:
             mock.return_value = {"cpu_avg": 80.0}
-            result = _dispatch_probe(
+            scores, artifacts = _dispatch_probe(
                 probe, "http://prom", model="m", api_key="",
                 root=tmp_path, run_dir=tmp_path,
                 prom_start="2026-01-01T00:00:00Z",
                 prom_end="2026-01-01T01:00:00Z",
             )
-            assert result == {"cpu_avg": 80.0}
+            assert scores == {"cpu_avg": 80.0}
+            assert artifacts == {}
             mock.assert_called_once()
 
     def test_dispatch_prometheus_skipped_without_times(self, tmp_path, caplog):
@@ -214,12 +219,13 @@ class TestDispatchProbe:
             type="prometheus_window",
             queries={"cpu_avg": "avg(cpu)"},
         )
-        result = _dispatch_probe(
+        scores, artifacts = _dispatch_probe(
             probe, "http://prom", model="m", api_key="",
             root=tmp_path, run_dir=tmp_path,
             prom_start=None, prom_end=None,
         )
-        assert result == {}
+        assert scores == {}
+        assert artifacts == {}
         assert "skipped" in caplog.text
 
     def test_dispatch_unknown_probe_type_raises(self, tmp_path):
@@ -593,3 +599,179 @@ suite:
 
         assert len(record.run_uuid) == 32
         assert all(c in "0123456789abcdef" for c in record.run_uuid)
+
+
+# ---------------------------------------------------------------------------
+# Issue #118 polish — Prometheus best-effort, git SHAs, lm_eval artifacts
+# ---------------------------------------------------------------------------
+
+_CAPABILITY_PROMETHEUS_YAML = """
+capability:
+  id: cap-prom
+  name: Prometheus
+  category: telemetry
+  description: "VRAM peak"
+  probe:
+    type: prometheus_window
+    queries:
+      vram_gb_peak: max_over_time(vram_used[$duration])
+  outputs:
+    - id: vram_gb_peak
+      unit: GiB
+      direction: lower_is_better
+"""
+
+_SUITE_LATENCY_PLUS_PROM_YAML = """
+suite:
+  id: test-suite-lat-prom
+  name: Latency + Prometheus
+  capabilities: [cap-latency, cap-prom]
+  aggregates: {}
+"""
+
+
+class TestPolishIssue118:
+    def test_prometheus_probe_failure_does_not_fail_run(self, tmp_path):
+        """Telemetry probe failures must NOT promote status to 'failed'."""
+        root = _write_catalog(tmp_path, _SUITE_LATENCY_PLUS_PROM_YAML)
+        # Add the prometheus capability YAML
+        (root / "capabilities" / "prom.yml").write_text(_CAPABILITY_PROMETHEUS_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            patch("bench.probes.prometheus.run_prometheus_window_probe") as mock_prom,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0,
+                "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0,
+                "prompt_eval_tokens_per_sec": 200.0,
+            }
+            # Prometheus blows up
+            mock_prom.side_effect = ConnectionError("prom unreachable")
+
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=root,
+                suite_id="test-suite-lat-prom",
+                model="m1",
+                runs_path=runs_path,
+                prom_start="2026-01-01T00:00:00Z",
+                prom_end="2026-01-01T01:00:00Z",
+            )
+
+        # The run still succeeded — Prometheus is telemetry, not scoring
+        assert record.status == "ok"
+        assert record.error is None
+        # Latency scores still landed
+        assert record.scores.get("ttft_p50_ms") == 100.0
+        # Prometheus outputs are explicit null
+        assert record.scores.get("vram_gb_peak") is None
+
+    def test_lm_eval_failure_still_fails_run(self, tmp_path):
+        """Scoring probe failures must still mark the run as failed (regression guard)."""
+        root = _write_catalog(tmp_path)  # latency + lm_eval suite
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            patch("bench.probes.lm_eval.run_lm_eval_probe") as mock_eval,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0,
+                "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0,
+                "prompt_eval_tokens_per_sec": 200.0,
+            }
+            mock_eval.side_effect = RuntimeError("lm_eval crashed")
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=root,
+                suite_id="test-suite",
+                model="m1",
+                runs_path=runs_path,
+            )
+
+        # Scoring probe failure → still fails (Phase 4 contract)
+        assert record.status == "failed"
+        assert "lm_eval" in record.error
+
+    def test_run_suite_populates_git_shas(self, tmp_path):
+        """``infra_git_sha`` and ``catalog_git_sha`` populated from git rev-parse."""
+        root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            patch("bench.runner._read_git_sha") as mock_sha,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+            mock_sha.side_effect = lambda p: "deadbeef" if "bench" in str(p) else "cafebabe"
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=root,
+                suite_id="test-suite-latency",
+                model="m1",
+                runs_path=runs_path,
+            )
+
+        assert record.infra_git_sha == "deadbeef"
+        assert record.catalog_git_sha == "cafebabe"
+
+    def test_run_suite_handles_missing_git_gracefully(self, tmp_path):
+        """``_read_git_sha`` returning None must not fail the run."""
+        root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            patch("bench.runner._read_git_sha", return_value=None),
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=root,
+                suite_id="test-suite-latency",
+                model="m1",
+                runs_path=runs_path,
+            )
+
+        assert record.status == "ok"
+        assert record.infra_git_sha is None
+        assert record.catalog_git_sha is None
+
+    def test_run_suite_records_lm_eval_artifact_path(self, tmp_path):
+        """lm_eval probe writes a JSON file — its path lands in ``record.artifacts``."""
+        root = _write_catalog(tmp_path)  # full suite incl. arc_challenge lm_eval
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            patch("bench.probes.lm_eval.run_lm_eval_probe") as mock_eval,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+            mock_eval.return_value = {"arc_challenge_acc": 0.75}
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=root,
+                suite_id="test-suite",
+                model="m1",
+                runs_path=runs_path,
+            )
+
+        assert record.status == "ok"
+        # The lm_eval probe's task is "arc_challenge" — key is built from that
+        assert "lm_eval_arc_challenge" in record.artifacts
+        assert record.artifacts["lm_eval_arc_challenge"].endswith(
+            "lm_eval_arc_challenge.json"
+        )

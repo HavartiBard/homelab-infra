@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import platform
+import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,49 +73,81 @@ def _dispatch_probe(
     run_dir: Path,
     prom_start: str | None,
     prom_end: str | None,
-) -> dict[str, float | None]:
-    """Dispatch a single probe by type and return its output scores.
+) -> tuple[dict[str, float | None], dict[str, str]]:
+    """Dispatch a single probe by type and return (scores, artifacts).
 
     Uses the unified Phase 3 signature: ``func(probe, base_url, *, kwargs)``.
+    Returns a ``(scores, artifacts)`` tuple. ``artifacts`` maps a descriptive
+    key (e.g. ``"lm_eval_arc_challenge"``) to the on-disk path of any file the
+    probe wrote. Currently only ``lm_eval`` produces artifacts; other probes
+    return an empty artifact dict.
     """
     if isinstance(probe_obj, LatencyProbe):
         from .probes.latency import run_latency_probe
 
-        return run_latency_probe(
+        scores = run_latency_probe(
             probe_obj,
             base_url,
             api_key=api_key,
             model=model,
             root=root,
         )
+        return scores, {}
 
     if isinstance(probe_obj, LmEvalProbe):
         from .probes.lm_eval import run_lm_eval_probe
 
         output_path = run_dir / f"lm_eval_{probe_obj.task}.json"
-        return run_lm_eval_probe(
+        scores = run_lm_eval_probe(
             probe_obj,
             base_url,
             api_key=api_key,
             model=model,
             output_path=output_path,
         )
+        return scores, {f"lm_eval_{probe_obj.task}": str(output_path)}
 
     if isinstance(probe_obj, PrometheusProbe):
         from .probes.prometheus import run_prometheus_window_probe
 
         if prom_start is None or prom_end is None:
             log.warning("Prometheus probe skipped: prom_start/prom_end not provided")
-            return {}
+            return {}, {}
 
-        return run_prometheus_window_probe(
+        scores = run_prometheus_window_probe(
             probe_obj,
             base_url,
             start=prom_start,
             end=prom_end,
         )
+        return scores, {}
 
     raise ValueError(f"Unknown probe type: {type(probe_obj)}")
+
+
+# ---------------------------------------------------------------------------
+# Git SHA capture
+# ---------------------------------------------------------------------------
+
+def _read_git_sha(path: str | Path) -> str | None:
+    """Return the HEAD commit SHA of the git repo containing ``path``.
+
+    Returns ``None`` if ``path`` is not in a git checkout or ``git`` is not
+    available. Never raises — failure to read the SHA must not fail a run.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(path),
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        return result.stdout.strip() or None
+    except (subprocess.CalledProcessError, FileNotFoundError,
+            subprocess.TimeoutExpired, OSError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +243,7 @@ def run_suite(
 
         log.info("Running probe for capability %s (%s)", cap_id, cap.probe.type)
         try:
-            probe_scores = _dispatch_probe(
+            probe_scores, probe_artifacts = _dispatch_probe(
                 cap.probe,
                 base_url,
                 model=model,
@@ -221,14 +254,23 @@ def run_suite(
                 prom_end=prom_end,
             )
             scores.update(probe_scores)
+            artifacts.update(probe_artifacts)
             log.info("Probe %s scores: %s", cap_id, probe_scores)
         except Exception as exc:
-            msg = f"Probe {cap_id} ({cap.probe.type}) failed: {exc}"
-            log.warning(msg)
-            errors.append(msg)
-            # Mark all outputs for this capability as null so aggregates handle it
+            # Telemetry probes (Prometheus) are best-effort: their failure
+            # nulls the queried scores but does NOT mark the run as failed.
+            # Scoring probes (latency, lm_eval) propagate failure.
+            is_telemetry = isinstance(cap.probe, PrometheusProbe)
+            level = "telemetry" if is_telemetry else "scoring"
+            msg = f"Probe {cap_id} ({cap.probe.type}, {level}) failed: {exc}"
             for output in cap.outputs:
-                scores[output.id] = scores.get(output.id)  # already null or left unset
+                scores[output.id] = None
+            if is_telemetry:
+                log.warning("%s — run continues with null %s scores",
+                            msg, cap_id)
+            else:
+                log.warning(msg)
+                errors.append(msg)
 
     # 5. Compute aggregates
     try:
@@ -243,6 +285,10 @@ def run_suite(
     status = "ok" if not errors else "failed"
     error_detail = "; ".join(errors) if errors else None
 
+    # Best-effort git SHA capture for provenance.
+    infra_git_sha = _read_git_sha(Path(__file__).parent)
+    catalog_git_sha = _read_git_sha(catalog_root)
+
     # 6. Build and persist record
     record = RunRecord(
         run_uuid=run_id,
@@ -256,6 +302,8 @@ def run_suite(
         quantization=quantization,
         ctx_length=ctx_length,
         sampling_params=sampling_params or {},
+        infra_git_sha=infra_git_sha,
+        catalog_git_sha=catalog_git_sha,
         notes=notes,
         status=status,
         error=error_detail,
