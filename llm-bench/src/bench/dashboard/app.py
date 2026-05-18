@@ -1,6 +1,9 @@
 import streamlit as st
 
-from . import leaderboard, run_detail, about
+# Absolute imports — `streamlit run app.py` invokes this file as a top-level
+# script, so `from . import ...` raises
+# "attempted relative import with no known parent package".
+from bench.dashboard import leaderboard, run_detail, about
 
 
 def main():
@@ -12,5 +15,5 @@ def main():
     st.navigation(pages).run()
 
 
-if __name__ == "__main__":
-    main()
+# Streamlit executes the module body directly; no __name__ == "__main__" gate.
+main()
