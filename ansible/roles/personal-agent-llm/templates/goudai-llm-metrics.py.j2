@@ -76,6 +76,42 @@ def download_progress(path):
     return count, total
 
 
+def read_gpu_sysfs():
+    """Read AMD GPU metrics from kernel sysfs.
+
+    Discovers the GPU card dynamically (card0, card1, etc.) and reads
+    VRAM/GTT memory usage and GPU busy percentage. Returns a dict with
+    keys: vram_used, vram_total, gtt_used, gtt_total, busy_percent.
+    Returns empty dict if sysfs paths are unavailable.
+    """
+    base = None
+    drm = "/sys/class/drm"
+    for entry in sorted(os.listdir(drm)):
+        if not entry.startswith("card"):
+            continue
+        busy_path = os.path.join(drm, entry, "device", "gpu_busy_percent")
+        if os.path.exists(busy_path):
+            base = os.path.join(drm, entry, "device")
+            break
+    if base is None:
+        return {}
+
+    result = {}
+    for key, filename in [
+        ("vram_used", "mem_info_vram_used"),
+        ("vram_total", "mem_info_vram_total"),
+        ("gtt_used", "mem_info_gtt_used"),
+        ("gtt_total", "mem_info_gtt_total"),
+        ("busy_percent", "gpu_busy_percent"),
+    ]:
+        try:
+            with open(os.path.join(base, filename)) as f:
+                result[key] = int(f.read().strip())
+        except (OSError, ValueError):
+            pass
+    return result
+
+
 def main():
     now = int(time.time())
     lines = [
@@ -124,6 +160,26 @@ def main():
         "# TYPE goudai_llm_hf_download_in_progress_bytes gauge",
         metric("goudai_llm_hf_download_in_progress_bytes", in_progress_bytes, {"service": "personal-agent-llm"}),
     ])
+
+    gpu = read_gpu_sysfs()
+    if gpu:
+        lines.extend([
+            "# HELP goudai_gpu_vram_used_bytes VRAM used by the AMD GPU.",
+            "# TYPE goudai_gpu_vram_used_bytes gauge",
+            metric("goudai_gpu_vram_used_bytes", gpu.get("vram_used", 0)),
+            "# HELP goudai_gpu_vram_total_bytes Total VRAM available on the AMD GPU.",
+            "# TYPE goudai_gpu_vram_total_bytes gauge",
+            metric("goudai_gpu_vram_total_bytes", gpu.get("vram_total", 0)),
+            "# HELP goudai_gpu_gtt_used_bytes GTT memory used by the AMD GPU.",
+            "# TYPE goudai_gpu_gtt_used_bytes gauge",
+            metric("goudai_gpu_gtt_used_bytes", gpu.get("gtt_used", 0)),
+            "# HELP goudai_gpu_gtt_total_bytes Total GTT memory available on the AMD GPU.",
+            "# TYPE goudai_gpu_gtt_total_bytes gauge",
+            metric("goudai_gpu_gtt_total_bytes", gpu.get("gtt_total", 0)),
+            "# HELP goudai_gpu_busy_percent AMD GPU busy percentage.",
+            "# TYPE goudai_gpu_busy_percent gauge",
+            metric("goudai_gpu_busy_percent", gpu.get("busy_percent", 0)),
+        ])
 
     os.makedirs(TEXTFILE_DIR, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", dir=TEXTFILE_DIR, delete=False) as tmp:
