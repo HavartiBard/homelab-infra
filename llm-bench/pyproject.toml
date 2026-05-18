@@ -19,6 +19,10 @@ dev = [
   "pytest>=8.0",
   "pytest-httpx>=0.30",
 ]
+dashboard = [
+  "streamlit>=1.36",
+  "pandas",
+]
 lm-eval = [
   "lm-eval[api]>=0.4.3",
 ]
