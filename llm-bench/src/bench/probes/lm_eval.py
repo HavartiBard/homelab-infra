@@ -1,9 +1,12 @@
+"""lm-evaluation-harness probe — run a single task via the lm_eval CLI."""
+
 from __future__ import annotations
 
 import json
 import subprocess
 from pathlib import Path
-from typing import Union
+
+from ..catalog import LmEvalProbe
 
 
 # Maps lm-evaluation-harness output keys to our normalized score IDs.
@@ -17,42 +20,42 @@ TASK_SCORE_MAP: dict[str, dict[str, str]] = {
 
 
 def run_lm_eval_probe(
+    probe: LmEvalProbe,
+    base_url: str,
     *,
-    endpoint: str,
-    model: str,
     api_key: str,
-    task: str,
-    num_fewshot: int,
-    batch_size: Union[int, str],
+    model: str,
     output_path: Path,
 ) -> dict[str, float | None]:
     """Run a single lm-evaluation-harness task and return mapped scores.
 
     Uses the `local-chat-completions` adapter for arbitrary OpenAI-compatible endpoints.
     """
-    model_args = f"base_url={endpoint},model={model},api_key={api_key}"
+    model_args = f"base_url={base_url},model={model},api_key={api_key}"
     cmd = [
         "lm_eval",
         "--model", "local-chat-completions",
         "--model_args", model_args,
-        "--tasks", task,
-        "--num_fewshot", str(num_fewshot),
-        "--batch_size", str(batch_size),
+        "--tasks", probe.task,
+        "--num_fewshot", str(probe.num_fewshot),
+        "--batch_size", str(probe.batch_size),
         "--output_path", str(output_path),
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(
-            f"lm_eval failed (exit {result.returncode}) for task={task}: "
+            f"lm_eval failed (exit {result.returncode}) for task={probe.task}: "
             f"{result.stderr.decode(errors='replace')[:500]}"
         )
 
     data = json.loads(Path(output_path).read_text())
-    task_results = data.get("results", {}).get(task, {})
+    task_results = data.get("results", {}).get(probe.task, {})
 
-    score_map = TASK_SCORE_MAP.get(task)
+    score_map = TASK_SCORE_MAP.get(probe.task)
     if score_map is None:
-        raise ValueError(f"No score mapping defined for task '{task}' — extend TASK_SCORE_MAP.")
+        raise ValueError(
+            f"No score mapping defined for task '{probe.task}' — extend TASK_SCORE_MAP."
+        )
 
     out: dict[str, float | None] = {}
     for lm_eval_key, normalized_id in score_map.items():
