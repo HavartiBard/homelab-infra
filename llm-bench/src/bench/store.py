@@ -22,6 +22,10 @@ class RunRecord(BaseModel):
     sampling_params: dict[str, Any] = Field(default_factory=dict)
     infra_git_sha: str | None = None
     catalog_git_sha: str | None = None
+    # Pre-warm time (seconds) when llama-swap loaded the model before probes
+    # started. Null if pre-warm was not requested. Useful for distinguishing
+    # cold-load runs from warm-cache runs in latency comparisons.
+    warm_time_sec: float | None = None
     notes: str | None = None
     status: str = "ok"   # "ok" or "failed"
     error: str | None = None
