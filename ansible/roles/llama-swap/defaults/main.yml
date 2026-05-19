@@ -145,35 +145,16 @@ llama_swap_models:
 # llama-swap groups control whether multiple models can be loaded
 # simultaneously vs. swap each other out.
 #
-# Modes:
-#   - swap: false + exclusive: false → members coexist (no swap between them)
-#   - swap: true + exclusive: true   → only one member at a time
-#   - persistent: true               → other groups can't unload these
+# REVERTED FROM PR #141 (agent-stack pair). Discovered at first co-load
+# attempt: goudai is unified-memory with 128GB total, of which the BIOS
+# allocates ~64GB to system RAM (and ~96GB to GPU via dynamic mmap).
+# 27B-BF16 model file mmaps to 54GB of system RAM (84% of available)
+# — adding coder-next at 25GB exceeds system RAM and triggers OOM kill.
 #
-# VRAM budget on goudai's Strix Halo is ~96GB allocated to GPU. Three models
-# are configured; only combinations that fit:
-#   27B (54GB) + coder-next (25GB) = 79GB  ✓ this is the agent-stack group
-#   27B + next-instruct (46GB)     = 100GB ✗
-#   coder-next + next-instruct     = 71GB  ✓ (would be a different group)
-#   all three                       = 125GB ✗
-#
-# The `agent-stack` group keeps the heavy reasoning worker (27B-MTP) and the
-# snappy chat model (coder-next) BOTH WARM continuously. Switching between
-# them — pi-agent calling 27B for hard work, Open WebUI hitting coder-next
-# for casual chat — has no swap latency.
-#
-# qwen3-next-instruct is intentionally NOT in this group. Loading it
-# requires unloading one of the warm pair first (handled by llama-swap's
-# default exclusive behaviour for models outside any group). First request
-# to next-instruct will swap-out one of the agent-stack members.
-llama_swap_groups:
-  "agent-stack":
-    persistent: true
-    swap: false
-    exclusive: false
-    members:
-      - "qwen/qwen3.6-27b-mtp"
-      - "qwen/qwen3-coder-next"
+# Re-enable a group only after switching the worker model to a smaller
+# quant (Q5_K_M ≈ 20GB) OR after partitioning workloads across hosts.
+# Tracked as a follow-up.
+llama_swap_groups: {}
 
 # Health-check tuning for the post-deploy verification task
 llama_swap_health_retries: 30
