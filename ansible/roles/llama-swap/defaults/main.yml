@@ -43,10 +43,10 @@ llama_swap_hf_cache_dir: /var/lib/personal-agent-llm/huggingface
 llama_swap_models:
   # ── Heavy reasoning — current pi-agent default ──────────────────────────
   # Thinking mode + MTP speculative decoding. Use for tasks that benefit from
-  # chain-of-thought (multi-step analysis, hard reasoning). 54GB VRAM.
+  # chain-of-thought (multi-step analysis, hard reasoning). ~18.5GB VRAM (Q5_K_M).
   # Sampling per Qwen3.6 official recipe for "thinking, precise coding".
   "qwen/qwen3.6-27b-mtp":
-    hf: "ggml-org/Qwen3.6-27B-MTP-GGUF:BF16"
+    hf: "unsloth/Qwen3.6-27B-MTP-GGUF:Q5_K_M"
     alias: "qwen/qwen3.6-27b-mtp"
     flags:
       - "--jinja"
@@ -145,16 +145,23 @@ llama_swap_models:
 # llama-swap groups control whether multiple models can be loaded
 # simultaneously vs. swap each other out.
 #
-# REVERTED FROM PR #141 (agent-stack pair). Discovered at first co-load
-# attempt: goudai is unified-memory with 128GB total, of which the BIOS
-# allocates ~64GB to system RAM (and ~96GB to GPU via dynamic mmap).
-# 27B-BF16 model file mmaps to 54GB of system RAM (84% of available)
-# — adding coder-next at 25GB exceeds system RAM and triggers OOM kill.
+# Group configuration — keeps the heavy reasoning worker (27B-MTP, now quantized)
+# and the snappy chat model (coder-next) BOTH WARM continuously. Switching
+# between them has no swap latency. PR #143 made this fit by switching the
+# 27B worker to a smaller quant.
 #
-# Re-enable a group only after switching the worker model to a smaller
-# quant (Q5_K_M ≈ 20GB) OR after partitioning workloads across hosts.
-# Tracked as a follow-up.
-llama_swap_groups: {}
+# qwen3-next-instruct is intentionally NOT in this group — it's larger and
+# would need to swap one member out. First request to next-instruct will
+# trigger llama-swap's default behaviour and unload one of the agent-stack
+# members. Acceptable for an occasional-use model.
+llama_swap_groups:
+  "agent-stack":
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - "qwen/qwen3.6-27b-mtp"
+      - "qwen/qwen3-coder-next"
 
 # Health-check tuning for the post-deploy verification task
 llama_swap_health_retries: 30
