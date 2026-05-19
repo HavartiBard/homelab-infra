@@ -28,3 +28,28 @@ models:
       - "HF_HUB_CACHE={{ llama_swap_hf_cache_dir }}/hub"
       - "LLAMA_LOG_LEVEL={{ llama_swap_log_level }}"
 {% endfor %}
+{% if llama_swap_groups %}
+
+# Groups control which models can coexist in VRAM vs. swap each other out.
+# - swap: false + exclusive: false → members coexist permanently
+# - swap: true + exclusive: true   → only one member at a time, also unloads
+#   any model outside the group when activated (default behaviour)
+# - persistent: true               → other groups can't unload these members
+groups:
+{% for group_id, g in llama_swap_groups.items() %}
+  "{{ group_id }}":
+{% if g.persistent is defined %}
+    persistent: {{ g.persistent | lower }}
+{% endif %}
+{% if g.swap is defined %}
+    swap: {{ g.swap | lower }}
+{% endif %}
+{% if g.exclusive is defined %}
+    exclusive: {{ g.exclusive | lower }}
+{% endif %}
+    members:
+{% for member in g.members %}
+      - "{{ member }}"
+{% endfor %}
+{% endfor %}
+{% endif %}
