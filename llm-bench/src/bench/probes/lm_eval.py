@@ -40,6 +40,12 @@ def run_lm_eval_probe(
         "--num_fewshot", str(probe.num_fewshot),
         "--batch_size", str(probe.batch_size),
         "--output_path", str(output_path),
+        # Disable thinking-mode reasoning via system instruction. Qwen3.6
+        # (and similar reasoning-capable models) honor explicit no-think
+        # directives. Without this, lm-eval's short-answer tasks see empty
+        # `content` because thinking_content consumes the token budget.
+        "--system_instruction",
+        "/no_think Respond with the answer directly. Do not produce any internal reasoning or chain-of-thought.",
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
