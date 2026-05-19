@@ -41,11 +41,13 @@ llama_swap_hf_cache_dir: /var/lib/personal-agent-llm/huggingface
 # Phase-A deploy targets only the current Qwen3.6-MTP service for equivalence
 # testing.
 llama_swap_models:
+  # ── Heavy reasoning — current pi-agent default ──────────────────────────
+  # Thinking mode + MTP speculative decoding. Use for tasks that benefit from
+  # chain-of-thought (multi-step analysis, hard reasoning). 54GB VRAM.
+  # Sampling per Qwen3.6 official recipe for "thinking, precise coding".
   "qwen/qwen3.6-27b-mtp":
     hf: "ggml-org/Qwen3.6-27B-MTP-GGUF:BF16"
     alias: "qwen/qwen3.6-27b-mtp"
-    # Mirrors the current personal-agent-llm.service.j2 args exactly. When
-    # this proxy takes over at :8010, behavior must be indistinguishable.
     flags:
       - "--jinja"
       - "-ngl 99"
@@ -70,8 +72,73 @@ llama_swap_models:
       - "--cache-type-v q8_0"
       - "--spec-type draft-mtp"
       - "--spec-draft-n-max 5"
-    # TTL=0 → never unload. The "warm" model that pi-agent and friends rely on.
+    # TTL=0 → never unload. The "warm" model that pi-agent + llm-bench rely
+    # on. When swapping to another model, llama-swap unloads this anyway
+    # (only one model resident at a time within the VRAM budget); TTL=0
+    # just means "don't auto-unload after idle".
     ttl: 0
+
+  # ── Snappy code/infra work — 30B-A3B MoE ───────────────────────────────
+  # Already cached on goudai. 30B total / 3B active per token → 3-5× faster
+  # decode than the 27B dense. Coder-tuned but handles general structured
+  # tasks well (Ansible/Python/shell). Q5_K_M, ~25GB VRAM.
+  # Sampling per Qwen3-Coder official recipe (non-thinking instruct).
+  "qwen/qwen3-coder-next":
+    hf: "Qwen/Qwen3-Coder-Next-GGUF:Q5_K_M"
+    alias: "qwen/qwen3-coder-next"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    # 10-min auto-unload — frees VRAM for the warm 27B when idle.
+    ttl: 600
+
+  # ── Snappy conversation — 80B-A3B MoE ──────────────────────────────────
+  # Needs a first-time download (~46GB). 80B total / 3B active per token →
+  # similar speed budget to coder-next but with broader chat training.
+  # No thinking mode (instruct only) — fast direct responses.
+  # Sampling per Qwen3-Next-Instruct official recipe.
+  "qwen/qwen3-next-instruct":
+    hf: "unsloth/Qwen3-Next-80B-A3B-Instruct-GGUF:UD-Q4_K_XL"
+    alias: "qwen/qwen3-next-instruct"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
 
 # Health-check tuning for the post-deploy verification task
 llama_swap_health_retries: 30
