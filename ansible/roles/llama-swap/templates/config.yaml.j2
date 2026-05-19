@@ -20,8 +20,11 @@ models:
 {% if m.ttl is defined %}
     ttl: {{ m.ttl }}
 {% endif %}
+    # llama-swap expects env as a list of KEY=VALUE strings, not a dict.
+    # The Go YAML unmarshaller errors with "cannot unmarshal !!map into
+    # []string" if you give it a dict here.
     env:
-      HF_HOME: "{{ llama_swap_hf_cache_dir }}"
-      HF_HUB_CACHE: "{{ llama_swap_hf_cache_dir }}/hub"
-      LLAMA_LOG_LEVEL: "{{ llama_swap_log_level }}"
+      - "HF_HOME={{ llama_swap_hf_cache_dir }}"
+      - "HF_HUB_CACHE={{ llama_swap_hf_cache_dir }}/hub"
+      - "LLAMA_LOG_LEVEL={{ llama_swap_log_level }}"
 {% endfor %}
