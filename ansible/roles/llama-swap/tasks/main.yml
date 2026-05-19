@@ -1,0 +1,97 @@
+---
+- name: Create llama-swap runtime + config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ llama_swap_user }}"
+    group: "{{ llama_swap_user }}"
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ llama_swap_config_dir }}"
+    - "{{ llama_swap_runtime_dir }}"
+    - "{{ llama_swap_hf_cache_dir }}"
+
+- name: Check installed llama-swap version
+  ansible.builtin.command: "{{ llama_swap_binary_path }} -version"
+  register: llama_swap_installed_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine llama-swap release archive name
+  ansible.builtin.set_fact:
+    llama_swap_archive_name: "llama-swap_{{ llama_swap_version | regex_replace('^v', '') }}_{{ llama_swap_arch }}.tar.gz"
+
+- name: Download + install llama-swap binary
+  when:
+    - not ansible_check_mode
+    - llama_swap_installed_version.rc != 0 or llama_swap_version not in (llama_swap_installed_version.stdout | default(''))
+  become: true
+  block:
+    - name: Fetch llama-swap release archive
+      ansible.builtin.get_url:
+        url: "https://github.com/mostlygeek/llama-swap/releases/download/{{ llama_swap_version }}/{{ llama_swap_archive_name }}"
+        dest: "/tmp/{{ llama_swap_archive_name }}"
+        mode: '0644'
+
+    - name: Unpack llama-swap binary
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ llama_swap_archive_name }}"
+        dest: "{{ llama_swap_install_dir }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0755'
+        # The tarball contains the bare `llama-swap` binary at the root.
+        extra_opts: ["--no-same-owner"]
+      notify: Restart llama-swap
+
+    - name: Clean up downloaded archive
+      ansible.builtin.file:
+        path: "/tmp/{{ llama_swap_archive_name }}"
+        state: absent
+
+- name: Render llama-swap config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ llama_swap_config_path }}"
+    owner: "{{ llama_swap_user }}"
+    group: "{{ llama_swap_user }}"
+    mode: '0644'
+  become: true
+  notify: Restart llama-swap
+
+- name: Render llama-swap systemd unit
+  ansible.builtin.template:
+    src: llama-swap.service.j2
+    dest: /etc/systemd/system/llama-swap.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: Restart llama-swap
+
+- name: Enable + start llama-swap
+  ansible.builtin.systemd:
+    name: llama-swap
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when: not ansible_check_mode
+
+- name: Verify llama-swap responds on configured port
+  ansible.builtin.uri:
+    url: "http://localhost:{{ llama_swap_port }}/v1/models"
+    status_code: 200
+    return_content: true
+  register: llama_swap_models_response
+  retries: "{{ llama_swap_health_retries }}"
+  delay: "{{ llama_swap_health_delay }}"
+  until: llama_swap_models_response.status == 200
+  when: not ansible_check_mode
+
+- name: Show models reported by llama-swap
+  ansible.builtin.debug:
+    msg: "llama-swap reports {{ (llama_swap_models_response.json.data | default([])) | length }} model(s) at :{{ llama_swap_port }}"
+  when: not ansible_check_mode and llama_swap_models_response is defined
