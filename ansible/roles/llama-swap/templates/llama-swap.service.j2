@@ -1,0 +1,24 @@
+[Unit]
+Description=llama-swap — OpenAI-compatible proxy that hot-swaps llama-server processes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ llama_swap_user }}
+Group={{ llama_swap_user }}
+WorkingDirectory={{ llama_swap_runtime_dir }}
+Environment=HOME=/home/{{ llama_swap_user }}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart={{ llama_swap_binary_path }} \
+  -config {{ llama_swap_config_path }} \
+  -listen {{ llama_swap_listen_addr }}:{{ llama_swap_port }}
+
+Restart=on-failure
+RestartSec=15
+# Cold model load on first request can take 60-90s (BF16 27B). Give the
+# child llama-server time to come up before systemd considers the unit failed.
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

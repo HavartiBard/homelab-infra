@@ -1,0 +1,74 @@
+---
+# llama-swap — OpenAI-compatible proxy that hot-swaps llama-server processes per
+# requested model. Replaces the per-model systemd units we'd otherwise need.
+
+# Pin the binary version to a known-good release (latest at role creation: v216).
+# Bump intentionally — `latest` would change behavior under our feet.
+llama_swap_version: "v216"
+llama_swap_arch: "linux_amd64"   # Strix Halo runs x86_64; ARM hosts override
+
+llama_swap_user: james
+llama_swap_listen_addr: "0.0.0.0"
+
+# Phased rollout: deploy on 8011 first for parallel testing alongside the
+# existing personal-agent-llm.service (port 8010). After validation, change
+# this to 8010 and stop personal-agent-llm.service in the same playbook run.
+llama_swap_port: 8011
+
+llama_swap_install_dir: /usr/local/bin
+llama_swap_binary_path: "{{ llama_swap_install_dir }}/llama-swap"
+llama_swap_config_dir: /etc/llama-swap
+llama_swap_config_path: "{{ llama_swap_config_dir }}/config.yaml"
+llama_swap_runtime_dir: /var/lib/llama-swap
+llama_swap_log_level: info
+
+# Default llama-server binary that all models invoke
+llama_swap_llama_server_binary: /usr/local/bin/llama-server
+
+# HuggingFace cache (HF_HOME) — needed for `-hf <repo>:<quant>` to find/cache models
+llama_swap_hf_cache_dir: "{{ llama_swap_runtime_dir }}/huggingface"
+
+# Per-model configuration. Each key becomes an OpenAI `model:` alias. Provide
+# either `cmd` (full llama-server invocation) or `hf` + `flags` for the
+# convenience template. The first model in this dict is treated as the "warm"
+# default — long TTL so it stays resident across casual pi-agent calls.
+#
+# Override this in host_vars/goudai.yml when adding new models. The first
+# Phase-A deploy targets only the current Qwen3.6-MTP service for equivalence
+# testing.
+llama_swap_models:
+  "qwen/qwen3.6-27b-mtp":
+    hf: "ggml-org/Qwen3.6-27B-MTP-GGUF:BF16"
+    alias: "qwen/qwen3.6-27b-mtp"
+    # Mirrors the current personal-agent-llm.service.j2 args exactly. When
+    # this proxy takes over at :8010, behavior must be indistinguishable.
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--reasoning-budget 4096"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+      - "--spec-type draft-mtp"
+      - "--spec-draft-n-max 5"
+    # TTL=0 → never unload. The "warm" model that pi-agent and friends rely on.
+    ttl: 0
+
+# Health-check tuning for the post-deploy verification task
+llama_swap_health_retries: 30
+llama_swap_health_delay: 5
