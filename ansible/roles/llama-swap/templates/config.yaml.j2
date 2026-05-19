@@ -12,11 +12,11 @@ models:
     aliases:
       - "{{ m.alias }}"
 {% endif %}
-{%- if m.cmd is defined %}
+{% if m.cmd is defined %}
     cmd: "{{ m.cmd }}"
-{%- else %}
+{% else %}
     cmd: "{{ llama_swap_llama_server_binary }} --host 127.0.0.1 --port ${PORT} -hf {{ m.hf }}{% for flag in m.flags | default([]) %} {{ flag }}{% endfor %}"
-{%- endif %}
+{% endif %}
 {% if m.ttl is defined %}
     ttl: {{ m.ttl }}
 {% endif %}
