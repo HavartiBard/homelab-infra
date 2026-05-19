@@ -140,6 +140,41 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
+# ── Group configuration ────────────────────────────────────────────────────
+#
+# llama-swap groups control whether multiple models can be loaded
+# simultaneously vs. swap each other out.
+#
+# Modes:
+#   - swap: false + exclusive: false → members coexist (no swap between them)
+#   - swap: true + exclusive: true   → only one member at a time
+#   - persistent: true               → other groups can't unload these
+#
+# VRAM budget on goudai's Strix Halo is ~96GB allocated to GPU. Three models
+# are configured; only combinations that fit:
+#   27B (54GB) + coder-next (25GB) = 79GB  ✓ this is the agent-stack group
+#   27B + next-instruct (46GB)     = 100GB ✗
+#   coder-next + next-instruct     = 71GB  ✓ (would be a different group)
+#   all three                       = 125GB ✗
+#
+# The `agent-stack` group keeps the heavy reasoning worker (27B-MTP) and the
+# snappy chat model (coder-next) BOTH WARM continuously. Switching between
+# them — pi-agent calling 27B for hard work, Open WebUI hitting coder-next
+# for casual chat — has no swap latency.
+#
+# qwen3-next-instruct is intentionally NOT in this group. Loading it
+# requires unloading one of the warm pair first (handled by llama-swap's
+# default exclusive behaviour for models outside any group). First request
+# to next-instruct will swap-out one of the agent-stack members.
+llama_swap_groups:
+  "agent-stack":
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - "qwen/qwen3.6-27b-mtp"
+      - "qwen/qwen3-coder-next"
+
 # Health-check tuning for the post-deploy verification task
 llama_swap_health_retries: 30
 llama_swap_health_delay: 5
