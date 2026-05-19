@@ -775,3 +775,97 @@ class TestPolishIssue118:
         assert record.artifacts["lm_eval_arc_challenge"].endswith(
             "lm_eval_arc_challenge.json"
         )
+
+
+# ---------------------------------------------------------------------------
+# Pre-warm hook (Phase B — llama-swap integration)
+# ---------------------------------------------------------------------------
+
+class TestPreWarm:
+    def test_pre_warm_called_when_enabled(self, tmp_path):
+        """When pre_warm=True, LlamaSwapClient.pre_warm runs before probes."""
+        from unittest.mock import patch as _patch
+
+        catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            _patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            _patch("bench.runner.LlamaSwapClient") as mock_swap_cls,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+            mock_swap_cls.return_value.pre_warm.return_value = 12.5
+
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=catalog_root,
+                suite_id="test-suite-latency",
+                model="m1",
+                runs_path=runs_path,
+                pre_warm=True,
+            )
+
+        mock_swap_cls.assert_called_once()
+        mock_swap_cls.return_value.pre_warm.assert_called_once_with("m1")
+        assert record.warm_time_sec == 12.5
+
+    def test_pre_warm_failure_does_not_abort_run(self, tmp_path, caplog):
+        """LlamaSwapClient.pre_warm raising shouldn't fail the run."""
+        from unittest.mock import patch as _patch
+
+        catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            _patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            _patch("bench.runner.LlamaSwapClient") as mock_swap_cls,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+            mock_swap_cls.return_value.pre_warm.side_effect = RuntimeError("swap unreachable")
+
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=catalog_root,
+                suite_id="test-suite-latency",
+                model="m1",
+                runs_path=runs_path,
+                pre_warm=True,
+            )
+
+        assert record.status == "ok"
+        assert record.warm_time_sec is None
+        assert "Pre-warm failed" in caplog.text
+
+    def test_pre_warm_default_is_disabled(self, tmp_path):
+        """Without pre_warm=True, LlamaSwapClient is never constructed."""
+        from unittest.mock import patch as _patch
+
+        catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        runs_path = tmp_path / "results" / "runs.jsonl"
+
+        with (
+            _patch("bench.probes.latency.run_latency_probe") as mock_lat,
+            _patch("bench.runner.LlamaSwapClient") as mock_swap_cls,
+        ):
+            mock_lat.return_value = {
+                "ttft_p50_ms": 100.0, "ttft_p95_ms": 200.0,
+                "decode_tokens_per_sec": 50.0, "prompt_eval_tokens_per_sec": 200.0,
+            }
+
+            record = run_suite(
+                base_url="http://test/v1",
+                catalog_root=catalog_root,
+                suite_id="test-suite-latency",
+                model="m1",
+                runs_path=runs_path,
+                # pre_warm not passed → defaults to False
+            )
+
+        mock_swap_cls.assert_not_called()
+        assert record.warm_time_sec is None

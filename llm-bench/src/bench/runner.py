@@ -23,6 +23,7 @@ from .catalog import (
     load_catalog,
     load_suite,
 )
+from .llama_swap import LlamaSwapClient
 from .otel import init_tracing, log_run_to_phoenix
 from .store import RunRecord, append_run
 
@@ -170,6 +171,7 @@ def run_suite(
     ctx_length: int | None = None,
     sampling_params: dict[str, Any] | None = None,
     notes: str | None = None,
+    pre_warm: bool = False,
 ) -> RunRecord:
     """Run a full benchmark suite and persist the result.
 
@@ -221,6 +223,19 @@ def run_suite(
             )
             append_run(runs_path, record)
             raise RuntimeError(f"Benchmark run aborted: {exc}") from exc
+
+    # 2b. Pre-warm the model via llama-swap (best-effort).
+    # If the endpoint is a llama-swap proxy and we want clean TTFT numbers,
+    # send a 1-token request first so the model loads BEFORE the first probe.
+    # The load time is captured as a metadata field for provenance.
+    warm_time_sec: float | None = None
+    if pre_warm:
+        try:
+            swap = LlamaSwapClient(base_url, api_key=api_key)
+            warm_time_sec = swap.pre_warm(model)
+            log.info("Pre-warmed %s in %.1fs", model, warm_time_sec)
+        except Exception as exc:
+            log.warning("Pre-warm failed (continuing — first probe will absorb load): %s", exc)
 
     # 3. Load catalog + suite
     catalog = load_catalog(catalog_root)
@@ -304,6 +319,7 @@ def run_suite(
         sampling_params=sampling_params or {},
         infra_git_sha=infra_git_sha,
         catalog_git_sha=catalog_git_sha,
+        warm_time_sec=warm_time_sec,
         notes=notes,
         status=status,
         error=error_detail,
