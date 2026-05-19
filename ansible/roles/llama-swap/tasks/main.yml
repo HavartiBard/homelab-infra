@@ -1,4 +1,19 @@
 ---
+# Pre-flight: free port 8010 if the legacy personal-agent-llm.service is
+# holding it. Must run BEFORE the llama-swap restart handler fires,
+# otherwise the handler would race the still-running legacy service and
+# llama-swap would fail to bind. Idempotent: no-op if the unit is absent.
+- name: Stop legacy personal-agent-llm.service if it holds llama-swap's port
+  ansible.builtin.systemd:
+    name: personal-agent-llm
+    state: stopped
+    enabled: false
+  become: true
+  when:
+    - not ansible_check_mode
+    - llama_swap_port | int == 8010
+  failed_when: false   # absent unit is fine post-cutover
+
 - name: Create llama-swap runtime + config directories
   ansible.builtin.file:
     path: "{{ item }}"

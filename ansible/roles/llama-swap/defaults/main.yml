@@ -10,10 +10,10 @@ llama_swap_arch: "linux_amd64"   # Strix Halo runs x86_64; ARM hosts override
 llama_swap_user: james
 llama_swap_listen_addr: "0.0.0.0"
 
-# Phased rollout: deploy on 8011 first for parallel testing alongside the
-# existing personal-agent-llm.service (port 8010). After validation, change
-# this to 8010 and stop personal-agent-llm.service in the same playbook run.
-llama_swap_port: 8011
+# Now the canonical LLM endpoint on goudai — pi-agent and llm-bench both
+# hit this port. The pre-flight task in tasks/main.yml will stop the
+# legacy personal-agent-llm.service if it's holding this port.
+llama_swap_port: 8010
 
 llama_swap_install_dir: /usr/local/bin
 llama_swap_binary_path: "{{ llama_swap_install_dir }}/llama-swap"

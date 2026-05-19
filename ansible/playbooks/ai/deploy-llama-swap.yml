@@ -1,23 +1,11 @@
 ---
-# Deploy llama-swap to goudai. See Gitea #131 for the phased rollout plan.
+# Deploy llama-swap to goudai. See Gitea #131.
 #
-# Phase A (this playbook): deploys llama-swap on port 8011 while leaving
-# personal-agent-llm.service running on 8010. Verify equivalence, then
-# update llama_swap_port → 8010 in defaults and re-run; the cutover task
-# below stops personal-agent-llm.service when the port matches 8010.
+# The role's first task stops the legacy personal-agent-llm.service when
+# llama_swap_port == 8010, so a re-run after cutover is idempotent.
 
 - name: Deploy llama-swap on goudai
   hosts: goudai
   gather_facts: true
   roles:
     - role: llama-swap
-
-  post_tasks:
-    - name: Stop personal-agent-llm.service if llama-swap has taken over port 8010
-      ansible.builtin.systemd:
-        name: personal-agent-llm
-        state: stopped
-        enabled: false
-      become: true
-      when: llama_swap_port | int == 8010
-      failed_when: false   # OK if personal-agent-llm is already absent
