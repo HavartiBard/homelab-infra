@@ -25,8 +25,12 @@ llama_swap_log_level: info
 # Default llama-server binary that all models invoke
 llama_swap_llama_server_binary: /usr/local/bin/llama-server
 
-# HuggingFace cache (HF_HOME) — needed for `-hf <repo>:<quant>` to find/cache models
-llama_swap_hf_cache_dir: "{{ llama_swap_runtime_dir }}/huggingface"
+# HuggingFace cache (HF_HOME) — needed for `-hf <repo>:<quant>` to find/cache
+# models. Points at the legacy personal-agent-llm cache so we inherit the
+# already-downloaded models instead of re-downloading 54GB at cutover.
+# When personal-agent-llm is eventually removed, migrate the cache directory
+# to /var/lib/llama-swap/huggingface (or similar shared location).
+llama_swap_hf_cache_dir: /var/lib/personal-agent-llm/huggingface
 
 # Per-model configuration. Each key becomes an OpenAI `model:` alias. Provide
 # either `cmd` (full llama-server invocation) or `hf` + `flags` for the
