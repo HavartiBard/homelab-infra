@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import httpx
 
 from .aggregates import compute_aggregates
@@ -165,7 +166,7 @@ def run_suite(
     runtime: str = "unknown",
     prom_start: str | None = None,
     prom_end: str | None = None,
-    runs_path: Path | None = None,
+    db: duckdb.DuckDBPyConnection | None = None,
     otlp_endpoint: str | None = None,
     quantization: str | None = None,
     ctx_length: int | None = None,
@@ -215,13 +216,14 @@ def run_suite(
                 suite_id=suite_id,
                 error=str(exc),
                 runtime=runtime,
-                runs_path=runs_path,
+                db=db,
                 quantization=quantization,
                 ctx_length=ctx_length,
                 sampling_params=sampling_params,
                 notes=notes,
             )
-            append_run(runs_path, record)
+            if db is not None:
+                append_run(db, record)
             raise RuntimeError(f"Benchmark run aborted: {exc}") from exc
 
     # 2b. Pre-warm the model via llama-swap (best-effort).
@@ -327,9 +329,9 @@ def run_suite(
         artifacts=artifacts,
     )
 
-    if runs_path:
-        append_run(runs_path, record)
-        log.info("Run record appended to %s", runs_path)
+    if db is not None:
+        append_run(db, record)
+        log.info("Run record written to DuckDB")
 
     # 7. Emit to Phoenix (best-effort)
     if otlp_endpoint:
@@ -378,7 +380,7 @@ def _failed_record(
     suite_id: str,
     error: str,
     runtime: str = "unknown",
-    runs_path: Path | None = None,
+    db: duckdb.DuckDBPyConnection | None = None,
     quantization: str | None = None,
     ctx_length: int | None = None,
     sampling_params: dict[str, Any] | None = None,

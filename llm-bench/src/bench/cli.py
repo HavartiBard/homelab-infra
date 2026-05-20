@@ -36,8 +36,9 @@ def cli():
               help="ISO-8601 start for Prometheus window queries")
 @click.option("--prom-end", default=None,
               help="ISO-8601 end for Prometheus window queries")
-@click.option("--runs-path", default=None, type=click.Path(path_type=Path),
-              help="JSONL file path for appending run records (default: results/runs.jsonl)")
+@click.option("--db-path", default=None, type=click.Path(path_type=Path),
+              envvar="LLM_BENCH_DB_PATH",
+              help="DuckDB file path (default: /data/bench.duckdb)")
 @click.option("--otlp-endpoint", default=None,
               help="Phoenix OTLP gRPC endpoint (e.g. phoenix:4317)")
 @click.option("--quantization", default=None,
@@ -59,7 +60,7 @@ def run(
     runtime: str,
     prom_start: str | None,
     prom_end: str | None,
-    runs_path: Path | None,
+    db_path: Path | None,
     otlp_endpoint: str | None,
     quantization: str | None,
     ctx_length: int | None,
@@ -69,9 +70,12 @@ def run(
     """Run a benchmark suite against an OpenAI-compatible endpoint."""
     from .runner import run_suite
 
-    if runs_path is None:
-        runs_path = Path("results/runs.jsonl")
+    from .db import get_connection
 
+    if db_path is None:
+        db_path = Path("/data/bench.duckdb")
+
+    db = get_connection(db_path)
     record = run_suite(
         base_url=base_url,
         catalog_root=catalog_root,
@@ -81,7 +85,7 @@ def run(
         runtime=runtime,
         prom_start=prom_start,
         prom_end=prom_end,
-        runs_path=runs_path,
+        db=db,
         otlp_endpoint=otlp_endpoint,
         quantization=quantization,
         ctx_length=ctx_length,

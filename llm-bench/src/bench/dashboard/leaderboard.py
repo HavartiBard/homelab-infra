@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
+import duckdb
+
+from ..db import get_connection
 from ..store import read_runs
 
 
@@ -14,10 +18,10 @@ LEADERBOARD_COLUMNS = [
 ]
 
 
-def runs_to_dataframe_rows(runs_path: Path) -> list[dict[str, Any]]:
+def runs_to_dataframe_rows(db: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
     """Flatten RunRecord into one dict per row, selecting leaderboard columns."""
     rows: list[dict[str, Any]] = []
-    for rec in read_runs(runs_path):
+    for rec in read_runs(db):
         row: dict[str, Any] = {
             "run_uuid":   rec.run_uuid,
             "model_id":   rec.model_id,
@@ -32,17 +36,22 @@ def runs_to_dataframe_rows(runs_path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _get_db_connection() -> duckdb.DuckDBPyConnection:
+    """Get DuckDB connection from environment or default path."""
+    db_path = Path(os.environ.get("LLM_BENCH_DB_PATH", "/data/bench.duckdb"))
+    return get_connection(db_path)
+
+
 def render():
     """Streamlit page entrypoint — called from app.py via st.navigation."""
     import streamlit as st
     import pandas as pd
-    import os
 
-    runs_path = Path(os.environ.get("LLM_BENCH_RUNS_PATH", "/data/runs.jsonl"))
+    db = _get_db_connection()
     st.title("Leaderboard")
-    rows = runs_to_dataframe_rows(runs_path)
+    rows = runs_to_dataframe_rows(db)
     if not rows:
-        st.info(f"No runs yet. Trigger a run from the orchestrator CLI. (Expected at {runs_path}.)")
+        st.info("No runs yet. Trigger a run from the orchestrator CLI.")
         return
     df = pd.DataFrame(rows, columns=LEADERBOARD_COLUMNS)
     df = df.sort_values("quality_avg", ascending=False, na_position="last")

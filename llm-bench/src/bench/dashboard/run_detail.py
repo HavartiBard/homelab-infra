@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from pathlib import Path
 import os
+from pathlib import Path
 
+import duckdb
+
+from ..db import get_connection
 from ..store import read_runs
 
 
 def render():
     import streamlit as st
 
-    runs_path = Path(os.environ.get("LLM_BENCH_RUNS_PATH", "/data/runs.jsonl"))
-    runs = {r.run_uuid: r for r in read_runs(runs_path)}
+    db = get_connection(Path(os.environ.get("LLM_BENCH_DB_PATH", "/data/bench.duckdb")))
+    runs = {r.run_uuid: r for r in read_runs(db)}
     uuid = st.session_state.get("selected_run") or next(iter(runs), None)
 
     if not uuid or uuid not in runs:

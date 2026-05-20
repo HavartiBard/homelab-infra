@@ -25,6 +25,7 @@ from bench.runner import (
     _load_suite_for_id,
     run_suite,
 )
+from bench.db import get_connection
 from bench.store import read_runs
 
 
@@ -310,7 +311,7 @@ class TestExcMsg:
 class TestRunSuite:
     def test_run_suite_records_ok_run(self, tmp_path):
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with patch("bench.probes.latency.run_latency_probe") as mock_latency:
             mock_latency.return_value = {
@@ -325,8 +326,7 @@ class TestRunSuite:
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
                 model="test-model",
-                runtime="test",
-                runs_path=runs_path,
+                runtime="test", db=db,
             )
 
         assert record.status == "ok"
@@ -336,7 +336,7 @@ class TestRunSuite:
         assert len(record.run_uuid) == 32  # uuid4 hex
 
         # Verify JSONL persistence
-        runs = read_runs(runs_path)
+        runs = read_runs(db)
         assert len(runs) == 1
         assert runs[0].run_uuid == record.run_uuid
 
@@ -346,7 +346,7 @@ class TestRunSuite:
             json={"data": [{"id": "auto-model"}]},
         )
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with patch("bench.probes.latency.run_latency_probe") as mock_latency:
             mock_latency.return_value = {
@@ -358,8 +358,7 @@ class TestRunSuite:
             record = run_suite(
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
-                suite_id="test-suite-latency",
-                runs_path=runs_path,
+                suite_id="test-suite-latency", db=db,
             )
 
         assert record.model_id == "auto-model"
@@ -370,25 +369,24 @@ class TestRunSuite:
             status_code=500,
         )
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with pytest.raises(RuntimeError, match="Benchmark run aborted"):
             run_suite(
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
-                suite_id="test-suite-latency",
-                runs_path=runs_path,
+                suite_id="test-suite-latency", db=db,
             )
 
         # Should still have written a failed record
-        runs = read_runs(runs_path)
+        runs = read_runs(db)
         assert len(runs) == 1
         assert runs[0].status == "failed"
         assert "Model discovery failed" in runs[0].error
 
     def test_run_suite_continues_on_probe_failure(self, tmp_path):
         catalog_root = _write_catalog(tmp_path)  # full suite with latency + lm_eval
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         # Latency succeeds, lm_eval fails
         with (
@@ -408,8 +406,7 @@ class TestRunSuite:
                 catalog_root=catalog_root,
                 suite_id="test-suite",
                 model="m1",
-                runtime="test",
-                runs_path=runs_path,
+                runtime="test", db=db,
             )
 
         assert record.status == "failed"
@@ -429,14 +426,13 @@ suite:
         root = _write_catalog(tmp_path)
         suite_dir = root / "suites"
         (suite_dir / "bad.yml").write_text(bad_suite)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         record = run_suite(
             base_url="http://test/v1",
             catalog_root=root,
             suite_id="bad-suite",
-            model="m1",
-            runs_path=runs_path,
+            model="m1", db=db,
         )
 
         assert record.status == "failed"
@@ -444,7 +440,7 @@ suite:
 
     def test_run_suite_skips_otel_on_init_failure(self, tmp_path, caplog):
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.runner.init_tracing", side_effect=Exception("OTEL boom")),
@@ -460,8 +456,7 @@ suite:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 otlp_endpoint="bad-endpoint:4317",
             )
 
@@ -470,7 +465,7 @@ suite:
 
     def test_run_suite_skips_phoenix_emit_failure(self, tmp_path, caplog):
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.runner.init_tracing"),
@@ -487,8 +482,7 @@ suite:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 otlp_endpoint="phoenix:4317",
             )
 
@@ -496,7 +490,7 @@ suite:
 
     def test_run_suite_sets_optional_fields(self, tmp_path):
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with patch("bench.probes.latency.run_latency_probe") as mock_lat:
             mock_lat.return_value = {
@@ -510,8 +504,7 @@ suite:
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
                 model="m1",
-                runtime="llama.cpp",
-                runs_path=runs_path,
+                runtime="llama.cpp", db=db,
                 quantization="q4_k_m",
                 ctx_length=8192,
                 sampling_params={"temperature": 0.7},
@@ -524,34 +517,37 @@ suite:
         assert record.notes == "test run"
         assert record.runtime == "llama.cpp"
 
-    def test_run_suite_default_runs_path(self, tmp_path):
+    def test_run_suite_default_db(self, tmp_path):
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
+        db = get_connection(tmp_path / "nested" / "subdir" / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
             patch("bench.runner.append_run") as mock_append,
         ):
             mock_lat.return_value = {
-                "ttft_p50_ms": 100.0,
-                "ttft_p95_ms": 200.0,
-                "decode_tokens_per_sec": 50.0,
-                "prompt_eval_tokens_per_sec": 200.0,
+                "ttft_p50_ms": 10.0,
+                "ttft_p95_ms": 20.0,
+                "decode_tokens_per_sec": 30.0,
+                "prompt_eval_tokens_per_sec": 50.0,
             }
             run_suite(
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
                 model="m1",
-                runs_path=tmp_path / "default" / "runs.jsonl",
+                db=db,
             )
 
         mock_append.assert_called_once()
-        call_runs_path = mock_append.call_args[0][0]
-        assert call_runs_path.name == "runs.jsonl"
+        call_db = mock_append.call_args[0][0]
+        assert call_db is db  # runner must pass through the exact connection
+        # get_connection creates parent dirs — verify the nested path was created
+        assert (tmp_path / "nested" / "subdir").exists()
 
     def test_run_suite_aggregates_computed(self, tmp_path):
         catalog_root = _write_catalog(tmp_path)  # full suite with aggregates
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -569,8 +565,7 @@ suite:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
             )
 
         # quality_avg = mean([arc_challenge_acc]) = 0.75
@@ -594,7 +589,7 @@ suite:
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
                 model="m1",
-                runs_path=tmp_path / "runs.jsonl",
+                db=tmp_path / "bench.duckdb",
             )
 
         assert len(record.run_uuid) == 32
@@ -636,7 +631,7 @@ class TestPolishIssue118:
         root = _write_catalog(tmp_path, _SUITE_LATENCY_PLUS_PROM_YAML)
         # Add the prometheus capability YAML
         (root / "capabilities" / "prom.yml").write_text(_CAPABILITY_PROMETHEUS_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -655,8 +650,7 @@ class TestPolishIssue118:
                 base_url="http://test/v1",
                 catalog_root=root,
                 suite_id="test-suite-lat-prom",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 prom_start="2026-01-01T00:00:00Z",
                 prom_end="2026-01-01T01:00:00Z",
             )
@@ -672,7 +666,7 @@ class TestPolishIssue118:
     def test_lm_eval_failure_still_fails_run(self, tmp_path):
         """Scoring probe failures must still mark the run as failed (regression guard)."""
         root = _write_catalog(tmp_path)  # latency + lm_eval suite
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -689,8 +683,7 @@ class TestPolishIssue118:
                 base_url="http://test/v1",
                 catalog_root=root,
                 suite_id="test-suite",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
             )
 
         # Scoring probe failure → still fails (Phase 4 contract)
@@ -700,7 +693,7 @@ class TestPolishIssue118:
     def test_run_suite_populates_git_shas(self, tmp_path):
         """``infra_git_sha`` and ``catalog_git_sha`` populated from git rev-parse."""
         root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -715,8 +708,7 @@ class TestPolishIssue118:
                 base_url="http://test/v1",
                 catalog_root=root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
             )
 
         assert record.infra_git_sha == "deadbeef"
@@ -725,7 +717,7 @@ class TestPolishIssue118:
     def test_run_suite_handles_missing_git_gracefully(self, tmp_path):
         """``_read_git_sha`` returning None must not fail the run."""
         root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -739,8 +731,7 @@ class TestPolishIssue118:
                 base_url="http://test/v1",
                 catalog_root=root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
             )
 
         assert record.status == "ok"
@@ -750,7 +741,7 @@ class TestPolishIssue118:
     def test_run_suite_records_lm_eval_artifact_path(self, tmp_path):
         """lm_eval probe writes a JSON file — its path lands in ``record.artifacts``."""
         root = _write_catalog(tmp_path)  # full suite incl. arc_challenge lm_eval
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -765,8 +756,7 @@ class TestPolishIssue118:
                 base_url="http://test/v1",
                 catalog_root=root,
                 suite_id="test-suite",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
             )
 
         assert record.status == "ok"
@@ -787,7 +777,7 @@ class TestPreWarm:
         from unittest.mock import patch as _patch
 
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             _patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -803,8 +793,7 @@ class TestPreWarm:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 pre_warm=True,
             )
 
@@ -817,7 +806,7 @@ class TestPreWarm:
         from unittest.mock import patch as _patch
 
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             _patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -833,8 +822,7 @@ class TestPreWarm:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 pre_warm=True,
             )
 
@@ -847,7 +835,7 @@ class TestPreWarm:
         from unittest.mock import patch as _patch
 
         catalog_root = _write_catalog(tmp_path, _SUITE_LATENCY_ONLY_YAML)
-        runs_path = tmp_path / "results" / "runs.jsonl"
+        db = get_connection(tmp_path / "bench.duckdb")
 
         with (
             _patch("bench.probes.latency.run_latency_probe") as mock_lat,
@@ -862,8 +850,7 @@ class TestPreWarm:
                 base_url="http://test/v1",
                 catalog_root=catalog_root,
                 suite_id="test-suite-latency",
-                model="m1",
-                runs_path=runs_path,
+                model="m1", db=db,
                 # pre_warm not passed → defaults to False
             )
 
