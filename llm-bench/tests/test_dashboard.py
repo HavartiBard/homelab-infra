@@ -4,7 +4,7 @@ import pytest
 
 from bench.db import get_connection
 from bench.store import RunRecord, append_run
-from bench.dashboard.leaderboard import runs_to_dataframe_rows
+from bench.dashboard.leaderboard import query_leaderboard, runs_to_dataframe_rows
 from bench.dashboard.logs import read_log_tail
 
 
@@ -72,3 +72,93 @@ def test_read_log_tail_n_larger_than_file_returns_all(tmp_path):
     log.write_text("a\nb\nc\n")
     lines, _ = read_log_tail(log, 1000)
     assert lines == ["a", "b", "c"]
+
+
+def _seed_db(db, *, runs=0, frontier=0, hf=0):
+    for i in range(runs):
+        db.execute("""
+            INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url,
+                              model_id, runtime, suite_id, status, scores, artifacts)
+            VALUES (?, '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z',
+                    'http://x/v1', ?, 'llama.cpp', 'tier1', 'ok',
+                    '{"quality_avg": 0.5}', '{}')
+        """, [f"run-{i}", f"local/model-{i}"])
+    for i in range(frontier):
+        db.execute("""
+            INSERT INTO refs (model_id, source, display_name,
+                              num_params_b,
+                              arc_challenge_acc, gsm8k_strict_match,
+                              as_of, imported_at)
+            VALUES (?, 'frontier_curated', ?, ?, 0.8, 0.8,
+                    '2025-01-01', '2025-01-01T00:00:00')
+        """, [f"anthropic/m-{i}", f"M{i}", float(10 + i)])
+    for i in range(hf):
+        db.execute("""
+            INSERT INTO refs (model_id, source, display_name,
+                              num_params_b,
+                              arc_challenge_acc, gsm8k_strict_match,
+                              as_of, imported_at)
+            VALUES (?, 'hf_open_llm_v1', ?, ?, 0.7, 0.7,
+                    '2024-06-26', '2024-06-26T00:00:00')
+        """, [f"meta/m-{i}", f"M{i}", float(70 + i)])
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    get_connection.cache_clear()
+    yield
+    get_connection.cache_clear()
+
+
+def test_filter_local_only(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=2, frontier=1, hf=1)
+    df = query_leaderboard(
+        db, show_local=True, show_frontier=False, show_open=False,
+    )
+    assert set(df["source"]) == {"local"}
+    assert len(df) == 2
+
+
+def test_filter_all_sources(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=1, frontier=2, hf=3)
+    df = query_leaderboard(
+        db, show_local=True, show_frontier=True, show_open=True,
+    )
+    assert len(df) == 6
+    assert set(df["source"]) == {"local", "frontier_curated", "hf_open_llm_v1"}
+
+
+def test_empty_filter_returns_empty_df(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=2, frontier=2, hf=2)
+    df = query_leaderboard(
+        db, show_local=False, show_frontier=False, show_open=False,
+    )
+    assert df.empty
+
+
+def test_search_filters_by_model_id(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=2, frontier=2, hf=0)
+    df = query_leaderboard(
+        db, show_local=True, show_frontier=True, show_open=False,
+        search="anthropic",
+    )
+    # 2 frontier rows match, 0 local
+    assert len(df) == 2
+    assert all("anthropic" in m for m in df["model_id"])
+
+
+def test_param_range_filters_only_refs(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=2, frontier=3, hf=0)  # frontier params: 10, 11, 12
+    df = query_leaderboard(
+        db, show_local=True, show_frontier=True, show_open=False,
+        min_params=11.0,
+    )
+    # local rows have NULL params and are filtered out by min_params guard
+    # frontier rows: 11.0 and 12.0 pass; 10.0 fails
+    assert len(df) == 2
+    assert all(p >= 11.0 for p in df["num_params_b"])
