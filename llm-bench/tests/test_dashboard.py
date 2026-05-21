@@ -276,3 +276,70 @@ def test_refs_freshness_rows_groups_by_source(tmp_path):
     assert frontier["row_count"] == 2
     # last_refresh should be the MAX imported_at within the source
     assert "2025-01-02" in str(frontier["last_refresh"])
+
+
+from bench.dashboard.compare import build_multi_scorecard
+
+
+def test_multi_scorecard_n_runs_n_refs(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+      INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url, model_id,
+                        runtime, suite_id, status, scores, artifacts)
+      VALUES ('R1', '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z', 'http://x/v1',
+              'qwen/27b', 'llama.cpp', 'tier1', 'ok',
+              '{"arc_challenge_acc":0.82,"gsm8k_strict_match":0.69}', '{}')
+    """)
+    db.execute("""
+      INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url, model_id,
+                        runtime, suite_id, status, scores, artifacts)
+      VALUES ('R2', '2026-05-19T11:00:00Z', '2026-05-19T11:30:00Z', 'http://x/v1',
+              'gemma/27b', 'llama.cpp', 'tier1', 'ok',
+              '{"arc_challenge_acc":0.71,"gsm8k_strict_match":0.75}', '{}')
+    """)
+    db.execute("""
+      INSERT INTO refs (model_id, source, display_name, arc_challenge_acc,
+                        gsm8k_strict_match, as_of, imported_at)
+      VALUES ('anthropic/claude-sonnet-4', 'frontier_curated', 'Claude Sonnet 4',
+              0.949, 0.965, '2025-05-22', '2025-05-22T00:00:00')
+    """)
+    df = build_multi_scorecard(
+        db, run_uuids=["R1", "R2"],
+        ref_model_ids=["anthropic/claude-sonnet-4"],
+    )
+    assert "qwen/27b @ R1" in df.columns
+    assert "gemma/27b @ R2" in df.columns
+    assert "Claude Sonnet 4" in df.columns
+    assert list(df["capability"]) == [
+        "arc_challenge_acc", "gsm8k_strict_match",
+        "humaneval_pass1", "ifeval_strict_acc", "quality_avg",
+    ]
+
+
+def test_multi_scorecard_runs_only(tmp_path):
+    """No refs is a valid state — just N run columns."""
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+      INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url, model_id,
+                        runtime, suite_id, status, scores, artifacts)
+      VALUES ('R1', '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z', 'http://x/v1',
+              'qwen/27b', 'llama.cpp', 'tier1', 'ok',
+              '{"arc_challenge_acc":0.82}', '{}')
+    """)
+    df = build_multi_scorecard(db, run_uuids=["R1"], ref_model_ids=[])
+    assert "qwen/27b @ R1" in df.columns
+    assert len(df) == 5  # 4 caps + quality_avg
+
+
+def test_multi_scorecard_refs_only(tmp_path):
+    """No runs is a valid state — just N ref columns."""
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+      INSERT INTO refs (model_id, source, display_name, arc_challenge_acc,
+                        gsm8k_strict_match, as_of, imported_at)
+      VALUES ('anthropic/claude-sonnet-4', 'frontier_curated', 'Claude Sonnet 4',
+              0.949, 0.965, '2025-05-22', '2025-05-22T00:00:00')
+    """)
+    df = build_multi_scorecard(db, run_uuids=[], ref_model_ids=["anthropic/claude-sonnet-4"])
+    assert "Claude Sonnet 4" in df.columns
+    assert "capability" in df.columns
