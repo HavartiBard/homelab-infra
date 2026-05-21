@@ -20,16 +20,27 @@ class HFOpenLLMV1Fetcher:
     dataset_id = "open-llm-leaderboard-old/results"
 
     def fetch(self) -> Iterable[ReferenceRecord]:
-        ds = load_dataset(self.dataset_id)
+        # Use streaming=True to avoid schema mismatch issues when loading large datasets
+        ds = load_dataset(self.dataset_id, split="train", streaming=True)
         for row in ds:
-            model_id = row.get("model")
+            # HF V1 has nested structure: config_general + results dict
+            model_id = row.get("config_general", {}).get("model_name")
             if not model_id:
                 continue
+            results = row.get("results", {})
             scores: dict[str, float] = {}
-            if row.get("arc:challenge") is not None:
-                scores["arc_challenge_acc"] = row["arc:challenge"] / 100.0
-            if row.get("gsm8k") is not None:
-                scores["gsm8k_strict_match"] = row["gsm8k"] / 100.0
+            # Look for arc:challenge in results (key format: harness|arc:challenge|N)
+            arc_key = next((k for k in results.keys() if "arc:challenge" in k), None)
+            if arc_key:
+                arc_result = results[arc_key]
+                if arc_result and isinstance(arc_result, dict):
+                    scores["arc_challenge_acc"] = arc_result.get("acc", 0.0)
+            # Look for gsm8k in results (key format: harness|gsm8k|N)
+            gsm8k_key = next((k for k in results.keys() if "gsm8k" in k), None)
+            if gsm8k_key:
+                gsm8k_result = results[gsm8k_key]
+                if gsm8k_result and isinstance(gsm8k_result, dict):
+                    scores["gsm8k_strict_match"] = gsm8k_result.get("acc", 0.0)
             if not scores:
                 continue
             try:
@@ -37,8 +48,8 @@ class HFOpenLLMV1Fetcher:
                     model_id=model_id,
                     source=self.name,
                     display_name=model_id.split("/")[-1].replace("-", " "),
-                    num_params_b=row.get("params"),
-                    license=row.get("license"),
+                    num_params_b=None,  # HF V1 doesn't expose params in this dataset
+                    license=None,  # HF V1 doesn't expose license in this dataset
                     scores=scores,
                     citation_url=(
                         "https://huggingface.co/spaces/"

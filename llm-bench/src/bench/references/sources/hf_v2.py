@@ -18,10 +18,9 @@ class HFOpenLLMV2Fetcher:
 
     def fetch(self) -> Iterable[ReferenceRecord]:
         as_of = datetime.now(timezone.utc).date()
-        ds = load_dataset(self.dataset_id)
+        ds = load_dataset(self.dataset_id)["train"]  # Load the train split
         for row in ds:
-            if not row.get("Maintainer's Choice"):
-                continue
+            # HF V2 doesn't have a "Maintainer's Choice" filter anymore
             model_id = row.get("fullname")
             ifeval = row.get("IFEval")
             if not model_id or ifeval is None:

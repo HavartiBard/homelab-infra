@@ -17,6 +17,15 @@ class BigCodeHumanEvalFetcher:
     dataset_id = "bigcode/bigcode-models-leaderboard-data"
 
     def fetch(self) -> Iterable[ReferenceRecord]:
+        # Dataset bigcode/bigcode-models-leaderboard-data no longer exists on HuggingFace Hub.
+        # No replacement dataset with the same schema has been found.
+        log.warning(
+            "Dataset %s is no longer available. bigcode_humaneval fetcher returning empty.",
+            self.dataset_id,
+        )
+        return
+        yield  # Never reached, but keeps the generator signature
+
         as_of = datetime.now(timezone.utc).date()
         ds = load_dataset(self.dataset_id)
         for row in ds:
