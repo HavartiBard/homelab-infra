@@ -10,7 +10,7 @@ services:
       net.unraid.docker.webui: "http://192.168.20.14:{{ llm_bench_port }}"
     environment:
       TZ: America/Phoenix
-      LLM_BENCH_RUNS_PATH: "{{ llm_bench_data_dir }}/runs.jsonl"
+      LLM_BENCH_DB_PATH: "{{ llm_bench_data_dir }}/bench.duckdb"
       LLM_BENCH_RESULTS_DIR: "{{ llm_bench_data_dir }}/results"
       LLM_BENCH_CATALOG_ROOT: "/catalog"
       LLM_BENCH_PROMETHEUS_BASE_URL: "{{ llm_bench_prometheus_base_url }}"

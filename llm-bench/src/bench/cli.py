@@ -134,6 +134,37 @@ def validate(catalog_root: Path | None):
         raise click.ClickException(f"{len(errors)} validation error(s)")
 
 
+@cli.group()
+def db():
+    """Database management commands."""
+
+
+@db.command(name="migrate")
+@click.option("--jsonl-path", default=Path("/data/runs.jsonl"),
+              type=click.Path(path_type=Path),
+              help="Source JSONL file (default: /data/runs.jsonl)")
+@click.option("--db-path", default=Path("/data/bench.duckdb"),
+              type=click.Path(path_type=Path),
+              envvar="LLM_BENCH_DB_PATH",
+              help="Target DuckDB file (default: /data/bench.duckdb)")
+@click.option("--mirror-jsonl/--no-mirror-jsonl", default=False,
+              help="Enable JSONL mirror writes after migration "
+                   "(touches /data/.mirror_jsonl_enabled)")
+def db_migrate(jsonl_path: Path, db_path: Path, mirror_jsonl: bool):
+    """One-time migration of runs.jsonl into DuckDB."""
+    from .db.migrate import migrate_jsonl_to_duckdb
+
+    result = migrate_jsonl_to_duckdb(jsonl_path, db_path)
+    if result.already_done:
+        click.echo("Migration already done; nothing to do.")
+        return
+    click.echo(f"migrated {result.migrated} runs (skipped {result.skipped})")
+    if mirror_jsonl:
+        marker = Path("/data/.mirror_jsonl_enabled")
+        marker.touch()
+        click.echo(f"JSONL mirroring enabled (marker: {marker})")
+
+
 @cli.command(name="list")
 @click.option("--catalog-root", type=click.Path(exists=True, path_type=Path),
               help="Path to benchmarks root — lists capabilities + suites")
