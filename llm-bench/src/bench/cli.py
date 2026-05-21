@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import logging
 from pathlib import Path
 
@@ -201,3 +202,137 @@ def list_cmd(catalog_root: Path | None, base_url: str | None, api_key: str):
                 click.echo(f"  {m}")
         except RuntimeError as exc:
             click.echo(f"  (error: {exc})", err=True)
+
+
+@cli.group()
+def references():
+    """Public benchmark reference management."""
+
+
+_ALL_SOURCES = ("frontier", "hf_v1", "hf_v2", "bigcode", "all")
+
+
+def _build_fetchers(source: str, frontier_yaml: Path | None):
+    """Construct the list of SourceFetcher instances for a `--source` choice."""
+    from .references.sources.frontier import FrontierFetcher
+    from .references.sources.hf_v1 import HFOpenLLMV1Fetcher
+    from .references.sources.hf_v2 import HFOpenLLMV2Fetcher
+    from .references.sources.bigcode import BigCodeHumanEvalFetcher
+
+    if frontier_yaml is None:
+        # Repo root: <repo>/benchmarks/references/frontier.yml
+        # cli.py lives at <repo>/llm-bench/src/bench/cli.py
+        frontier_yaml = Path(__file__).resolve().parents[3] / "benchmarks" / "references" / "frontier.yml"
+
+    all_fetchers = {
+        "frontier": FrontierFetcher(frontier_yaml),
+        "hf_v1": HFOpenLLMV1Fetcher(),
+        "hf_v2": HFOpenLLMV2Fetcher(),
+        "bigcode": BigCodeHumanEvalFetcher(),
+    }
+    if source == "all":
+        return list(all_fetchers.values())
+    return [all_fetchers[source]]
+
+
+@references.command(name="refresh")
+@click.option("--source", default="all",
+              type=click.Choice(_ALL_SOURCES, case_sensitive=False),
+              help="Which source(s) to refresh")
+@click.option("--db-path", default=Path("/data/bench.duckdb"),
+              envvar="LLM_BENCH_DB_PATH",
+              type=click.Path(path_type=Path))
+@click.option("--frontier-yaml", default=None,
+              type=click.Path(exists=True, path_type=Path),
+              help="Override path to benchmarks/references/frontier.yml")
+def references_refresh(source: str, db_path: Path, frontier_yaml: Path | None):
+    """Refresh published reference scores."""
+    from .db import get_connection
+    from .references.importer import refresh
+
+    fetchers = _build_fetchers(source, frontier_yaml)
+    db = get_connection(db_path)
+    report = refresh(db, fetchers=fetchers)
+
+    for name, count in report.ok_sources.items():
+        click.echo(f"[ok] {name}: {count} records")
+    for name, err in report.failed_sources.items():
+        click.echo(f"[fail] {name}: {err}", err=True)
+    if not report.ok_sources and report.failed_sources:
+        raise click.ClickException("All sources failed")
+
+
+@references.command(name="list")
+@click.option("--source", default=None,
+              type=click.Choice(_ALL_SOURCES[:-1], case_sensitive=False),
+              help="Filter to a single source")
+@click.option("--db-path", default=Path("/data/bench.duckdb"),
+              envvar="LLM_BENCH_DB_PATH",
+              type=click.Path(path_type=Path))
+@click.option("--format", "fmt", default="table",
+              type=click.Choice(["table", "json"]))
+def references_list(source: str | None, db_path: Path, fmt: str):
+    """List reference rows in the DB."""
+    from .db import get_connection
+
+    db = get_connection(db_path)
+    sql = "SELECT model_id, source, display_name, as_of FROM refs"
+    params: list = []
+    if source:
+        sql += " WHERE source LIKE ?"
+        params = [f"%{source}%"]
+    sql += " ORDER BY model_id, source"
+    rows = db.execute(sql, params).fetchall()
+
+    if fmt == "json":
+        click.echo(_json.dumps(
+            [
+                {"model_id": r[0], "source": r[1],
+                 "display_name": r[2], "as_of": str(r[3])}
+                for r in rows
+            ],
+            indent=2,
+        ))
+        return
+
+    click.echo(f"{'model_id':<50} {'source':<22} {'as_of':<12}")
+    click.echo("-" * 84)
+    for r in rows:
+        click.echo(f"{r[0]:<50} {r[1]:<22} {str(r[3]):<12}")
+
+
+@references.command(name="show")
+@click.argument("model_id")
+@click.option("--db-path", default=Path("/data/bench.duckdb"),
+              envvar="LLM_BENCH_DB_PATH",
+              type=click.Path(path_type=Path))
+def references_show(model_id: str, db_path: Path):
+    """Show all sources' scores for a model (substring match allowed)."""
+    from .db import get_connection
+
+    db = get_connection(db_path)
+    rows = db.execute(
+        """
+        SELECT model_id, source, display_name,
+               arc_challenge_acc, gsm8k_strict_match,
+               humaneval_pass1, ifeval_strict_acc,
+               citation_url, as_of
+        FROM refs
+        WHERE model_id LIKE ?
+        ORDER BY model_id, source
+        """,
+        [f"%{model_id}%"],
+    ).fetchall()
+
+    if not rows:
+        click.echo(f"No references found matching '{model_id}'")
+        return
+
+    for r in rows:
+        click.echo(f"{r[0]} ({r[1]}, as_of={r[8]})")
+        click.echo(f"  arc_challenge_acc:  {r[3]}")
+        click.echo(f"  gsm8k_strict_match: {r[4]}")
+        click.echo(f"  humaneval_pass1:    {r[5]}")
+        click.echo(f"  ifeval_strict_acc:  {r[6]}")
+        if r[7]:
+            click.echo(f"  citation: {r[7]}")
