@@ -162,3 +162,79 @@ def test_param_range_filters_only_refs(tmp_path):
     # frontier rows: 11.0 and 12.0 pass; 10.0 fails
     assert len(df) == 2
     assert all(p >= 11.0 for p in df["num_params_b"])
+
+
+import pandas as pd
+from bench.dashboard.compare_helpers import build_scorecard
+
+
+def test_build_scorecard_with_one_ref(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+        INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url,
+                          model_id, runtime, suite_id, status, scores, artifacts)
+        VALUES ('R1', '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z',
+                'http://x/v1', 'qwen/test', 'llama.cpp', 'tier1', 'ok',
+                '{"arc_challenge_acc":0.82,"gsm8k_strict_match":0.69,"humaneval_pass1":0.55,"ifeval_strict_acc":0.67,"quality_avg":0.68}',
+                '{}')
+    """)
+    db.execute("""
+        INSERT INTO refs (model_id, source, display_name,
+                          arc_challenge_acc, gsm8k_strict_match,
+                          humaneval_pass1, ifeval_strict_acc,
+                          as_of, imported_at)
+        VALUES ('meta-llama/Llama-3.1-8B-Instruct', 'frontier_curated',
+                'Llama 3.1 8B Instruct', 0.812, 0.846, 0.728, 0.789,
+                '2024-07-23', '2024-07-23T00:00:00')
+    """)
+
+    df = build_scorecard(
+        db, run_uuid="R1",
+        ref_model_ids=["meta-llama/Llama-3.1-8B-Instruct"],
+    )
+    assert list(df["capability"]) == [
+        "arc_challenge_acc", "gsm8k_strict_match",
+        "humaneval_pass1", "ifeval_strict_acc", "quality_avg",
+    ]
+    # delta vs Llama on humaneval: 0.55 - 0.728 = -0.178
+    delta_he = df.loc[df["capability"] == "humaneval_pass1",
+                      "Δ vs Llama 3.1 8B Instruct"].iloc[0]
+    assert abs(delta_he - (-0.178)) < 1e-3
+
+
+def test_build_scorecard_handles_missing_ref_metric(tmp_path):
+    """If the reference is missing a metric, the delta cell renders as None/NaN."""
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+        INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url,
+                          model_id, runtime, suite_id, status, scores, artifacts)
+        VALUES ('R2', '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z',
+                'http://x/v1', 'm', 'r', 'tier1', 'ok',
+                '{"arc_challenge_acc":0.8}', '{}')
+    """)
+    db.execute("""
+        INSERT INTO refs (model_id, source, display_name,
+                          arc_challenge_acc, gsm8k_strict_match,
+                          as_of, imported_at)
+        VALUES ('ref/x', 'frontier_curated', 'ref x', 0.7, 0.7,
+                '2025-01-01', '2025-01-01T00:00:00')
+    """)
+    df = build_scorecard(db, run_uuid="R2", ref_model_ids=["ref/x"])
+    # ref/x has no humaneval — the ref column should be None
+    he_ref = df.loc[df["capability"] == "humaneval_pass1", "ref x"].iloc[0]
+    assert he_ref is None or (isinstance(he_ref, float) and pd.isna(he_ref))
+
+
+def test_build_scorecard_no_refs_just_renders_run(tmp_path):
+    """With zero refs, the scorecard still shows the 'This run' column."""
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+        INSERT INTO runs (run_uuid, started_at, ended_at, endpoint_url,
+                          model_id, runtime, suite_id, status, scores, artifacts)
+        VALUES ('R3', '2026-05-19T10:00:00Z', '2026-05-19T10:30:00Z',
+                'http://x/v1', 'm', 'r', 'tier1', 'ok',
+                '{"arc_challenge_acc":0.9,"gsm8k_strict_match":0.85}', '{}')
+    """)
+    df = build_scorecard(db, run_uuid="R3", ref_model_ids=[])
+    assert "This run" in df.columns
+    assert len(df) == 5  # 4 caps + quality_avg

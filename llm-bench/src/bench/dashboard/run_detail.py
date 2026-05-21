@@ -7,6 +7,7 @@ import duckdb
 
 from ..db import get_connection
 from ..store import read_runs
+from .compare_helpers import build_scorecard
 
 
 def render():
@@ -42,3 +43,20 @@ def render():
     if rec.notes:
         st.subheader("Notes")
         st.write(rec.notes)
+
+    st.subheader("Compare against references")
+    refs = db.execute(
+        "SELECT model_id, display_name FROM merged_refs_v ORDER BY display_name"
+    ).fetchall()
+    if not refs:
+        st.info("No references loaded yet. Run `bench references refresh --source all`.")
+        return
+    options = {f"{name} ({mid})": mid for mid, name in refs}
+    selected = st.multiselect(
+        "Add reference models",
+        options=list(options.keys()),
+    )
+    if selected:
+        ref_ids = [options[s] for s in selected]
+        df = build_scorecard(db, run_uuid=uuid, ref_model_ids=ref_ids)
+        st.dataframe(df, use_container_width=True, hide_index=True)
