@@ -74,6 +74,9 @@ def test_read_log_tail_n_larger_than_file_returns_all(tmp_path):
     assert lines == ["a", "b", "c"]
 
 
+from bench.dashboard.about import _refs_freshness_rows
+
+
 def _seed_db(db, *, runs=0, frontier=0, hf=0):
     for i in range(runs):
         db.execute("""
@@ -238,3 +241,38 @@ def test_build_scorecard_no_refs_just_renders_run(tmp_path):
     df = build_scorecard(db, run_uuid="R3", ref_model_ids=[])
     assert "This run" in df.columns
     assert len(df) == 5  # 4 caps + quality_avg
+
+
+def test_refs_freshness_rows_empty(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    rows = _refs_freshness_rows(db)
+    assert rows == []
+
+
+def test_refs_freshness_rows_groups_by_source(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    db.execute("""
+        INSERT INTO refs (model_id, source, display_name, arc_challenge_acc,
+                          as_of, imported_at)
+        VALUES ('a/b', 'frontier_curated', 'a b', 0.8,
+                '2025-01-01', '2025-01-01T00:00:00')
+    """)
+    db.execute("""
+        INSERT INTO refs (model_id, source, display_name, arc_challenge_acc,
+                          as_of, imported_at)
+        VALUES ('c/d', 'frontier_curated', 'c d', 0.7,
+                '2025-01-01', '2025-01-02T00:00:00')
+    """)
+    db.execute("""
+        INSERT INTO refs (model_id, source, display_name, ifeval_strict_acc,
+                          as_of, imported_at)
+        VALUES ('e/f', 'hf_open_llm_v2', 'e f', 0.6,
+                '2025-01-01', '2025-01-03T00:00:00')
+    """)
+    rows = _refs_freshness_rows(db)
+    # ORDER BY source — frontier_curated < hf_open_llm_v2 alphabetically
+    assert len(rows) == 2
+    frontier = next(r for r in rows if r["source"] == "frontier_curated")
+    assert frontier["row_count"] == 2
+    # last_refresh should be the MAX imported_at within the source
+    assert "2025-01-02" in str(frontier["last_refresh"])
