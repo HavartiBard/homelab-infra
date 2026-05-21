@@ -214,15 +214,23 @@ _ALL_SOURCES = ("frontier", "hf_v1", "hf_v2", "bigcode", "all")
 
 def _build_fetchers(source: str, frontier_yaml: Path | None):
     """Construct the list of SourceFetcher instances for a `--source` choice."""
+    import os
     from .references.sources.frontier import FrontierFetcher
     from .references.sources.hf_v1 import HFOpenLLMV1Fetcher
     from .references.sources.hf_v2 import HFOpenLLMV2Fetcher
     from .references.sources.bigcode import BigCodeHumanEvalFetcher
 
     if frontier_yaml is None:
-        # Repo root: <repo>/benchmarks/references/frontier.yml
-        # cli.py lives at <repo>/llm-bench/src/bench/cli.py
-        frontier_yaml = Path(__file__).resolve().parents[3] / "benchmarks" / "references" / "frontier.yml"
+        # Prefer the catalog mount when running in the deployed container
+        # (LLM_BENCH_CATALOG_ROOT=/catalog, mounted from benchmarks/). Fall
+        # back to the repo-root layout for local development.
+        catalog_root = os.environ.get("LLM_BENCH_CATALOG_ROOT")
+        if catalog_root:
+            frontier_yaml = Path(catalog_root) / "references" / "frontier.yml"
+        else:
+            # cli.py lives at <repo>/llm-bench/src/bench/cli.py;
+            # parents[3] = repo root, which holds benchmarks/
+            frontier_yaml = Path(__file__).resolve().parents[3] / "benchmarks" / "references" / "frontier.yml"
 
     all_fetchers = {
         "frontier": FrontierFetcher(frontier_yaml),
