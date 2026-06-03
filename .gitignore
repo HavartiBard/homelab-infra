@@ -48,3 +48,6 @@ ansible/group_vars/**/*.bak.*
 ansible/group_vars/*/vault.yml.bak.*
 ansible/artifacts/
 .worktrees/
+
+# Superpowers brainstorming sessions (visual companion mockups)
+.superpowers/

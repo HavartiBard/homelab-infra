@@ -31,7 +31,12 @@ ExecStart={{ personal_agent_llm_binary }} \
   --temp {{ personal_agent_llm_temp }} \
   --top-k {{ personal_agent_llm_top_k }} \
   --top-p {{ personal_agent_llm_top_p }} \
-  --min-p {{ personal_agent_llm_min_p }}{% if personal_agent_llm_cache_type_k is defined and personal_agent_llm_cache_type_k %} \
+  --min-p {{ personal_agent_llm_min_p }} \
+  --repeat-penalty {{ personal_agent_llm_repeat_penalty }}{% if personal_agent_llm_cache_prompt_enabled | bool %} \
+  --cache-prompt \
+  --cache-reuse {{ personal_agent_llm_cache_reuse }}{% endif %}{% if personal_agent_llm_ctx_checkpoints is defined %} \
+  --ctx-checkpoints {{ personal_agent_llm_ctx_checkpoints }}{% endif %}{% if personal_agent_llm_reasoning_budget is defined %} \
+  --reasoning-budget {{ personal_agent_llm_reasoning_budget }}{% endif %}{% if personal_agent_llm_cache_type_k is defined and personal_agent_llm_cache_type_k %} \
   --cache-type-k {{ personal_agent_llm_cache_type_k }} \
   --cache-type-v {{ personal_agent_llm_cache_type_v }}{% endif %}{% if personal_agent_llm_speculative_enabled | bool %} \
   --spec-type {{ personal_agent_llm_spec_type }} \

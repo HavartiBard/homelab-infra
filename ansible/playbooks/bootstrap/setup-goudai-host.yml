@@ -105,6 +105,13 @@
           - python3-dev
         state: present
 
+    - name: Install system monitoring tools
+      ansible.builtin.apt:
+        name:
+          - htop
+          - nvtop                 # GPU + per-process utilization (AMD via libdrm)
+        state: present
+
     # ── GPU access ────────────────────────────────────────────────────────────
     # ROCm system packages are not installed (Ubuntu 26.04 not yet supported).
     # Vulkan (Mesa RADV) handles GPU compute for llama.cpp; Ollama uses its own bundled stack.

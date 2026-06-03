@@ -18,6 +18,8 @@ services:
 
   backend:
     image: code.klsll.com/havartibard/agent-control-plane-backend:latest
+    command: >-
+      sh -c "mkdir -p ${AGENT_REPO_ROOT:-/workspace/repo} ${AGENT_WORKTREE_ROOT:-/workspace/agents} && exec node dist/index.js"
     environment:
       DATABASE_URL: postgresql://agent_cp:${POSTGRES_PASSWORD:?required}@postgres:5432/agent_cp
       SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:?required}

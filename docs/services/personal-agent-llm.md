@@ -20,7 +20,7 @@ Dedicated OpenAI-compatible `llama-server` endpoint on goudai for personal codin
 - Runtime: `/usr/local/bin/llama-server`
 - Model: `ggml-org/Qwen3.6-27B-MTP-GGUF:BF16`
 - Alias: `qwen/qwen3.6-27b-mtp`
-- Context window: `65536`
+- Context window: `131072`
 - Speculative decode: `--spec-type draft-mtp --spec-draft-n-max 5`
 - Cache: `/var/lib/personal-agent-llm/huggingface`
 

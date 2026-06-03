@@ -20,7 +20,7 @@
         netbox_services:
           - name: phoenix
             cluster: unraid-docker
-            role: LLM Service
+            role: AI Observability
             comments: "Arize Phoenix traces/evals — http://{{ ansible_host }}:{{ phoenix_port }}"
 
   post_tasks:

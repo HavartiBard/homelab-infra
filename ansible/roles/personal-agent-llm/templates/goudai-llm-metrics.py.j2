@@ -109,7 +109,51 @@ def read_gpu_sysfs():
                 result[key] = int(f.read().strip())
         except (OSError, ValueError):
             pass
+
+    # Read AMD GPU temperature + power from hwmon (amdgpu driver exposes one
+    # hwmon directory under the card's device path).
+    hwmon_dir = os.path.join(base, "hwmon")
+    if os.path.isdir(hwmon_dir):
+        for hw in sorted(os.listdir(hwmon_dir)):
+            sensor = os.path.join(hwmon_dir, hw)
+            try:
+                with open(os.path.join(sensor, "name")) as f:
+                    if f.read().strip() != "amdgpu":
+                        continue
+            except OSError:
+                continue
+            try:
+                with open(os.path.join(sensor, "temp1_input")) as f:
+                    # Kernel reports millidegrees Celsius.
+                    result["temp_edge_celsius"] = int(f.read().strip()) / 1000.0
+            except (OSError, ValueError):
+                pass
+            try:
+                with open(os.path.join(sensor, "power1_average")) as f:
+                    # Kernel reports microwatts.
+                    result["power_watts"] = int(f.read().strip()) / 1_000_000.0
+            except (OSError, ValueError):
+                pass
+            break
     return result
+
+
+def read_cpu_temp():
+    """Read CPU package temperature from k10temp hwmon (AMD Ryzen)."""
+    for entry in sorted(os.listdir("/sys/class/hwmon")):
+        sensor = os.path.join("/sys/class/hwmon", entry)
+        try:
+            with open(os.path.join(sensor, "name")) as f:
+                if f.read().strip() != "k10temp":
+                    continue
+        except OSError:
+            continue
+        try:
+            with open(os.path.join(sensor, "temp1_input")) as f:
+                return int(f.read().strip()) / 1000.0
+        except (OSError, ValueError):
+            return None
+    return None
 
 
 def main():
@@ -179,6 +223,26 @@ def main():
             "# HELP goudai_gpu_busy_percent AMD GPU busy percentage.",
             "# TYPE goudai_gpu_busy_percent gauge",
             metric("goudai_gpu_busy_percent", gpu.get("busy_percent", 0)),
+        ])
+        if "temp_edge_celsius" in gpu:
+            lines.extend([
+                "# HELP goudai_gpu_temperature_celsius AMD GPU edge temperature.",
+                "# TYPE goudai_gpu_temperature_celsius gauge",
+                metric("goudai_gpu_temperature_celsius", gpu["temp_edge_celsius"]),
+            ])
+        if "power_watts" in gpu:
+            lines.extend([
+                "# HELP goudai_gpu_power_watts AMD GPU average package power.",
+                "# TYPE goudai_gpu_power_watts gauge",
+                metric("goudai_gpu_power_watts", gpu["power_watts"]),
+            ])
+
+    cpu_temp = read_cpu_temp()
+    if cpu_temp is not None:
+        lines.extend([
+            "# HELP goudai_cpu_temperature_celsius CPU package temperature (k10temp Tctl).",
+            "# TYPE goudai_cpu_temperature_celsius gauge",
+            metric("goudai_cpu_temperature_celsius", cpu_temp),
         ])
 
     os.makedirs(TEXTFILE_DIR, exist_ok=True)
