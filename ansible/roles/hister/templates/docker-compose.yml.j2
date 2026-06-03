@@ -9,12 +9,13 @@ services:
       net.unraid.docker.webui: "http://192.168.20.14:{{ hister_port }}"
     environment:
       TZ: America/Phoenix
-      HISTER__SERVER__ADDRESS: "0.0.0.0:4433"
+      HISTER__SERVER__ADDRESS: "0.0.0.0:{{ hister_port }}"
       HISTER__SERVER__BASE_URL: "{{ hister_base_url }}"
     ports:
-      - "{{ hister_port }}:4433"
+      - "{{ hister_port }}:{{ hister_port }}"
     volumes:
       - "{{ hister_appdata }}/data:/hister/data"
+      - "{{ hister_appdata }}/data/config.yml:/hister/data/config.yml:ro"
     networks:
       - hister-net
     deploy:
