@@ -1,0 +1,6 @@
+---
+- name: Deploy llm-bench (orchestrator + dashboard) on Unraid
+  hosts: unraid
+  gather_facts: false
+  roles:
+    - role: llm-bench

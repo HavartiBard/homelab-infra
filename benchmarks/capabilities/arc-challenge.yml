@@ -1,0 +1,15 @@
+capability:
+  id: arc_challenge
+  name: ARC-Challenge
+  category: reasoning
+  # We use the *_chat variant (generate_until + exact_match scoring) because
+  # the canonical arc_challenge task uses loglikelihood, which the
+  # local-chat-completions endpoint cannot serve.
+  description: Reasoning benchmark via lm-evaluation-harness (chat variant).
+  probe:
+    type: lm_eval_harness
+    task: arc_challenge_chat
+    num_fewshot: 0
+    batch_size: auto
+  outputs:
+    - { id: arc_challenge_acc, unit: accuracy, direction: higher_is_better }

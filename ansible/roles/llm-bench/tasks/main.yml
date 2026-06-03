@@ -1,0 +1,88 @@
+---
+- name: Create appdata directories on Unraid
+  ansible.builtin.raw: >
+    mkdir -p {{ llm_bench_data_dir }} {{ llm_bench_data_dir }}/results
+    {{ llm_bench_catalog_mount }} {{ llm_bench_compose_dir }}
+  changed_when: false
+
+- name: Sync benchmarks/ catalog to Unraid
+  ansible.posix.synchronize:
+    src: "{{ llm_bench_catalog_src }}/"
+    dest: "{{ llm_bench_catalog_mount }}/"
+    delete: true
+    recursive: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=.pytest_cache"
+
+- name: Sync llm-bench/ build context to Unraid
+  ansible.posix.synchronize:
+    src: "{{ llm_bench_build_context_src }}/"
+    dest: "{{ llm_bench_compose_dir }}/"
+    delete: false
+    recursive: true
+    rsync_opts:
+      - "--exclude=__pycache__"
+      - "--exclude=.pytest_cache"
+      - "--exclude=.venv"
+
+- name: Render docker-compose.yml from template
+  ansible.builtin.template:
+    src: "{{ llm_bench_build_context_src }}/docker-compose.yml.j2"
+    dest: "{{ llm_bench_compose_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Check for legacy runs.jsonl to migrate
+  ansible.builtin.stat:
+    path: "{{ llm_bench_data_dir }}/runs.jsonl"
+  register: legacy_jsonl
+
+- name: Check whether DuckDB already exists
+  ansible.builtin.stat:
+    path: "{{ llm_bench_data_dir }}/bench.duckdb"
+  register: duckdb_present
+
+# Build the image up-front so the migration container below picks up the new
+# code rather than reusing the previously-built image tag (which may pre-date
+# any changes to bench.db.migrate / the bench CLI). Without this the
+# subsequent `docker compose run --rm llm-bench bench db migrate ...` will
+# silently run against stale code on an existing image.
+- name: Build llm-bench image
+  ansible.builtin.shell: docker compose build llm-bench
+  args:
+    chdir: "{{ llm_bench_compose_dir }}"
+  when:
+    - legacy_jsonl.stat.exists
+    - not duckdb_present.stat.exists
+  changed_when: true
+
+- name: One-shot migrate runs.jsonl into DuckDB
+  ansible.builtin.shell: docker compose run --rm llm-bench bench db migrate --jsonl-path /data/runs.jsonl --db-path /data/bench.duckdb
+  args:
+    chdir: "{{ llm_bench_compose_dir }}"
+  when:
+    - legacy_jsonl.stat.exists
+    - not duckdb_present.stat.exists
+
+- name: Build and start llm-bench container
+  community.docker.docker_compose_v2:
+    project_src: "{{ llm_bench_compose_dir }}"
+    build: always
+    state: present
+  register: compose_result
+  ignore_errors: true
+
+- name: Fail if compose deployment failed (not in check mode)
+  ansible.builtin.fail:
+    msg: "docker_compose_v2 failed: {{ compose_result.msg }}"
+  when: compose_result is failed and not ansible_check_mode
+
+- name: Validate dashboard responds
+  ansible.builtin.uri:
+    url: "http://localhost:{{ llm_bench_port }}/_stcore/health"
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: health
+  until: health.status == 200
+  when: not ansible_check_mode

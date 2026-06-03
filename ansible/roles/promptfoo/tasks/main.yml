@@ -2,7 +2,7 @@
 # Using raw commands throughout — Unraid has no Python.
 
 - name: Ensure Promptfoo appdata directory exists
-  ansible.builtin.raw: mkdir -p {{ promptfoo_appdata }}
+  ansible.builtin.raw: mkdir -p {{ promptfoo_appdata }} && chown -R {{ promptfoo_uid }}:{{ promptfoo_gid }} {{ promptfoo_appdata }}
   changed_when: false
 
 - name: Ensure Promptfoo compose directory exists

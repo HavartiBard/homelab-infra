@@ -4,5 +4,7 @@ promptfoo_port: 15500
 promptfoo_container_port: 3000
 promptfoo_appdata: "/mnt/user/appdata/promptfoo"
 promptfoo_compose_dir: "/opt/docker/promptfoo"
+promptfoo_uid: 100
+promptfoo_gid: 101
 promptfoo_share_chunk_size: 10
 promptfoo_telemetry_disabled: "1"

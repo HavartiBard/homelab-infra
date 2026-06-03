@@ -1,0 +1,12 @@
+capability:
+  id: ifeval
+  name: IFEval (instruction following)
+  category: instruction_following
+  description: Instruction-following benchmark via lm-evaluation-harness.
+  probe:
+    type: lm_eval_harness
+    task: ifeval
+    num_fewshot: 0
+    batch_size: auto
+  outputs:
+    - { id: ifeval_strict_acc, unit: accuracy, direction: higher_is_better }

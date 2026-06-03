@@ -1,0 +1,130 @@
+# benchmarks/references/frontier.yml
+# Hand-curated published scores. Add/update from official model release posts.
+# Score IDs must be ∈ {arc_challenge_acc, gsm8k_strict_match,
+# humaneval_pass1, ifeval_strict_acc}. Values are decimal fractions in [0, 1].
+references:
+  - model_id: anthropic/claude-sonnet-4
+    display_name: Claude Sonnet 4
+    license: proprietary
+    scores:
+      gsm8k_strict_match: 0.965
+      humaneval_pass1:    0.929
+      ifeval_strict_acc:  0.892
+    citation_url: https://www.anthropic.com/news/claude-4
+    as_of: 2025-05-22
+
+  - model_id: anthropic/claude-opus-4
+    display_name: Claude Opus 4
+    license: proprietary
+    scores:
+      humaneval_pass1:    0.952
+      ifeval_strict_acc:  0.908
+    citation_url: https://www.anthropic.com/news/claude-4
+    as_of: 2025-05-22
+
+  - model_id: openai/gpt-4o
+    display_name: GPT-4o
+    license: proprietary
+    scores:
+      gsm8k_strict_match: 0.905
+      humaneval_pass1:    0.902
+    citation_url: https://openai.com/index/hello-gpt-4o/
+    as_of: 2024-05-13
+
+  - model_id: openai/gpt-4.1
+    display_name: GPT-4.1
+    license: proprietary
+    scores:
+      humaneval_pass1:    0.917
+      ifeval_strict_acc:  0.871
+    citation_url: https://openai.com/index/gpt-4-1/
+    as_of: 2025-04-14
+
+  - model_id: google/gemini-2.5-pro
+    display_name: Gemini 2.5 Pro
+    license: proprietary
+    scores:
+      gsm8k_strict_match: 0.945
+      humaneval_pass1:    0.876
+    citation_url: https://blog.google/technology/google-deepmind/google-gemini-updates-io-2025/
+    as_of: 2025-05-20
+
+  - model_id: meta-llama/Llama-3.1-8B-Instruct
+    display_name: Llama 3.1 8B Instruct
+    num_params_b: 8.0
+    license: llama3.1
+    scores:
+      arc_challenge_acc:  0.812
+      gsm8k_strict_match: 0.846
+      humaneval_pass1:    0.728
+      ifeval_strict_acc:  0.789
+    citation_url: https://ai.meta.com/blog/meta-llama-3-1/
+    as_of: 2024-07-23
+
+  - model_id: meta-llama/Llama-3.1-70B-Instruct
+    display_name: Llama 3.1 70B Instruct
+    num_params_b: 70.0
+    license: llama3.1
+    scores:
+      arc_challenge_acc:  0.929
+      gsm8k_strict_match: 0.953
+      humaneval_pass1:    0.805
+      ifeval_strict_acc:  0.873
+    citation_url: https://ai.meta.com/blog/meta-llama-3-1/
+    as_of: 2024-07-23
+
+  - model_id: meta-llama/Llama-3.1-405B-Instruct
+    display_name: Llama 3.1 405B Instruct
+    num_params_b: 405.0
+    license: llama3.1
+    scores:
+      arc_challenge_acc:  0.969
+      gsm8k_strict_match: 0.968
+      humaneval_pass1:    0.890
+      ifeval_strict_acc:  0.886
+    citation_url: https://ai.meta.com/blog/meta-llama-3-1/
+    as_of: 2024-07-23
+
+  - model_id: Qwen/Qwen2.5-72B-Instruct
+    display_name: Qwen2.5 72B Instruct
+    num_params_b: 72.0
+    license: qwen
+    scores:
+      gsm8k_strict_match: 0.957
+      humaneval_pass1:    0.866
+      ifeval_strict_acc:  0.866
+    citation_url: https://qwenlm.github.io/blog/qwen2.5/
+    as_of: 2024-09-19
+
+  - model_id: deepseek-ai/DeepSeek-V3
+    display_name: DeepSeek V3
+    num_params_b: 671.0
+    license: deepseek
+    scores:
+      gsm8k_strict_match: 0.892
+      humaneval_pass1:    0.829
+      ifeval_strict_acc:  0.864
+    citation_url: https://github.com/deepseek-ai/DeepSeek-V3
+    as_of: 2024-12-26
+
+  - model_id: deepseek-ai/DeepSeek-R1
+    display_name: DeepSeek R1
+    num_params_b: 671.0
+    license: deepseek
+    scores:
+      gsm8k_strict_match: 0.972
+      humaneval_pass1:    0.821
+    citation_url: https://github.com/deepseek-ai/DeepSeek-R1
+    as_of: 2025-01-20
+
+  - model_id: google/gemma-2-27b-it
+    display_name: Gemma 2 27B Instruct
+    num_params_b: 27.0
+    license: gemma
+    scores:
+      arc_challenge_acc:  0.717
+      gsm8k_strict_match: 0.755
+      humaneval_pass1:    0.512
+      ifeval_strict_acc:  0.745
+    citation_url: https://huggingface.co/google/gemma-2-27b-it
+    as_of: 2024-06-27

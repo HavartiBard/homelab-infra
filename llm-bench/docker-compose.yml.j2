@@ -1,0 +1,32 @@
+services:
+  llm-bench:
+    build:
+      context: .
+    image: "{{ llm_bench_image }}"
+    container_name: llm-bench
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/streamlit.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ llm_bench_port }}"
+    environment:
+      TZ: America/Phoenix
+      LLM_BENCH_DB_PATH: "{{ llm_bench_data_dir }}/bench.duckdb"
+      LLM_BENCH_RESULTS_DIR: "{{ llm_bench_data_dir }}/results"
+      LLM_BENCH_CATALOG_ROOT: "/catalog"
+      LLM_BENCH_PROMETHEUS_BASE_URL: "{{ llm_bench_prometheus_base_url }}"
+      LLM_BENCH_OTLP_ENDPOINT: "{{ llm_bench_otlp_endpoint }}"
+    ports:
+      - "{{ llm_bench_port }}:15600"
+    volumes:
+      - "{{ llm_bench_data_dir }}:/data"
+      - "{{ llm_bench_catalog_mount }}:/catalog:ro"
+    networks:
+      - llm-bench-net
+      - phoenix-net
+
+networks:
+  llm-bench-net:
+    name: llm-bench-net
+  phoenix-net:
+    name: phoenix-net
+    external: true

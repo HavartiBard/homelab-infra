@@ -1,0 +1,12 @@
+capability:
+  id: throughput
+  name: Generation Throughput
+  category: speed
+  description: Tokens/sec measured against the same 50-prompt sample as TTFT.
+  probe:
+    type: latency
+    fixture: fixtures/latency-prompts.jsonl
+    sample_size: 50
+  outputs:
+    - { id: decode_tokens_per_sec,      unit: tok/s, direction: higher_is_better }
+    - { id: prompt_eval_tokens_per_sec, unit: tok/s, direction: higher_is_better }

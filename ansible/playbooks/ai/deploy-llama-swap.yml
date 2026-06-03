@@ -1,0 +1,11 @@
+---
+# Deploy llama-swap to goudai. See Gitea #131.
+#
+# The role's first task stops the legacy personal-agent-llm.service when
+# llama_swap_port == 8010, so a re-run after cutover is idempotent.
+
+- name: Deploy llama-swap on goudai
+  hosts: goudai
+  gather_facts: true
+  roles:
+    - role: llama-swap

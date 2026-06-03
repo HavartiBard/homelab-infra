@@ -1,0 +1,14 @@
+---
+llm_bench_image: llm-bench:0.1.0
+llm_bench_port: 15600
+llm_bench_appdata: /mnt/user/appdata/llm-bench
+llm_bench_data_dir: "{{ llm_bench_appdata }}/data"
+llm_bench_catalog_mount: "{{ llm_bench_appdata }}/catalog"
+llm_bench_compose_dir: /opt/docker/llm-bench
+llm_bench_prometheus_base_url: http://prometheus:9090
+llm_bench_otlp_endpoint: phoenix:4317
+
+# Source paths (on the controller / repo checkout) for build context + catalog sync
+llm_bench_source_repo: "{{ playbook_dir }}/../../.."
+llm_bench_build_context_src: "{{ llm_bench_source_repo }}/llm-bench"
+llm_bench_catalog_src: "{{ llm_bench_source_repo }}/benchmarks"
