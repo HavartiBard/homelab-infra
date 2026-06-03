@@ -170,6 +170,66 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
+  # ── Uncensored chat — 35B-A3B fine-tune ────────────────────────────────
+  # Keep this on-demand; it is not part of the persistent warm set.
+  "qwen/qwen3.6-35b-uncensored":
+    hf: "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4_K_M"
+    alias: "qwen/qwen3.6-35b-uncensored"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  # ── 35B-A3B MTP reasoning ───────────────────────────────────────────────
+  # Found a llama.cpp-native GGUF build from Unsloth. Keep on-demand until
+  # we validate VRAM fit and runtime behavior versus the 27B warm default.
+  "qwen/qwen3.6-35b-a3b-mtp":
+    hf: "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
+    alias: "qwen/qwen3.6-35b-a3b-mtp"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--reasoning-budget 4096"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+      - "--spec-type draft-mtp"
+      - "--spec-draft-n-max 5"
+    ttl: 600
+
 # ── Group configuration ────────────────────────────────────────────────────
 #
 # llama-swap groups control whether multiple models can be loaded
