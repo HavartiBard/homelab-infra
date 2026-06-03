@@ -20,7 +20,7 @@ class HFOpenLLMV1Fetcher:
     dataset_id = "open-llm-leaderboard-old/results"
 
     def fetch(self) -> Iterable[ReferenceRecord]:
-        ds = load_dataset(self.dataset_id)
+        ds = load_dataset(self.dataset_id, split="train")
         for row in ds:
             model_id = row.get("model")
             if not model_id:

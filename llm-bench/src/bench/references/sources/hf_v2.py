@@ -18,7 +18,7 @@ class HFOpenLLMV2Fetcher:
 
     def fetch(self) -> Iterable[ReferenceRecord]:
         as_of = datetime.now(timezone.utc).date()
-        ds = load_dataset(self.dataset_id)
+        ds = load_dataset(self.dataset_id, split="train")
         for row in ds:
             if not row.get("Maintainer's Choice"):
                 continue
