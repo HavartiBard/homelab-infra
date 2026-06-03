@@ -4,7 +4,11 @@ import pytest
 
 from bench.db import get_connection
 from bench.store import RunRecord, append_run
-from bench.dashboard.leaderboard import query_leaderboard, runs_to_dataframe_rows
+from bench.dashboard.leaderboard import (
+    has_reference_source,
+    query_leaderboard,
+    runs_to_dataframe_rows,
+)
 from bench.dashboard.logs import read_log_tail
 
 
@@ -140,6 +144,13 @@ def test_empty_filter_returns_empty_df(tmp_path):
         db, show_local=False, show_frontier=False, show_open=False,
     )
     assert df.empty
+
+
+def test_has_reference_source_detects_frontier_rows(tmp_path):
+    db = get_connection(tmp_path / "bench.duckdb")
+    _seed_db(db, runs=0, frontier=1, hf=0)
+    assert has_reference_source(db, "frontier_curated") is True
+    assert has_reference_source(db, "hf_open_llm_v2") is False
 
 
 def test_search_filters_by_model_id(tmp_path):

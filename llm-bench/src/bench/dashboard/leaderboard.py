@@ -19,6 +19,15 @@ LEADERBOARD_COLUMNS = [
 ]
 
 
+def has_reference_source(db: duckdb.DuckDBPyConnection, source: str) -> bool:
+    """Return whether at least one reference row exists for the given source."""
+    row = db.execute(
+        "SELECT 1 FROM refs WHERE source = ? LIMIT 1",
+        [source],
+    ).fetchone()
+    return row is not None
+
+
 def query_leaderboard(
     db: duckdb.DuckDBPyConnection,
     *,
@@ -92,11 +101,12 @@ def render():
 
     db_path = Path(os.environ.get("LLM_BENCH_DB_PATH", "/data/bench.duckdb"))
     db = get_connection(db_path)
+    frontier_default = has_reference_source(db, "frontier_curated")
     st.title("Leaderboard")
 
     col1, col2, col3 = st.columns(3)
     show_local    = col1.checkbox("Local runs", value=True)
-    show_frontier = col2.checkbox("Frontier (curated)", value=False)
+    show_frontier = col2.checkbox("Frontier (curated)", value=frontier_default)
     show_open     = col3.checkbox("Open weights (HF/BigCode)", value=False)
 
     search = st.text_input("Search model_id", value="")
