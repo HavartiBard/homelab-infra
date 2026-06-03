@@ -141,9 +141,8 @@ llama_swap_models:
     ttl: 600
 
   # ── Medical reasoning — Qwen3.5 fine-tune ──────────────────────────────
-  # Downloaded from a llama.cpp-compatible GGUF conversion. Keep this as an
-  # on-demand model outside the warm agent-stack until we validate quality,
-  # throughput, and memory usage on goudai.
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # medical reasoning sessions, subject to the available VRAM budget.
   "qwen/qwen3.5-medical-gspo":
     hf: "mradermacher/Qwen3.5-Medical-GSPO-GGUF:Q4_K_M"
     alias: "qwen/qwen3.5-medical-gspo"
@@ -168,7 +167,7 @@ llama_swap_models:
       - "--ctx-checkpoints 10"
       - "--cache-type-k q8_0"
       - "--cache-type-v q8_0"
-    ttl: 600
+    ttl: 0
 
   # ── Uncensored chat — 35B-A3B fine-tune ────────────────────────────────
   # Keep this on-demand; it is not part of the persistent warm set.
@@ -199,8 +198,8 @@ llama_swap_models:
     ttl: 600
 
   # ── 35B-A3B MTP reasoning ───────────────────────────────────────────────
-  # Found a llama.cpp-native GGUF build from Unsloth. Keep on-demand until
-  # we validate VRAM fit and runtime behavior versus the 27B warm default.
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # use, subject to the available VRAM budget.
   "qwen/qwen3.6-35b-a3b-mtp":
     hf: "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
     alias: "qwen/qwen3.6-35b-a3b-mtp"
@@ -228,7 +227,7 @@ llama_swap_models:
       - "--cache-type-v q8_0"
       - "--spec-type draft-mtp"
       - "--spec-draft-n-max 5"
-    ttl: 600
+    ttl: 0
 
 # ── Group configuration ────────────────────────────────────────────────────
 #
@@ -252,6 +251,8 @@ llama_swap_groups:
     members:
       - "qwen/qwen3.6-27b-mtp"
       - "qwen/qwen3-coder-next"
+      - "qwen/qwen3.5-medical-gspo"
+      - "qwen/qwen3.6-35b-a3b-mtp"
 
 # How long llama-swap waits for a child llama-server to become healthy
 # before declaring the spawn a failure. Bumped from the 120s default to
