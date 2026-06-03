@@ -99,9 +99,17 @@
           - libvulkan-dev
           - vulkan-tools
           - mesa-vulkan-drivers
+          - libssl-dev            # HTTPS support for llama.cpp -hf downloads
           - glslc                 # GLSL→SPIR-V compiler — required for llama.cpp Vulkan
           - spirv-headers         # SPIRV C++ headers — required for ggml-vulkan.cpp
           - python3-dev
+        state: present
+
+    - name: Install system monitoring tools
+      ansible.builtin.apt:
+        name:
+          - htop
+          - nvtop                 # GPU + per-process utilization (AMD via libdrm)
         state: present
 
     # ── GPU access ────────────────────────────────────────────────────────────
@@ -136,6 +144,7 @@
           cmake -B build -GNinja
           -DCMAKE_BUILD_TYPE=Release
           -DGGML_VULKAN=ON
+          -DLLAMA_OPENSSL=ON
         chdir: "{{ llama_cpp_src }}"
       when: llama_cpp_git.changed or llama_cpp_force_rebuild | bool
 

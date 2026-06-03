@@ -111,6 +111,18 @@
     EOFDASHBD
   changed_when: true
 
+- name: Find Grafana dashboard JSON files
+  ansible.builtin.set_fact:
+    _obs_grafana_dashboard_files: "{{ lookup('fileglob', role_path + '/../../files/observability/grafana/provisioning/dashboards/json/*.json', wantlist=True) }}"
+
+- name: Copy Grafana dashboard JSON files
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/grafana/provisioning/dashboards/json/{{ item | basename }} << 'EOFDASHJSON'
+    {{ lookup('file', item) }}
+    EOFDASHJSON
+  loop: "{{ _obs_grafana_dashboard_files }}"
+  changed_when: true
+
 # --- observability.env (secret — rendered from template) ---
 
 - name: Generate observability.env content
@@ -140,6 +152,11 @@
   ansible.builtin.raw: |
     cd {{ observability_compose_dir }} && docker compose --env-file observability.env up -d
   changed_when: true
+
+- name: Reload Prometheus configuration
+  ansible.builtin.raw: |
+    docker exec prometheus wget -qO- --post-data= http://localhost:9090/-/reload
+  changed_when: false
 
 # --- Health check ---
 
