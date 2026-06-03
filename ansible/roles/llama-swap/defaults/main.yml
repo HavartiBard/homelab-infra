@@ -140,6 +140,36 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
+  # ── Medical reasoning — Qwen3.5 fine-tune ──────────────────────────────
+  # Downloaded from a llama.cpp-compatible GGUF conversion. Keep this as an
+  # on-demand model outside the warm agent-stack until we validate quality,
+  # throughput, and memory usage on goudai.
+  "qwen/qwen3.5-medical-gspo":
+    hf: "mradermacher/Qwen3.5-Medical-GSPO-GGUF:Q4_K_M"
+    alias: "qwen/qwen3.5-medical-gspo"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
 # ── Group configuration ────────────────────────────────────────────────────
 #
 # llama-swap groups control whether multiple models can be loaded
