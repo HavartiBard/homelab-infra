@@ -13,7 +13,7 @@ services:
       net.unraid.docker.webui: http://[IP]:[PORT:3100]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
-      - loki-data:/loki
+      - /mnt/user/appdata/observability/data/loki:/loki
     command: -config.file=/etc/loki/config.yml
     networks:
       - observability-net
@@ -129,8 +129,6 @@ networks:
     name: observability-net
 
 volumes:
-  loki-data:
-    name: loki-data
   grafana-data:
     name: grafana-data
   alertmanager-data:
