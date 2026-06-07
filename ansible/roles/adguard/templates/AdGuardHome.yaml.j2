@@ -214,9 +214,9 @@ clients:
       upstreams_cache_size: 0
       upstreams_cache_enabled: false
       use_global_settings: true
-      filtering_enabled: false
+      filtering_enabled: true
       parental_enabled: false
-      safebrowsing_enabled: false
+      safebrowsing_enabled: {{ adguard_safebrowsing_enabled | lower }}
       use_global_blocked_services: true
       ignore_querylog: false
       ignore_statistics: false

@@ -208,3 +208,70 @@
   when:
     - not adguard_bedtime_enabled
     - ansible_host == adguard_sync_origin
+
+# --- Roblox daily cap reconciler (sync origin only) ---
+- name: Deploy Roblox cap reconciler script
+  ansible.builtin.copy:
+    src: roblox_cap.py
+    dest: /opt/adguard/roblox_cap.py
+    mode: "0755"
+  become: true
+  when:
+    - adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy Roblox cap env file
+  ansible.builtin.template:
+    src: roblox-cap.env.j2
+    dest: /opt/adguard/roblox-cap.env
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  when:
+    - adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy Roblox cap systemd service unit
+  ansible.builtin.template:
+    src: adguard-roblox-cap.service.j2
+    dest: /etc/systemd/system/adguard-roblox-cap.service
+    mode: "0644"
+  become: true
+  when:
+    - adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy Roblox cap systemd timer unit
+  ansible.builtin.template:
+    src: adguard-roblox-cap.timer.j2
+    dest: /etc/systemd/system/adguard-roblox-cap.timer
+    mode: "0644"
+  become: true
+  when:
+    - adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Enable and start Roblox cap timer
+  ansible.builtin.systemd:
+    name: adguard-roblox-cap.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when:
+    - adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Disable Roblox cap timer when feature is off
+  ansible.builtin.systemd:
+    name: adguard-roblox-cap.timer
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  failed_when: false
+  when:
+    - not adguard_roblox_cap_enabled
+    - ansible_host == adguard_sync_origin

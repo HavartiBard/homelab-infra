@@ -15,4 +15,10 @@ adguard_persistent_clients:
   - { name: "Jen Iphone",     ids: ["192.168.1.25"],  tags: [], uid: "019ea037-6088-7628-8be5-c3f0e05fef33" }
   - { name: "Madison IPAD",   ids: ["192.168.1.75"],  tags: ["device_tablet", "user_child"], uid: "019ea037-6088-762a-be2b-23a93b86df75" }
   - { name: "Parker PC",      ids: ["192.168.1.57"],  tags: ["device_pc", "os_windows", "user_child"], uid: "019ea037-6088-762d-a0b1-739910b88577" }
-  - { name: "Someones Phone", ids: ["192.168.1.83"],  tags: [], uid: "019ea037-6088-7630-8c77-fc5baacae409" }
+  - { name: "Someones Phone", ids: ["192.168.1.83"],  tags: ["device_phone", "user_child"], uid: "019ea037-6088-7630-8c77-fc5baacae409" }
+  - { name: "Shield",         ids: ["192.168.1.73"],  tags: ["device_tv"], uid: "717319ec-5f05-497a-b97b-92d0789fce9b" }
+  - { name: "Media Room Firecube", ids: ["192.168.1.34"], tags: ["device_tv", "user_child"], uid: "4d07956e-8e8b-44ae-9a8b-594836b57f91" }
+  - { name: "Living Room TV", ids: ["192.168.1.89"],  tags: ["device_tv", "user_child"], uid: "018aea6d-25be-40e7-958e-32093dadfc5c" }
+  - { name: "Parker Iphone",  ids: ["192.168.1.93"],  tags: ["device_phone", "user_child"], uid: "c6a0da82-b3ad-4708-8c98-07e36ae90e64" }
+  - { name: "James IPAD",     ids: ["192.168.1.60"],  tags: ["device_tablet"], uid: "e7e9e0ee-16fa-407a-bc77-bc260894ef7f" }
+  - { name: "James Work Phone", ids: ["192.168.1.53"], tags: ["device_phone", "user_admin"], uid: "4c58b443-5032-450c-a5e2-b05b66c0b060" }

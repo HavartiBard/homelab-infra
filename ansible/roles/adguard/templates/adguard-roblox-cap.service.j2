@@ -1,0 +1,9 @@
+[Unit]
+Description=AdGuard Roblox daily-cap reconciler
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/adguard/roblox-cap.env
+ExecStart=/usr/bin/python3 /opt/adguard/roblox_cap.py
