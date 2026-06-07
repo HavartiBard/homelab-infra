@@ -173,7 +173,7 @@ filtering:
   rewrites_enabled: true
   parental_enabled: false
   safebrowsing_enabled: {{ adguard_safebrowsing_enabled | lower }}
-  protection_enabled: false
+  protection_enabled: true
 clients:
   runtime_sources:
     whois: true
@@ -183,43 +183,14 @@ clients:
     hosts: true
   persistent:
 {% for c in adguard_persistent_clients | default([]) %}
-    - safe_search:
-        enabled: false
-        bing: false
-        duckduckgo: false
-        ecosia: false
-        google: false
-        pixabay: false
-        yandex: false
-        youtube: false
+    - name: "{{ c.name }}"
+      ids: {{ c.ids | to_json }}
+      tags: {{ c.tags | to_json }}
+      use_global_settings: true
+      use_global_blocked_services: true
       blocked_services:
         schedule:
           time_zone: {{ adguard_bedtime_timezone }}
-        ids: []
-      name: {{ c.name }}
-      ids:
-{% for id in c.ids %}
-        - {{ id }}
-{% endfor %}
-{% if c.tags | length == 0 %}
-      tags: []
-{% else %}
-      tags:
-{% for tag in c.tags %}
-        - {{ tag }}
-{% endfor %}
-{% endif %}
-      upstreams: []
-      uid: {{ c.uid }}
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: true
-      parental_enabled: false
-      safebrowsing_enabled: {{ adguard_safebrowsing_enabled | lower }}
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
 {% endfor %}
 log:
   enabled: true
