@@ -122,3 +122,70 @@
   when:
     - adguard_sync_enabled
     - ansible_host == adguard_sync_origin
+
+# --- internet bedtime reconciler (sync origin only) ---
+- name: Deploy bedtime reconciler script
+  ansible.builtin.copy:
+    src: bedtime_block.py
+    dest: /opt/adguard/bedtime_block.py
+    mode: "0755"
+  become: true
+  when:
+    - adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy bedtime reconciler env file
+  ansible.builtin.template:
+    src: bedtime-block.env.j2
+    dest: /opt/adguard/bedtime-block.env
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  no_log: true
+  when:
+    - adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy bedtime systemd service unit
+  ansible.builtin.template:
+    src: adguard-bedtime.service.j2
+    dest: /etc/systemd/system/adguard-bedtime.service
+    mode: "0644"
+  become: true
+  when:
+    - adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Deploy bedtime systemd timer unit
+  ansible.builtin.template:
+    src: adguard-bedtime.timer.j2
+    dest: /etc/systemd/system/adguard-bedtime.timer
+    mode: "0644"
+  become: true
+  when:
+    - adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Enable and start bedtime timer
+  ansible.builtin.systemd:
+    name: adguard-bedtime.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when:
+    - adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
+
+- name: Disable bedtime timer when feature is off
+  ansible.builtin.systemd:
+    name: adguard-bedtime.timer
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  failed_when: false
+  when:
+    - not adguard_bedtime_enabled
+    - ansible_host == adguard_sync_origin
