@@ -36,11 +36,30 @@
   become: true
   when: resolved_config.changed
 
-- name: Generate bcrypt hash of admin password
+- name: Generate stable bcrypt hash of admin password
   ansible.builtin.shell: |
-    python3 -c "import bcrypt; print(bcrypt.hashpw(b'{{ adguard_admin_password }}', bcrypt.gensalt(rounds=10)).decode())"
+    python3 - <<'PY'
+    import bcrypt
+    import pathlib
+    import re
+
+    password = {{ adguard_admin_password | to_json }}.encode()
+    config_path = pathlib.Path({{ (adguard_config_dir ~ '/AdGuardHome.yaml') | to_json }})
+    existing_hash = None
+
+    if config_path.exists():
+        match = re.search(r'^    password: (.+)$', config_path.read_text(), re.MULTILINE)
+        if match:
+            existing_hash = match.group(1).strip()
+
+    if existing_hash and bcrypt.checkpw(password, existing_hash.encode()):
+        print(existing_hash)
+    else:
+        print(bcrypt.hashpw(password, bcrypt.gensalt(rounds=10)).decode())
+    PY
   register: bcrypt_result
   changed_when: false
+  check_mode: false
   no_log: true
 
 - name: Set password hash fact
@@ -59,7 +78,7 @@
   ansible.builtin.template:
     src: AdGuardHome.yaml.j2
     dest: "{{ adguard_config_dir }}/AdGuardHome.yaml"
-    mode: "0644"
+    mode: "0600"
     backup: true
   become: true
   notify: restart adguard
