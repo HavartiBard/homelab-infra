@@ -1,3 +1,18 @@
 ---
 # AdGuard Home query log path for Promtail scraping
 promtail_adguard_log_path: "/opt/adguardhome/data/querylog.json"
+
+# Persistent AdGuard clients (managed in IaC — the Clients UI is now
+# authoritative-from-here; UI-only edits are reverted on the next deploy).
+# Seeded 2026-06-06 from the live agh1 export. Add `user_child` to a device's
+# tags to include it in the nightly internet-bedtime block.
+adguard_persistent_clients:
+  - { name: "Cheddar",        ids: ["192.168.1.81"],  tags: ["device_laptop"] }
+  - { name: "Dev VM",         ids: ["192.168.20.60"], tags: [] }
+  - { name: "Emma PC",        ids: ["192.168.1.55"],  tags: ["device_pc", "os_windows", "user_child"] }
+  - { name: "Emma TV",        ids: ["192.168.1.61"],  tags: ["device_tv", "user_child"] }
+  - { name: "James Iphone",   ids: ["192.168.1.15"],  tags: ["device_phone", "user_admin"] }
+  - { name: "Jen Iphone",     ids: ["192.168.1.25"],  tags: [] }
+  - { name: "Madison IPAD",   ids: ["192.168.1.75"],  tags: ["device_tablet", "user_child"] }
+  - { name: "Parker PC",      ids: ["192.168.1.57"],  tags: ["device_pc", "os_windows", "user_child"] }
+  - { name: "Someones Phone", ids: ["192.168.1.83"],  tags: [] }

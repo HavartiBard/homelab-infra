@@ -69,3 +69,12 @@ adguard_sync_origin: 192.168.20.4
 adguard_sync_replicas:
   - 192.168.20.5
 adguard_sync_image: ghcr.io/bakito/adguardhome-sync:latest
+
+# Internet bedtime — scheduled all-DNS block for clients tagged user_child.
+# Reconciler runs on the sync origin only; adguardhome-sync replicates to replicas.
+adguard_bedtime_enabled: true
+adguard_bedtime_ctag: user_child
+adguard_bedtime_start: "01:00"
+adguard_bedtime_end: "08:00"
+adguard_bedtime_timezone: America/Phoenix
+adguard_bedtime_interval_min: 10
