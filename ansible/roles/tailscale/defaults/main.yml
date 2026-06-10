@@ -1,0 +1,16 @@
+---
+tailscale_package_state: present
+tailscale_repo_channel: stable
+tailscale_keyring_path: /usr/share/keyrings/tailscale-archive-keyring.gpg
+tailscale_repo_base: "https://pkgs.tailscale.com/{{ tailscale_repo_channel }}/ubuntu"
+tailscale_service_name: tailscaled
+tailscale_manage_service: true
+tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
+tailscale_hostname: "{{ inventory_hostname }}"
+tailscale_ssh: true
+tailscale_accept_dns: false
+tailscale_accept_routes: false
+tailscale_advertise_routes: []
+tailscale_advertise_exit_node: false
+tailscale_force_reauth: false
+tailscale_extra_args: []
