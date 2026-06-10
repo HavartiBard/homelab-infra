@@ -1,0 +1,27 @@
+---
+tailscale_router_vmid: 5020
+tailscale_router_node: pve-01
+tailscale_router_hostname: ts-router-01
+tailscale_router_tags: tailscale;router;prod
+tailscale_router_storage: local-lvm
+tailscale_router_bridge: vmbr0
+tailscale_router_vlan: 20
+tailscale_router_ip_cidr: 192.168.20.70/23
+tailscale_router_gateway: 192.168.20.1
+tailscale_router_nameserver: 192.168.20.4
+tailscale_router_cores: 1
+tailscale_router_memory: 1024
+tailscale_router_swap: 512
+tailscale_router_disk_gb: 8
+tailscale_router_lxc_template: local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst
+
+tailscale_hostname: ts-router-01
+tailscale_ssh: false
+tailscale_accept_dns: false
+tailscale_accept_routes: false
+# Minimal route scope: only DNS (AdGuard) and the NPM reverse proxy are
+# reachable from the tailnet. Everything else on the LAN stays unexposed.
+tailscale_advertise_routes:
+  - 192.168.20.4/32   # agh1 (AdGuard DNS)
+  - 192.168.20.5/32   # agh2 (AdGuard DNS)
+  - 192.168.20.50/32  # Platform VM (NPM - all *.klsll.com portals)

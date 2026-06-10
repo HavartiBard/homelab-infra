@@ -1,0 +1,142 @@
+---
+- name: Provision a dedicated Tailscale subnet-router LXC on Proxmox
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # Override with: -e tailscale_router_target_host=<host>
+    tailscale_router_target_host: ts-router-01
+    tailscale_router_ssh_public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_homelab.pub"
+
+  pre_tasks:
+    - name: Require the router host to exist in inventory
+      ansible.builtin.assert:
+        that:
+          - tailscale_router_target_host in groups['tailscale_routers']
+        fail_msg: >-
+          Add {{ tailscale_router_target_host }} to the tailscale_routers group in ansible/inventory/hosts.yml
+          before running this playbook.
+
+    - name: Verify the controller SSH public key exists
+      ansible.builtin.stat:
+        path: "{{ tailscale_router_ssh_public_key_path }}"
+      register: tailscale_router_pubkey_stat
+
+    - name: Require the controller SSH public key
+      ansible.builtin.assert:
+        that:
+          - tailscale_router_pubkey_stat.stat.exists
+        fail_msg: >-
+          Missing {{ tailscale_router_ssh_public_key_path }}.
+          Generate or point tailscale_router_ssh_public_key_path at the SSH key that should access the router.
+
+    - name: Read the controller SSH public key
+      ansible.builtin.slurp:
+        src: "{{ tailscale_router_ssh_public_key_path }}"
+      register: tailscale_router_pubkey
+
+    - name: Cache the router definition from inventory
+      ansible.builtin.set_fact:
+        tailscale_router_host: "{{ hostvars[tailscale_router_target_host] }}"
+
+    - name: Assert required router inventory variables are present
+      ansible.builtin.assert:
+        that:
+          - tailscale_router_host.tailscale_router_vmid is defined
+          - tailscale_router_host.tailscale_router_node is defined
+          - tailscale_router_host.tailscale_router_hostname is defined
+          - tailscale_router_host.tailscale_router_ip_cidr is defined
+          - tailscale_router_host.tailscale_router_gateway is defined
+          - tailscale_router_host.tailscale_router_lxc_template is defined
+        fail_msg: >-
+          {{ tailscale_router_target_host }} is missing one or more required tailscale_router_* values in inventory/host_vars.
+
+  tasks:
+    - name: Ensure the Tailscale router LXC exists and is configured
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if ! pct status {{ tailscale_router_host.tailscale_router_vmid }} >/dev/null 2>&1; then
+          pct create {{ tailscale_router_host.tailscale_router_vmid }} {{ tailscale_router_host.tailscale_router_lxc_template }} \
+            --hostname {{ tailscale_router_host.tailscale_router_hostname }} \
+            --cores {{ tailscale_router_host.tailscale_router_cores | default(1) }} \
+            --memory {{ tailscale_router_host.tailscale_router_memory | default(1024) }} \
+            --swap {{ tailscale_router_host.tailscale_router_swap | default(512) }} \
+            --unprivileged 0 \
+            --features nesting=1,keyctl=1 \
+            --rootfs {{ tailscale_router_host.tailscale_router_storage | default('local-lvm') }}:{{ tailscale_router_host.tailscale_router_disk_gb | default(8) }} \
+            --storage {{ tailscale_router_host.tailscale_router_storage | default('local-lvm') }} \
+            --net0 name=eth0,bridge={{ tailscale_router_host.tailscale_router_bridge | default('vmbr0') }},tag={{ tailscale_router_host.tailscale_router_vlan | default(20) }},ip={{ tailscale_router_host.tailscale_router_ip_cidr }},gw={{ tailscale_router_host.tailscale_router_gateway }} \
+            --nameserver {{ tailscale_router_host.tailscale_router_nameserver | default('1.1.1.1') }} \
+            --onboot 1 --startup order=25
+        else
+          pct set {{ tailscale_router_host.tailscale_router_vmid }} \
+            --hostname {{ tailscale_router_host.tailscale_router_hostname }} \
+            --cores {{ tailscale_router_host.tailscale_router_cores | default(1) }} \
+            --memory {{ tailscale_router_host.tailscale_router_memory | default(1024) }} \
+            --swap {{ tailscale_router_host.tailscale_router_swap | default(512) }} \
+            --net0 name=eth0,bridge={{ tailscale_router_host.tailscale_router_bridge | default('vmbr0') }},tag={{ tailscale_router_host.tailscale_router_vlan | default(20) }},ip={{ tailscale_router_host.tailscale_router_ip_cidr }},gw={{ tailscale_router_host.tailscale_router_gateway }} \
+            --nameserver {{ tailscale_router_host.tailscale_router_nameserver | default('1.1.1.1') }} \
+            --onboot 1 --startup order=25
+        fi
+
+        if [ -n "{{ tailscale_router_host.tailscale_router_tags | default('') }}" ]; then
+          pct set {{ tailscale_router_host.tailscale_router_vmid }} --tags "{{ tailscale_router_host.tailscale_router_tags }}"
+        fi
+
+        pct start {{ tailscale_router_host.tailscale_router_vmid }} || true
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ tailscale_router_host.tailscale_router_node }}"
+
+    - name: Ensure the LXC has TUN access for tailscaled
+      ansible.builtin.shell: |
+        set -euo pipefail
+        conf="/etc/pve/lxc/{{ tailscale_router_host.tailscale_router_vmid }}.conf"
+        grep -q '^lxc.cgroup2.devices.allow: c 10:200 rwm$' "$conf" || echo 'lxc.cgroup2.devices.allow: c 10:200 rwm' >> "$conf"
+        grep -q '^lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file$' "$conf" || echo 'lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' >> "$conf"
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ tailscale_router_host.tailscale_router_node }}"
+
+    - name: Restart the router LXC after TUN configuration
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if pct status {{ tailscale_router_host.tailscale_router_vmid }} | grep -q running; then
+          pct reboot {{ tailscale_router_host.tailscale_router_vmid }}
+        else
+          pct start {{ tailscale_router_host.tailscale_router_vmid }}
+        fi
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ tailscale_router_host.tailscale_router_node }}"
+
+    - name: Install SSH access prerequisites inside the router LXC
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct exec {{ tailscale_router_host.tailscale_router_vmid }} -- bash -lc '
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y openssh-server python3 sudo
+          install -d -m 700 /root/.ssh
+          printf "%s\n" "{{ tailscale_router_pubkey.content | b64decode | trim }}" > /root/.ssh/authorized_keys
+          chmod 600 /root/.ssh/authorized_keys
+          systemctl enable ssh
+          systemctl restart ssh
+        '
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ tailscale_router_host.tailscale_router_node }}"
+
+    - name: Wait for SSH on the new router
+      ansible.builtin.wait_for:
+        host: "{{ tailscale_router_host.ansible_host }}"
+        port: 22
+        timeout: 180
+        state: started
+
+- name: Install and configure Tailscale on the dedicated router
+  hosts: "{{ tailscale_router_target_host | default('ts-router-01') }}"
+  gather_facts: true
+  become: true
+  roles:
+    - role: tailscale
