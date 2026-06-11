@@ -22,6 +22,10 @@
             cluster: unraid-docker
             role: MCP Server
             comments: "Privacy metasearch MCP — http://{{ ansible_host }}:{{ searxng_mcp_port }}"
+          - name: searxng
+            cluster: unraid-docker
+            role: Application
+            comments: "SearXNG metasearch engine — http://{{ ansible_host }}:{{ searxng_http_port }}"
 
   post_tasks:
     - name: Display deployment info
