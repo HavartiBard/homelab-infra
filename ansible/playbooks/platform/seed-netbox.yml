@@ -433,6 +433,9 @@
         - "192.168.20.3/24"
         - "192.168.20.4/24"
         - "192.168.20.5/24"
+        # One-time: ts-router-01 was briefly recorded as /23 before the
+        # VLAN 20 design was standardized on /24 (2026-06-11)
+        - "192.168.20.70/23"
 
     - name: Assign IPs to LXC VMs
       netbox.netbox.netbox_ip_address:
@@ -451,8 +454,7 @@
         - { vm: tt2,        address: "192.168.20.3/24",  dns: "tt2" }
         - { vm: agh1,       address: "192.168.20.4/24",  dns: "agh1" }
         - { vm: agh2,       address: "192.168.20.5/24",  dns: "agh2" }
-        # /23 matches the interface config on the LXC (VLAN 20 is a /23)
-        - { vm: ts-router-01, address: "192.168.20.70/23", dns: "ts-router-01" }
+        - { vm: ts-router-01, address: "192.168.20.70/24", dns: "ts-router-01" }
 
     - name: Set primary IPs on LXC VMs
       netbox.netbox.netbox_virtual_machine:
@@ -471,7 +473,7 @@
         - { name: tt2,        role: DNS Server,  address: "192.168.20.3/24" }
         - { name: agh1,       role: DNS Filter,  address: "192.168.20.4/24" }
         - { name: agh2,       role: DNS Filter,  address: "192.168.20.5/24" }
-        - { name: ts-router-01, role: VPN Router, address: "192.168.20.70/23" }
+        - { name: ts-router-01, role: VPN Router, address: "192.168.20.70/24" }
 
     # ── Stale legacy topology cleanup ────────────────────────────────────────
 

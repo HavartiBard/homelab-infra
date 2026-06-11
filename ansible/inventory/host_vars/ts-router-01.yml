@@ -6,7 +6,7 @@ tailscale_router_tags: tailscale;router;prod
 tailscale_router_storage: local-lvm
 tailscale_router_bridge: vmbr0
 tailscale_router_vlan: 20
-tailscale_router_ip_cidr: 192.168.20.70/23
+tailscale_router_ip_cidr: 192.168.20.70/24
 tailscale_router_gateway: 192.168.20.1
 tailscale_router_nameserver: 192.168.20.4
 tailscale_router_cores: 1
@@ -24,4 +24,4 @@ tailscale_accept_routes: false
 tailscale_advertise_routes:
   - 192.168.20.4/32   # agh1 (AdGuard DNS)
   - 192.168.20.5/32   # agh2 (AdGuard DNS)
-  - 192.168.20.50/32  # Platform VM (NPM - all *.klsll.com portals)
+  - 192.168.20.50/32  # NPM container on Unraid br0 (all *.klsll.com portals)
