@@ -1,0 +1,20 @@
+---
+# Apply a consistent Docker json-file log rotation policy to Ubuntu Docker
+# hosts. Without this, Docker's default is UNBOUNDED log growth — observed
+# 109MB on a single container on agh1 (8GB disk).
+#
+# Scope notes:
+# - tt/agh are HA pairs; serial: 1 keeps one DNS node up at all times.
+# - edge_devices (jetson) excluded: jetson-* roles manage daemon.json there.
+# - unraid excluded: no Python (raw-only) and log rotation is managed via
+#   the Unraid GUI docker settings.
+#
+# Usage:
+#   ansible-playbook playbooks/bootstrap/configure-docker-log-rotation.yml --limit agh1 --check --diff
+#   ansible-playbook playbooks/bootstrap/configure-docker-log-rotation.yml
+- name: Configure Docker log rotation on Ubuntu Docker hosts
+  hosts: tt:agh:workstations
+  become: true
+  serial: 1
+  roles:
+    - role: docker-daemon
