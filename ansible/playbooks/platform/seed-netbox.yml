@@ -433,6 +433,9 @@
         - "192.168.20.3/24"
         - "192.168.20.4/24"
         - "192.168.20.5/24"
+        # One-time: ts-router-01 was briefly recorded as /23 before the
+        # VLAN 20 design was standardized on /24 (2026-06-11)
+        - "192.168.20.70/23"
 
     - name: Assign IPs to LXC VMs
       netbox.netbox.netbox_ip_address:
@@ -451,8 +454,7 @@
         - { vm: tt2,        address: "192.168.20.3/24",  dns: "tt2" }
         - { vm: agh1,       address: "192.168.20.4/24",  dns: "agh1" }
         - { vm: agh2,       address: "192.168.20.5/24",  dns: "agh2" }
-        # /23 matches the interface config on the LXC (VLAN 20 is a /23)
-        - { vm: ts-router-01, address: "192.168.20.70/23", dns: "ts-router-01" }
+        - { vm: ts-router-01, address: "192.168.20.70/24", dns: "ts-router-01" }
 
     - name: Set primary IPs on LXC VMs
       netbox.netbox.netbox_virtual_machine:
@@ -471,7 +473,7 @@
         - { name: tt2,        role: DNS Server,  address: "192.168.20.3/24" }
         - { name: agh1,       role: DNS Filter,  address: "192.168.20.4/24" }
         - { name: agh2,       role: DNS Filter,  address: "192.168.20.5/24" }
-        - { name: ts-router-01, role: VPN Router, address: "192.168.20.70/23" }
+        - { name: ts-router-01, role: VPN Router, address: "192.168.20.70/24" }
 
     # ── Stale legacy topology cleanup ────────────────────────────────────────
 
@@ -486,6 +488,12 @@
       loop:
         - npm
         - uptime-kuma
+      register: _automation_vm_cleanup
+      # Once the automation-docker cluster is gone the module can no longer
+      # resolve it — that just means the cleanup already happened.
+      failed_when:
+        - _automation_vm_cleanup is failed
+        - "'Could not resolve id of cluster' not in (_automation_vm_cleanup.msg | default(''))"
 
     - name: Remove stale automation LXC VM
       netbox.netbox.netbox_virtual_machine:
@@ -503,6 +511,29 @@
         data:
           name: automation-docker
         state: absent
+
+    # ── Stale service status corrections ────────────────────────────────────
+    # These service VMs are registered in NetBox but their containers no longer
+    # run anywhere (verified 2026-06-11). Marked offline rather than deleted so
+    # the records (IPs, comments) survive if the services are revived. If an
+    # owning deploy playbook is re-run it will flip the status back to active.
+
+    - name: Mark stale service VMs offline
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        data:
+          name: "{{ item.name }}"
+          cluster: "{{ item.cluster }}"
+          status: offline
+        state: present
+      loop:
+        # No containers on Unraid; macvlan IPs unreachable
+        - { name: agent-cp,   cluster: unraid-docker }
+        - { name: ironclaw,   cluster: unraid-docker }
+        # spraycheese moved from Ollama/Open WebUI to LM Studio
+        - { name: ollama,     cluster: spraycheese-docker }
+        - { name: open-webui, cluster: spraycheese-docker }
 
     # Service-level Docker VMs are registered by their owning deploy playbooks
     # through the netbox-service role.
