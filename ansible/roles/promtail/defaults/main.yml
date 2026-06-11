@@ -12,3 +12,8 @@ promtail_unraid_mode: false
 # DNS query log paths (set per host group in group_vars)
 promtail_adguard_log_path: ""
 promtail_technitium_log_path: ""
+
+# NPM file-log directory (set on the host running nginx-proxy-manager).
+# NPM writes per-proxy-host access/error logs to files, not stdout, so the
+# docker scrape job alone misses them.
+promtail_npm_log_path: ""

@@ -1,9 +1,9 @@
 ---
 # Promtail — runs on all homelab hosts
 
-- name: Create Promtail compose dir
+- name: Create Promtail compose and positions dirs
   ansible.builtin.raw: |
-    mkdir -p {{ promtail_compose_dir }}
+    mkdir -p {{ promtail_compose_dir }} {{ promtail_compose_dir }}/positions
   changed_when: false
 
 - name: Generate Promtail config
@@ -17,24 +17,39 @@
     EOFCONF
   changed_when: true
 
+- name: Generate Promtail compose file
+  ansible.builtin.set_fact:
+    _promtail_compose: |
+      services:
+        promtail:
+          image: grafana/promtail:{{ promtail_version }}
+          container_name: promtail
+          restart: unless-stopped
+          volumes:
+            - {{ promtail_compose_dir }}/promtail-config.yml:/etc/promtail/config.yml:ro
+            - {{ promtail_compose_dir }}/positions:/positions
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - /var/log/journal:/var/log/journal:ro
+            - /run/log/journal:/run/log/journal:ro
+            - /etc/machine-id:/etc/machine-id:ro
+      {% if promtail_adguard_log_path %}
+            - {{ promtail_adguard_log_path | dirname }}:{{ promtail_adguard_log_path | dirname }}:ro
+      {% endif %}
+      {% if promtail_technitium_log_path %}
+            - {{ promtail_technitium_log_path | dirname }}:{{ promtail_technitium_log_path | dirname }}:ro
+      {% endif %}
+      {% if promtail_npm_log_path %}
+            - {{ promtail_npm_log_path }}:{{ promtail_npm_log_path }}:ro
+      {% endif %}
+          command: -config.file=/etc/promtail/config.yml
+          network_mode: host
+          security_opt:
+            - apparmor=unconfined
+
 - name: Write Promtail compose file
   ansible.builtin.raw: |
     cat > {{ promtail_compose_dir }}/compose.yml << 'EOFCOMPOSE'
-    services:
-      promtail:
-        image: grafana/promtail:{{ promtail_version }}
-        container_name: promtail
-        restart: unless-stopped
-        volumes:
-          - {{ promtail_compose_dir }}/promtail-config.yml:/etc/promtail/config.yml:ro
-          - /var/run/docker.sock:/var/run/docker.sock:ro
-          - /var/log/journal:/var/log/journal:ro
-          - /run/log/journal:/run/log/journal:ro
-          - /etc/machine-id:/etc/machine-id:ro
-        command: -config.file=/etc/promtail/config.yml
-        network_mode: host
-        security_opt:
-          - apparmor=unconfined
+    {{ _promtail_compose }}
     EOFCOMPOSE
   changed_when: true
 

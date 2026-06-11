@@ -3,7 +3,9 @@ server:
   grpc_listen_port: 0
 
 positions:
-  filename: /tmp/positions.yaml
+  # Persisted via bind mount — /tmp would lose read positions on container
+  # recreation (duplicate/skipped log segments in Loki).
+  filename: /positions/positions.yaml
 
 clients:
   - url: {{ loki_url }}/loki/api/v1/push
@@ -24,6 +26,10 @@ scrape_configs:
         target_label: host
       - replacement: docker
         target_label: job
+    pipeline_stages:
+      - drop:
+          expression: '\n'
+          drop_counter_reason: multiline_docker_entry
 
 {% if not promtail_unraid_mode and promtail_scrape_journal %}
   # Systemd journal (all Linux hosts except Unraid)
@@ -36,6 +42,10 @@ scrape_configs:
     relabel_configs:
       - source_labels: ['__journal__systemd_unit']
         target_label: unit
+    pipeline_stages:
+      - drop:
+          expression: '\n'
+          drop_counter_reason: multiline_journal_entry
 {% endif %}
 
 {% if promtail_adguard_log_path %}
@@ -48,6 +58,19 @@ scrape_configs:
           job: adguard
           host: {{ inventory_hostname }}
           __path__: {{ promtail_adguard_log_path }}
+{% endif %}
+
+{% if promtail_npm_log_path %}
+  # Nginx Proxy Manager file logs (per-proxy-host access/error + letsencrypt).
+  # NPM rotates these itself; *.log excludes the rotated .gz archives.
+  - job_name: npm
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: npm
+          host: {{ inventory_hostname }}
+          __path__: {{ promtail_npm_log_path }}/*.log
 {% endif %}
 
 {% if promtail_technitium_log_path %}
