@@ -64,6 +64,44 @@ services:
     security_opt:
       - seccomp:unconfined
 
+  # =============================================================================
+  # Tailscale Sidecar - shares the dev container network namespace
+  # =============================================================================
+  tailscale:
+    image: tailscale/tailscale:v1.98.4
+    container_name: dev-environment-tailscale
+    hostname: ${TAILSCALE_HOSTNAME:-dev-box}
+    restart: unless-stopped
+    depends_on:
+      - dev-environment
+    profiles:
+      - tailscale
+    network_mode: "service:dev-environment"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ${APPDATA_PATH:-/mnt/user/appdata/dev-environment}/tailscale:/var/lib/tailscale
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY:-}
+      - TS_AUTH_ONCE=true
+      - TS_ACCEPT_DNS=${TAILSCALE_ACCEPT_DNS:-false}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=${TAILSCALE_HOSTNAME:-dev-box}
+      - TS_USERSPACE=false
+      - TS_EXTRA_ARGS=${TAILSCALE_EXTRA_ARGS:---ssh}
+      - TS_ENABLE_HEALTH_CHECK=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9002/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - seccomp:unconfined
+
 networks:
   # Use the existing br0 macvlan network on Unraid
   # This gives the container its own LAN IP - no port mapping needed

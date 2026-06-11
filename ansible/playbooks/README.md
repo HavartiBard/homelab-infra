@@ -9,7 +9,7 @@ Playbooks are organized by service domain to keep the root directory uncluttered
 | `services/` | Service vanity host automation via NPM + Technitium (`update-*-proxy.yml`) |
 | `platform/` | Platform VM services such as Nginx Proxy Manager, Ollama, OpenHands, Director, and Sprite Smith |
 | `ai/` | AI inference, agent services, and LLM evaluation utilities such as Ollama, Open WebUI, LiteLLM, Qdrant, Personal Agent LLM, Phoenix, Promptfoo, and lm-eval-harness |
-| `misc/` | Supporting utilities (currently `deploy-ssh-keys.yml`) |
+| `bootstrap/` | Host bootstrap and workstation setup such as Ubuntu defaults, dev environment, SSH keys, and Tailscale |
 
 Each playbook can be run from the repo root like:
 
@@ -27,3 +27,5 @@ Recent platform/service additions:
 - `ai/deploy-phoenix.yml`
 - `ai/deploy-promptfoo.yml`
 - `ai/deploy-lm-eval-harness.yml`
+- `bootstrap/deploy-tailscale.yml`
+- `bootstrap/provision-tailscale-router.yml`
