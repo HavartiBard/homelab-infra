@@ -4,4 +4,5 @@ searxng_http_port: 6979
 searxng_mcp_appdata: "/mnt/user/appdata/searxng-mcp"
 searxng_mcp_compose_dir: "/opt/docker/searxng-mcp"
 searxng_image: "searxng/searxng:2026.2.20-93ac6ceb3"
-searxng_mcp_image: "isokoliuk/mcp-searxng:latest"
+# Pinned — 1.3.3 changed the default HTTP bind to 127.0.0.1 (needs MCP_HTTP_HOST)
+searxng_mcp_image: "isokoliuk/mcp-searxng:1.3.3"

@@ -4,3 +4,8 @@ hister_port: 4433
 hister_appdata: "/mnt/user/appdata/hister"
 hister_compose_dir: "/opt/docker/hister"
 hister_base_url: "https://search.klsll.com"
+# Pinned subnet: Docker's auto-allocation pools (172.17-31.0.0/16) are
+# exhausted on Unraid, so unpinned networks spill into 192.168.0.0/20 —
+# which swallows VLAN 1 (192.168.1.x) in the host routing table and broke
+# Orbi router access for bridge containers (issue #79).
+hister_net_subnet: "172.16.10.0/24"

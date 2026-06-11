@@ -65,6 +65,13 @@ def run_latency_probe(
                 "stream": True,
                 "max_tokens": 64,
                 "stream_options": {"include_usage": True},
+                # Disable thinking-mode reasoning. Qwen3.6 (and other reasoning-
+                # capable models served via llama.cpp's jinja templates) honor
+                # this kwarg by skipping the <think>...</think> block. Without
+                # it, short max_tokens budgets are consumed entirely by
+                # reasoning_content and the visible `content` is empty —
+                # breaking TTFT measurement.
+                "chat_template_kwargs": {"enable_thinking": False},
             }
             start = time.perf_counter()
             first_chunk_at: float | None = None

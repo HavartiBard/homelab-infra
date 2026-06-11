@@ -1,0 +1,23 @@
+---
+- name: Install and enable Tailscale on Ubuntu hosts
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    target_hosts: "{{ target_hosts | default('') }}"
+    tailscale_target_hosts: "{{ target_hosts | regex_replace('\\s+', '') | split(',') | reject('equalto', '') | list }}"
+  pre_tasks:
+    - name: Require target_hosts so we only touch the intended host
+      ansible.builtin.assert:
+        that:
+          - tailscale_target_hosts | length > 0
+        fail_msg: |
+          target_hosts is not set. Run the playbook like:
+            ansible-playbook playbooks/bootstrap/deploy-tailscale.yml -e target_hosts=my-ubuntu-host
+
+    - name: Stop hosts that are not in the target list
+      ansible.builtin.meta: end_host
+      when: inventory_hostname not in tailscale_target_hosts
+
+  roles:
+    - role: tailscale

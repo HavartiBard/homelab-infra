@@ -1,9 +1,10 @@
 ---
 # Deploy observability agents to homelab hosts
 # node_exporter + promtail: all Docker-capable hosts
+# node_exporter on pve: native apt package (no Docker on Proxmox hosts)
 # cadvisor: Docker hosts only (unraid, edge_devices, workstations)
-# Excludes: pve (no Docker), windows_gpu (no SSH on port 22)
-# Note: tt/agh require sudo password — set ANSIBLE_BECOME_PASS env var or use --ask-become-pass
+# Excludes: windows_gpu (no SSH on port 22)
+# Note: all tt/agh nodes have passwordless sudo for the ansible user (james)
 
 - name: Deploy node_exporter to all hosts
   hosts: unraid:tt:agh:edge_devices:workstations
@@ -22,6 +23,30 @@
             role: Application
             comments: "Unraid host metrics exporter — http://{{ ansible_host }}:9100/metrics"
       when: "'unraid' in group_names"
+
+- name: Deploy node_exporter to Proxmox hosts (native package, no Docker)
+  hosts: pve
+  gather_facts: false
+  tasks:
+    - name: Install prometheus-node-exporter
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Enable and start prometheus-node-exporter
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        enabled: true
+        state: started
+
+    - name: Verify node_exporter port is reachable
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 9100
+        timeout: 30
+      delegate_to: localhost
 
 - name: Deploy Promtail to all hosts
   hosts: unraid:tt:agh:edge_devices:workstations

@@ -14,6 +14,7 @@
     dev_interface: "{{ lookup('env', 'DEV_INTERFACE') | default('br0', true) }}"
     dev_safe_mode: "{{ lookup('env', 'DEV_SAFE_MODE') | default('true', true) | bool }}"
     dev_manage_home_configs: "{{ lookup('env', 'DEV_MANAGE_HOME_CONFIGS') | default('false', true) | bool }}"
+    dev_compose_profiles: "{{ lookup('env', 'DEV_COMPOSE_PROFILES') | default('', true) }}"
 
   tasks:
     # =========================================================================
@@ -30,6 +31,7 @@
         - "{{ dev_dir }}/scripts"
         - "{{ dev_dir }}/home"
         - "{{ dev_dir }}/projects"
+        - "{{ dev_dir }}/tailscale"
 
     - name: Create dev home config directories
       file:
@@ -168,6 +170,7 @@
       environment:
         DEV_SAFE_MODE: "{{ dev_safe_mode | ternary('true', 'false') }}"
         DEV_MANAGE_HOME_CONFIGS: "{{ dev_manage_home_configs | ternary('true', 'false') }}"
+        COMPOSE_PROFILES: "{{ dev_compose_profiles }}"
       register: build_result
       changed_when: "'exporting' in build_result.stdout"
 
@@ -178,6 +181,7 @@
       environment:
         DEV_SAFE_MODE: "{{ dev_safe_mode | ternary('true', 'false') }}"
         DEV_MANAGE_HOME_CONFIGS: "{{ dev_manage_home_configs | ternary('true', 'false') }}"
+        COMPOSE_PROFILES: "{{ dev_compose_profiles }}"
       register: deploy_result
       changed_when: "'Started' in deploy_result.stderr or 'Created' in deploy_result.stderr"
 
@@ -218,6 +222,7 @@
           Home: {{ dev_dir }}/home
           Projects: {{ dev_dir }}/projects
           Safe mode: {{ dev_safe_mode }}
+          Compose profiles: {{ dev_compose_profiles | default('(none)', true) }}
           Manage home configs: {{ dev_manage_home_configs }}
 
           VS Code Remote SSH config:

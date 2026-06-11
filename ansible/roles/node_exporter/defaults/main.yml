@@ -3,3 +3,12 @@ node_exporter_version: "v1.8.2"
 node_exporter_port: 9100
 node_exporter_compose_dir: /opt/node_exporter
 node_exporter_textfile_dir: /var/lib/node_exporter/textfile_collector
+# Base CLI args; $$ escapes $ for docker compose interpolation
+node_exporter_base_args:
+  - '--path.procfs=/host/proc'
+  - '--path.sysfs=/host/sys'
+  - '--path.rootfs=/rootfs'
+  - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+  - '--collector.textfile.directory=/textfile_collector'
+# Per-host/group additions, e.g. '--no-collector.thermal_zone' on Jetson
+node_exporter_extra_args: []

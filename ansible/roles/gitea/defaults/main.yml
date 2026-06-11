@@ -7,6 +7,8 @@ compose_download_url: >-
 
 # Networking and stack layout
 gitea_ip: 192.168.20.52
+# Must match Unraid's docker br0 network (still /23); see npm_subnet note in
+# group_vars/unraid/unraid.yml — flip to /24 together with the br0 re-mask.
 gitea_subnet: 192.168.20.0/23
 gitea_gateway: 192.168.20.1
 gitea_parent_iface: br0

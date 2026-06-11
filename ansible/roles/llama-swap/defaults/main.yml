@@ -1,0 +1,267 @@
+---
+# llama-swap — OpenAI-compatible proxy that hot-swaps llama-server processes per
+# requested model. Replaces the per-model systemd units we'd otherwise need.
+
+# Pin the binary version to a known-good release (latest at role creation: v216).
+# Bump intentionally — `latest` would change behavior under our feet.
+llama_swap_version: "v216"
+llama_swap_arch: "linux_amd64"   # Strix Halo runs x86_64; ARM hosts override
+
+llama_swap_user: james
+llama_swap_listen_addr: "0.0.0.0"
+
+# Now the canonical LLM endpoint on goudai — pi-agent and llm-bench both
+# hit this port. The pre-flight task in tasks/main.yml will stop the
+# legacy personal-agent-llm.service if it's holding this port.
+llama_swap_port: 8010
+
+llama_swap_install_dir: /usr/local/bin
+llama_swap_binary_path: "{{ llama_swap_install_dir }}/llama-swap"
+llama_swap_config_dir: /etc/llama-swap
+llama_swap_config_path: "{{ llama_swap_config_dir }}/config.yaml"
+llama_swap_runtime_dir: /var/lib/llama-swap
+llama_swap_log_level: info
+
+# Default llama-server binary that all models invoke
+llama_swap_llama_server_binary: /usr/local/bin/llama-server
+
+# HuggingFace cache (HF_HOME) — needed for `-hf <repo>:<quant>` to find/cache
+# models. Points at the legacy personal-agent-llm cache so we inherit the
+# already-downloaded models instead of re-downloading 54GB at cutover.
+# When personal-agent-llm is eventually removed, migrate the cache directory
+# to /var/lib/llama-swap/huggingface (or similar shared location).
+llama_swap_hf_cache_dir: /var/lib/personal-agent-llm/huggingface
+
+# Per-model configuration. Each key becomes an OpenAI `model:` alias. Provide
+# either `cmd` (full llama-server invocation) or `hf` + `flags` for the
+# convenience template. The first model in this dict is treated as the "warm"
+# default — long TTL so it stays resident across casual pi-agent calls.
+#
+# Override this in host_vars/goudai.yml when adding new models. The first
+# Phase-A deploy targets only the current Qwen3.6-MTP service for equivalence
+# testing.
+llama_swap_models:
+  # ── Heavy reasoning — current pi-agent default ──────────────────────────
+  # Thinking mode + MTP speculative decoding. Use for tasks that benefit from
+  # chain-of-thought (multi-step analysis, hard reasoning). ~18.5GB VRAM (Q5_K_M).
+  # Sampling per Qwen3.6 official recipe for "thinking, precise coding".
+  "qwen/qwen3.6-27b-mtp":
+    hf: "unsloth/Qwen3.6-27B-MTP-GGUF:Q5_K_M"
+    alias: "qwen/qwen3.6-27b-mtp"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--reasoning-budget 4096"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+      - "--spec-type draft-mtp"
+      - "--spec-draft-n-max 5"
+    # TTL=0 → never unload. The "warm" model that pi-agent + llm-bench rely
+    # on. When swapping to another model, llama-swap unloads this anyway
+    # (only one model resident at a time within the VRAM budget); TTL=0
+    # just means "don't auto-unload after idle".
+    ttl: 0
+
+  # ── Snappy code/infra work — 30B-A3B MoE ───────────────────────────────
+  # Already cached on goudai. 30B total / 3B active per token → 3-5× faster
+  # decode than the 27B dense. Coder-tuned but handles general structured
+  # tasks well (Ansible/Python/shell). Q5_K_M, ~25GB VRAM.
+  # Sampling per Qwen3-Coder official recipe (non-thinking instruct).
+  "qwen/qwen3-coder-next":
+    hf: "Qwen/Qwen3-Coder-Next-GGUF:Q5_K_M"
+    alias: "qwen/qwen3-coder-next"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    # 10-min auto-unload — frees VRAM for the warm 27B when idle.
+    ttl: 600
+
+  # ── Snappy conversation — 80B-A3B MoE ──────────────────────────────────
+  # Needs a first-time download (~46GB). 80B total / 3B active per token →
+  # similar speed budget to coder-next but with broader chat training.
+  # No thinking mode (instruct only) — fast direct responses.
+  # Sampling per Qwen3-Next-Instruct official recipe.
+  "qwen/qwen3-next-instruct":
+    hf: "unsloth/Qwen3-Next-80B-A3B-Instruct-GGUF:UD-Q4_K_XL"
+    alias: "qwen/qwen3-next-instruct"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  # ── Medical reasoning — Qwen3.5 fine-tune ──────────────────────────────
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # medical reasoning sessions, subject to the available VRAM budget.
+  "qwen/qwen3.5-medical-gspo":
+    hf: "mradermacher/Qwen3.5-Medical-GSPO-GGUF:Q4_K_M"
+    alias: "qwen/qwen3.5-medical-gspo"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 0
+
+  # ── Uncensored chat — 35B-A3B fine-tune ────────────────────────────────
+  # Keep this on-demand; it is not part of the persistent warm set.
+  "qwen/qwen3.6-35b-uncensored":
+    hf: "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4_K_M"
+    alias: "qwen/qwen3.6-35b-uncensored"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  # ── 35B-A3B MTP reasoning ───────────────────────────────────────────────
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # use, subject to the available VRAM budget.
+  "qwen/qwen3.6-35b-a3b-mtp":
+    hf: "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
+    alias: "qwen/qwen3.6-35b-a3b-mtp"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--reasoning-budget 4096"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+      - "--spec-type draft-mtp"
+      - "--spec-draft-n-max 5"
+    ttl: 0
+
+# ── Group configuration ────────────────────────────────────────────────────
+#
+# llama-swap groups control whether multiple models can be loaded
+# simultaneously vs. swap each other out.
+#
+# Group configuration — keeps the heavy reasoning worker (27B-MTP, now quantized)
+# and the snappy chat model (coder-next) BOTH WARM continuously. Switching
+# between them has no swap latency. PR #143 made this fit by switching the
+# 27B worker to a smaller quant.
+#
+# qwen3-next-instruct is intentionally NOT in this group — it's larger and
+# would need to swap one member out. First request to next-instruct will
+# trigger llama-swap's default behaviour and unload one of the agent-stack
+# members. Acceptable for an occasional-use model.
+llama_swap_groups:
+  "agent-stack":
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - "qwen/qwen3.6-27b-mtp"
+      - "qwen/qwen3-coder-next"
+      - "qwen/qwen3.5-medical-gspo"
+      - "qwen/qwen3.6-35b-a3b-mtp"
+
+# How long llama-swap waits for a child llama-server to become healthy
+# before declaring the spawn a failure. Bumped from the 120s default to
+# accommodate cold-load of large models AND first-time GGUF downloads
+# (~20GB at typical HF speeds takes 4-6 minutes). After the model is
+# cached on disk, steady-state cold-load is ~30-60s — the high value
+# never bites once the model is on disk.
+llama_swap_health_check_timeout: 900
+
+# Health-check tuning for the post-deploy verification task
+llama_swap_health_retries: 30
+llama_swap_health_delay: 5

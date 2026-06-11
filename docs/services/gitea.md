@@ -5,7 +5,7 @@ Gitea is our lightweight Git host with a built-in container registry and simple 
 **Version note:** the role now deploys `gitea/gitea:1.25.4` so we keep pace with the latest CLI tooling and security fixes.
 
 ## Architecture
-- **Host**: Unraid (`ansible/playbooks/platform/deploy-gitea.yml`) using the `gitea` role. The stack runs on a dedicated macvlan subnet (typically `192.168.20.0/23`).
+- **Host**: Unraid (`ansible/playbooks/platform/deploy-gitea.yml`) using the `gitea` role. The stack runs on Unraid's br0 macvlan network (currently `192.168.20.0/23`; VLAN 20 design is standardizing on /24).
 - **Services**: PostgreSQL handles metadata/state, while the official `gitea/gitea` container receives HTTP/SSH requests and proxies registry traffic.
 - **Registry**: Gitea's built-in registry is enabled (`GITEA__registry__ENABLED=true`) and mounted under `/data/registry`. Keep the registry domain (`registry.klsll.com`) behind Nginx Proxy Manager for TLS.
 - **Build Integration**: Gitea webhooks can trigger existing CI/CD tooling (Docker Desktop/Windows GPU build agents, Ollama workers, etc.). For simple container builds, push to `registry.klsll.com` and have the build server pull the image via authenticated `docker login` (registry auth is the same as a Git user).

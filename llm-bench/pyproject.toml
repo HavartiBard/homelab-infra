@@ -12,6 +12,8 @@ dependencies = [
   "opentelemetry-sdk>=1.27",
   "opentelemetry-exporter-otlp-proto-grpc>=1.27",
   "streamlit>=1.36",
+  "duckdb>=1.0,<2.0",
+  "datasets>=2.20",
 ]
 
 [project.optional-dependencies]

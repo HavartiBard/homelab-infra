@@ -9,15 +9,32 @@ personal_agent_llm_model_quant: "BF16"
 personal_agent_llm_model_ref: "{{ personal_agent_llm_model_repo }}:{{ personal_agent_llm_model_quant }}"
 personal_agent_llm_model_alias: "qwen/qwen3.6-27b-mtp"
 
-personal_agent_llm_ctx_size: 65536
-personal_agent_llm_predict: 32768
+personal_agent_llm_ctx_size: 131072
+personal_agent_llm_predict: 8192
 personal_agent_llm_gpu_layers: 99
 personal_agent_llm_parallel: 1
 personal_agent_llm_threads: "{{ ansible_processor_vcpus | default(16) }}"
-personal_agent_llm_temp: "1.0"
-personal_agent_llm_top_k: 40
+
+# Sampling — tuned for coding agents (Qwen3.6 official recipe):
+# temp 0.6 + top_k 20 + top_p 0.95 + repeat-penalty 1.05 gives deterministic,
+# loop-resistant output. The previous temp 1.0 was too creative for tool-use.
+personal_agent_llm_temp: "0.6"
+personal_agent_llm_top_k: 20
 personal_agent_llm_top_p: "0.95"
 personal_agent_llm_min_p: "0"
+personal_agent_llm_repeat_penalty: "1.05"
+
+# Prompt cache + KV checkpoints — huge wins for multi-turn agent sessions.
+# cache-reuse 256 lets llama.cpp skip re-prefill when the prefix matches the
+# previous turn. ctx-checkpoints 10 snapshots the KV cache periodically so
+# retries don't re-prefill the full 128k history.
+personal_agent_llm_cache_prompt_enabled: true
+personal_agent_llm_cache_reuse: 256
+personal_agent_llm_ctx_checkpoints: 10
+
+# Thinking mode — Qwen3.6-MTP has reasoning. For tool-use agent loops we
+# want short thinking budgets (or off) since each turn adds latency.
+personal_agent_llm_reasoning_budget: 4096
 
 personal_agent_llm_runtime_dir: /var/lib/personal-agent-llm
 personal_agent_llm_cache_dir: "{{ personal_agent_llm_runtime_dir }}/huggingface"
@@ -31,5 +48,5 @@ personal_agent_llm_metrics_enabled: true
 personal_agent_llm_speculative_enabled: true
 personal_agent_llm_spec_type: draft-mtp
 personal_agent_llm_spec_draft_n_max: 5
-personal_agent_llm_cache_type_k: q4_0
-personal_agent_llm_cache_type_v: q4_0
+personal_agent_llm_cache_type_k: q8_0
+personal_agent_llm_cache_type_v: q8_0

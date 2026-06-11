@@ -69,3 +69,22 @@ adguard_sync_origin: 192.168.20.4
 adguard_sync_replicas:
   - 192.168.20.5
 adguard_sync_image: ghcr.io/bakito/adguardhome-sync:latest
+
+# Internet bedtime — scheduled all-DNS block for clients tagged user_child.
+# Reconciler runs on the sync origin only; adguardhome-sync replicates to replicas.
+adguard_bedtime_enabled: true
+adguard_bedtime_ctag: user_child
+adguard_bedtime_start: "01:00"
+adguard_bedtime_end: "08:00"
+adguard_bedtime_timezone: America/Phoenix
+adguard_bedtime_interval_min: 10
+
+# Roblox daily cap — globally block AdGuard's built-in Roblox service after
+# enough Roblox DNS activity buckets have accumulated in the current local day.
+adguard_roblox_cap_enabled: true
+adguard_roblox_cap_timezone: America/Phoenix
+adguard_roblox_cap_log_path: /opt/adguard/data/adguard/work/data/querylog.json
+adguard_roblox_cap_bucket_min: 5
+adguard_roblox_cap_bucket_limit: 48
+adguard_roblox_cap_service_id: roblox
+adguard_roblox_cap_interval_min: 10

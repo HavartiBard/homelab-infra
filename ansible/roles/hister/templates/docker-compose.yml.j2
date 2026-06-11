@@ -15,6 +15,7 @@ services:
       - "{{ hister_port }}:{{ hister_port }}"
     volumes:
       - "{{ hister_appdata }}/data:/hister/data"
+      - "{{ hister_appdata }}/data/config.yml:/hister/data/config.yml:ro"
     networks:
       - hister-net
     deploy:
@@ -26,3 +27,6 @@ services:
 networks:
   hister-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: {{ hister_net_subnet }}

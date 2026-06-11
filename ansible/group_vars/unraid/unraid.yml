@@ -4,6 +4,9 @@
 
 # Nginx Proxy Manager dedicated IP deployment variables
 npm_ip: 192.168.20.50  # pick an unused VLAN20 address reserved in Technitium
+# Must match Unraid's docker br0 network, which is still /23. VLAN 20 design
+# was standardized on /24 (2026-06-11) — flip this to /24 when Unraid br0 is
+# re-masked in the GUI (Settings > Network Settings) and br0 is recreated.
 npm_subnet: 192.168.20.0/23
 npm_gateway: 192.168.20.1
 npm_parent_iface: br0
@@ -66,6 +69,9 @@ gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
 # Promtail: Unraid has no systemd journal — Docker socket logs only
 promtail_unraid_mode: true
 promtail_scrape_journal: false
+# NPM runs on Unraid as a macvlan (br0) container at 192.168.20.50 and
+# writes its access/error logs to files under appdata.
+promtail_npm_log_path: /mnt/user/appdata/npm/data/logs
 
 # Gitea Git and registry service on Unraid
 gitea_ip: 192.168.20.52

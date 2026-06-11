@@ -1,11 +1,17 @@
 http:
+  pprof:
+    port: 6060
+    enabled: false
   address: 0.0.0.0:{{ adguard_http_port }}
   session_ttl: 720h
-
 users:
   - name: {{ adguard_admin_user }}
     password: {{ adguard_admin_password_hash }}
-
+auth_attempts: 5
+block_auth_min: 15
+http_proxy: ""
+language: en
+theme: light
 dns:
   bind_hosts:
     - 0.0.0.0
@@ -17,17 +23,14 @@ dns:
   ratelimit_whitelist: []
   refuse_any: true
   upstream_dns:
-    # Local domain -> Technitium
 {% for server in adguard_technitium_servers %}
-    - "[/{{ adguard_local_domain }}/]{{ server }}"
+    - '[/{{ adguard_local_domain }}/]{{ server }}'
 {% endfor %}
-    # Reverse zones -> Technitium
 {% for zone in adguard_local_reverse_zones %}
 {% for server in adguard_technitium_servers %}
-    - "[/{{ zone }}/]{{ server }}"
+    - '[/{{ zone }}/]{{ server }}'
 {% endfor %}
 {% endfor %}
-    # External queries -> DoH
 {% for upstream in adguard_upstream_dns %}
     - {{ upstream }}
 {% endfor %}
@@ -51,10 +54,13 @@ dns:
   trusted_proxies:
     - 127.0.0.0/8
     - ::1/128
+  cache_enabled: true
   cache_size: {{ adguard_cache_size }}
   cache_ttl_min: 0
   cache_ttl_max: 0
   cache_optimistic: {{ adguard_cache_optimistic | lower }}
+  cache_optimistic_answer_ttl: 30s
+  cache_optimistic_max_age: 12h
   bogus_nxdomain: []
   aaaa_disabled: false
   enable_dnssec: {{ adguard_dnssec_enabled | lower }}
@@ -80,7 +86,8 @@ dns:
   use_http3_upstreams: false
   serve_plain_dns: true
   hostsfile_enabled: true
-
+  pending_requests:
+    enabled: true
 tls:
   enabled: false
   server_name: ""
@@ -96,7 +103,6 @@ tls:
   certificate_path: ""
   private_key_path: ""
   strict_sni_check: false
-
 querylog:
   dir_path: ""
   ignored: []
@@ -104,13 +110,11 @@ querylog:
   size_memory: 1000
   enabled: true
   file_enabled: true
-
 statistics:
   dir_path: ""
   ignored: []
   interval: {{ adguard_statistics_interval }}
   enabled: true
-
 filters:
 {% for filter in adguard_filters %}
   - enabled: true
@@ -118,11 +122,8 @@ filters:
     name: {{ filter.name }}
     id: {{ filter.id }}
 {% endfor %}
-
 whitelist_filters: []
-
 user_rules: []
-
 dhcp:
   enabled: false
   interface_name: ""
@@ -140,13 +141,12 @@ dhcp:
     lease_duration: 86400
     ra_slaac_only: false
     ra_allow_slaac: false
-
 filtering:
   blocking_ipv4: ""
   blocking_ipv6: ""
   blocked_services:
     schedule:
-      time_zone: America/Los_Angeles
+      time_zone: {{ adguard_bedtime_timezone }}
     ids: []
   protection_disabled_until: null
   safe_search:
@@ -162,6 +162,7 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites: []
+  safe_fs_patterns: []
   safebrowsing_cache_size: 1048576
   safesearch_cache_size: 1048576
   parental_cache_size: 1048576
@@ -169,10 +170,10 @@ filtering:
   filters_update_interval: 24
   blocked_response_ttl: 10
   filtering_enabled: true
+  rewrites_enabled: true
   parental_enabled: false
   safebrowsing_enabled: {{ adguard_safebrowsing_enabled | lower }}
   protection_enabled: true
-
 clients:
   runtime_sources:
     whois: true
@@ -180,8 +181,17 @@ clients:
     rdns: true
     dhcp: true
     hosts: true
-  persistent: []
-
+  persistent:
+{% for c in adguard_persistent_clients | default([]) %}
+    - name: "{{ c.name }}"
+      ids: {{ c.ids | to_json }}
+      tags: {{ c.tags | to_json }}
+      use_global_settings: true
+      use_global_blocked_services: true
+      blocked_services:
+        schedule:
+          time_zone: {{ adguard_bedtime_timezone }}
+{% endfor %}
 log:
   enabled: true
   file: ""
@@ -191,10 +201,8 @@ log:
   compress: false
   local_time: false
   verbose: false
-
 os:
   group: ""
   user: ""
   rlimit_nofile: 0
-
-schema_version: 29
+schema_version: 32

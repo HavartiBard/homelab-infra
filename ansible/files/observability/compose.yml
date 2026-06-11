@@ -13,7 +13,7 @@ services:
       net.unraid.docker.webui: http://[IP]:[PORT:3100]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
-      - loki-data:/loki
+      - /mnt/user/appdata/observability/data/loki:/loki
     command: -config.file=/etc/loki/config.yml
     networks:
       - observability-net
@@ -34,7 +34,7 @@ services:
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/prometheus/rules:/etc/prometheus/rules:ro
-      - prometheus-data:/prometheus
+      - /mnt/user/appdata/observability/data/prometheus:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -129,10 +129,6 @@ networks:
     name: observability-net
 
 volumes:
-  loki-data:
-    name: loki-data
-  prometheus-data:
-    name: prometheus-data
   grafana-data:
     name: grafana-data
   alertmanager-data:
