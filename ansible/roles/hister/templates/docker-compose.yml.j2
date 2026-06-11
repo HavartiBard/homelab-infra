@@ -27,3 +27,6 @@ services:
 networks:
   hister-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: {{ hister_net_subnet }}
