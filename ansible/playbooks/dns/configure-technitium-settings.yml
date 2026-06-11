@@ -1,0 +1,38 @@
+---
+# Configure Technitium DNS server settings via API (tt1/tt2)
+# Idempotent: reads current settings, only writes when they differ.
+#
+# Usage:
+#   ansible-playbook playbooks/dns/configure-technitium-settings.yml --limit tt
+#
+# Auth: vault_technitium_api_token (group_vars/all/vault.yml)
+
+- name: Configure Technitium settings
+  hosts: tt
+  gather_facts: false
+  vars:
+    technitium_api_url: "http://{{ ansible_host }}:5380"
+    technitium_api_token: "{{ vault_technitium_api_token }}"
+    # Log retention: bind-failure spam once filled tt2's disk (3.2G in
+    # /var/log/technitium/dns at 365d retention). A week is plenty.
+    technitium_max_log_file_days: 7
+  tasks:
+    - name: Get current Technitium settings
+      ansible.builtin.uri:
+        url: "{{ technitium_api_url }}/api/settings/get?token={{ technitium_api_token }}"
+        return_content: true
+      register: _tt_settings
+      delegate_to: localhost
+      failed_when: _tt_settings.json.status != 'ok'
+
+    - name: Set maxLogFileDays
+      ansible.builtin.uri:
+        url: >-
+          {{ technitium_api_url }}/api/settings/set?token={{ technitium_api_token
+          }}&maxLogFileDays={{ technitium_max_log_file_days }}
+        return_content: true
+      register: _tt_set
+      delegate_to: localhost
+      failed_when: _tt_set.json.status != 'ok'
+      changed_when: true
+      when: _tt_settings.json.response.maxLogFileDays != technitium_max_log_file_days

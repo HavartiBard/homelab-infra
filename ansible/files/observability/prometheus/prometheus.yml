@@ -24,7 +24,6 @@ scrape_configs:
           - '192.168.20.4:9100'    # agh1
           - '192.168.20.5:9100'    # agh2
           - '192.168.20.169:9100'  # jetson.lab
-          - '192.168.20.50:9100'   # platform-vm
           - '192.168.20.150:9100'  # goudai
 
   - job_name: cadvisor
@@ -32,7 +31,6 @@ scrape_configs:
       - targets:
           - '192.168.20.14:8081'   # unraid-server
           - '192.168.20.169:8081'  # jetson.lab
-          - '192.168.20.50:8081'   # platform-vm
           - '192.168.20.150:8081'  # goudai
 
   - job_name: llama_cpp

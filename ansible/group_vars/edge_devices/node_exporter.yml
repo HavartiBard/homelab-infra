@@ -1,0 +1,6 @@
+---
+# Jetson Orin: the thermal_zone collector hangs on sysfs reads, wedging scrape
+# goroutines until node_exporter hits its concurrent-request limit (40) and
+# returns 503 on /metrics. Disable it on edge devices.
+node_exporter_extra_args:
+  - '--no-collector.thermal_zone'
