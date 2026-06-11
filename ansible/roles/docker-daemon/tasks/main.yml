@@ -1,0 +1,53 @@
+---
+- name: Check whether Docker is installed
+  ansible.builtin.command: which dockerd
+  register: docker_daemon_binary
+  changed_when: false
+  failed_when: false
+
+- name: Skip hosts without Docker
+  ansible.builtin.meta: end_host
+  when: docker_daemon_binary.rc != 0
+
+- name: Check for an existing Docker daemon.json
+  ansible.builtin.stat:
+    path: /etc/docker/daemon.json
+  register: docker_daemon_existing
+
+- name: Read existing daemon.json
+  ansible.builtin.slurp:
+    src: /etc/docker/daemon.json
+  register: docker_daemon_current
+  when: docker_daemon_existing.stat.exists
+
+- name: Merge log options into existing daemon.json settings
+  ansible.builtin.set_fact:
+    docker_daemon_config: >-
+      {{
+        (docker_daemon_existing.stat.exists
+         | ternary(docker_daemon_current.content | default('e30=') | b64decode | from_json, {}))
+        | combine({
+            'log-driver': docker_daemon_log_driver,
+            'log-opts': {
+              'max-size': docker_daemon_log_max_size,
+              'max-file': docker_daemon_log_max_file
+            }
+          })
+      }}
+
+- name: Write /etc/docker/daemon.json
+  ansible.builtin.copy:
+    content: "{{ docker_daemon_config | to_nice_json }}\n"
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  register: docker_daemon_write
+
+- name: Restart Docker to apply daemon.json changes
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  when:
+    - docker_daemon_write.changed
+    - docker_daemon_restart_on_change

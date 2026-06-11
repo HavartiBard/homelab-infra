@@ -1,0 +1,13 @@
+---
+# Docker daemon log rotation policy applied to Ubuntu Docker hosts.
+# Note: settings only apply to containers created AFTER the daemon restart;
+# existing containers keep their old (unbounded) json-file config until
+# they are recreated (e.g. docker compose up -d --force-recreate).
+docker_daemon_log_driver: json-file
+docker_daemon_log_max_size: "10m"
+docker_daemon_log_max_file: "3"
+
+# Restart docker when daemon.json changes. Containers with
+# restart: unless-stopped/always come back automatically, but expect a
+# brief service blip per host (run plays with serial: 1 on HA pairs).
+docker_daemon_restart_on_change: true
