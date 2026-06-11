@@ -10,7 +10,7 @@
 # Locations: Office (Bookcase, Desk, Media Closet), Living Room, Garage,
 #            Kitchen, Dining Room, bedrooms, Den, Pantry
 # Rack: Mini Rack (6U, Bookcase) — U2 Mikrotik, U3-5 PVE/Jetson, U6 JetKVM
-# VMs (Proxmox LXC): tt1, tt2, agh1, agh2
+# VMs (Proxmox LXC): tt1, tt2, agh1, agh2, ts-router-01
 # Service-level Docker VMs are registered by their owning deploy playbooks
 # through the netbox-service role.
 #
@@ -88,6 +88,7 @@
         - { name: Application,     slug: application,     color: "607d8b", vm_role: true }
         - { name: MCP Server,      slug: mcp-server,      color: "795548", vm_role: true }
         - { name: LLM Service,     slug: llm-service,     color: "e91e63", vm_role: true }
+        - { name: VPN Router,      slug: vpn-router,      color: "00bcd4", vm_role: true }
 
     # ── Platforms ─────────────────────────────────────────────────────────────
 
@@ -400,6 +401,7 @@
         - { name: tt2,        role: DNS Server,  comments: "Technitium secondary DNS — LXC on pve-02 (vmid 5011)" }
         - { name: agh1,       role: DNS Filter,  comments: "AdGuard Home primary — LXC on pve-01 (vmid 5012)" }
         - { name: agh2,       role: DNS Filter,  comments: "AdGuard Home secondary — LXC on pve-02 (vmid 5013)" }
+        - { name: ts-router-01, role: VPN Router, comments: "Tailscale subnet router (DNS + NPM /32 routes, split DNS) — LXC on pve-01 (vmid 5020)" }
 
     - name: Create LXC VM interfaces
       netbox.netbox.netbox_vm_interface:
@@ -415,6 +417,7 @@
         - { vm: tt2 }
         - { vm: agh1 }
         - { vm: agh2 }
+        - { vm: ts-router-01 }
 
     # LXC IPs are always deleted+recreated so they're always assigned to the VM interfaces
     # (not the old physical device interfaces from before the LXC hosts were converted to VMs)
@@ -448,6 +451,8 @@
         - { vm: tt2,        address: "192.168.20.3/24",  dns: "tt2" }
         - { vm: agh1,       address: "192.168.20.4/24",  dns: "agh1" }
         - { vm: agh2,       address: "192.168.20.5/24",  dns: "agh2" }
+        # /23 matches the interface config on the LXC (VLAN 20 is a /23)
+        - { vm: ts-router-01, address: "192.168.20.70/23", dns: "ts-router-01" }
 
     - name: Set primary IPs on LXC VMs
       netbox.netbox.netbox_virtual_machine:
@@ -466,6 +471,7 @@
         - { name: tt2,        role: DNS Server,  address: "192.168.20.3/24" }
         - { name: agh1,       role: DNS Filter,  address: "192.168.20.4/24" }
         - { name: agh2,       role: DNS Filter,  address: "192.168.20.5/24" }
+        - { name: ts-router-01, role: VPN Router, address: "192.168.20.70/23" }
 
     # ── Stale legacy topology cleanup ────────────────────────────────────────
 
