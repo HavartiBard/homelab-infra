@@ -59,8 +59,8 @@ This is an Ansible-managed Docker infrastructure for a hybrid homelab spanning U
 
 ## Architecture
 
-- **Platform VM** (Proxmox): Nginx Proxy Manager, Uptime Kuma
-- **Unraid** (192.168.20.14): Long-running services, MCP servers
+- **Unraid** (192.168.20.14): Long-running services, MCP servers, Nginx Proxy
+  Manager (br0 macvlan container with its own LAN IP, 192.168.20.50)
 - **WSL2 GPU Workers** (spraycheese): Ollama, Open WebUI
 - **DNS LXCs** (Proxmox): tt1/tt2 (Technitium), agh1/agh2 (AdGuard Home)
 
@@ -133,8 +133,7 @@ Dependency map: `services/homelab-dependency-map.md`.
 
 | Service | Host | Port | URL | Health Check |
 |---------|------|------|-----|-------------|
-| NPM | Platform VM | 80/443/81 | `npm.klsll.com` | `curl http://localhost:81/api/` |
-| Uptime Kuma | Platform VM | 3001 | `status.klsll.com` | `curl http://localhost:3001/api/info` |
+| NPM | Unraid (br0 macvlan, 192.168.20.50) | 80/443/81 | `npm.klsll.com` | `curl http://192.168.20.50:81/api/` |
 | Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://spraycheese:11434/api/tags` |
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
 | Raclette | Jetson (192.168.20.169) | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |

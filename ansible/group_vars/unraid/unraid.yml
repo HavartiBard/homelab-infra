@@ -66,6 +66,9 @@ gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
 # Promtail: Unraid has no systemd journal — Docker socket logs only
 promtail_unraid_mode: true
 promtail_scrape_journal: false
+# NPM runs on Unraid as a macvlan (br0) container at 192.168.20.50 and
+# writes its access/error logs to files under appdata.
+promtail_npm_log_path: /mnt/user/appdata/npm/data/logs
 
 # Gitea Git and registry service on Unraid
 gitea_ip: 192.168.20.52
