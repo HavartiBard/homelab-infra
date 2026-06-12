@@ -64,7 +64,7 @@ services:
     ports:
       - "3030:3000"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - /mnt/user/appdata/observability/data/grafana:/var/lib/grafana
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
       - TZ=America/Phoenix
@@ -110,7 +110,7 @@ services:
       net.unraid.docker.webui: http://[IP]:[PORT:9093]
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - alertmanager-data:/alertmanager
+      - /mnt/user/appdata/observability/data/alertmanager:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
@@ -127,9 +127,3 @@ networks:
   observability-net:
     driver: bridge
     name: observability-net
-
-volumes:
-  grafana-data:
-    name: grafana-data
-  alertmanager-data:
-    name: alertmanager-data
