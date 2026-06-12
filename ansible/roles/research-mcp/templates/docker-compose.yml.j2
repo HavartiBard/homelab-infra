@@ -1,0 +1,27 @@
+services:
+  research-mcp:
+    image: "{{ research_mcp_image }}"
+    container_name: {{ research_mcp_container_name }}
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/search.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ research_mcp_port }}/mcp"
+    environment:
+      TZ: America/Phoenix
+      HISTER_URL: "{{ research_mcp_hister_url }}"
+    ports:
+      - "{{ research_mcp_port }}:3000"
+    networks:
+      - research-mcp-net
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+networks:
+  research-mcp-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ research_mcp_net_subnet }}

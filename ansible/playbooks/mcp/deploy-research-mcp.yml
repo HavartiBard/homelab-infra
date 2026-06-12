@@ -1,0 +1,32 @@
+---
+# Deploy research-mcp on Unraid — MCP bridge exposing archive_page,
+# which indexes curated web content into hister via its REST API.
+#
+# Part of the web research stack: SearXNG (discover) -> Crawl4AI (retrieve)
+# -> hister (archive). LAN-only — do NOT register an NPM proxy host.
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-research-mcp.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
+- name: Deploy research-mcp on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: research-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: research-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "hister archive MCP bridge — http://{{ ansible_host }}:{{ research_mcp_port }}/mcp"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          research-mcp deployed.
+          MCP endpoint: http://{{ ansible_host }}:{{ research_mcp_port }}/mcp
+          Tool: archive_page(url, text, title?, label?) -> hister /api/add

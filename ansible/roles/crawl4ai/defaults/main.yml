@@ -1,0 +1,7 @@
+---
+crawl4ai_image: "unclecode/crawl4ai:0.8.9"
+crawl4ai_port: 6981
+crawl4ai_compose_dir: "/opt/docker/crawl4ai"
+# Pinned subnet: Docker's auto-allocation pools are exhausted on Unraid
+# (issue #79). 172.16.10.0/24 = hister-net; .11 = crawl4ai; .12 = research-mcp.
+crawl4ai_net_subnet: "172.16.11.0/24"

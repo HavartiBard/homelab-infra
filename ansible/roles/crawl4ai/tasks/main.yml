@@ -1,0 +1,39 @@
+---
+# Using raw commands throughout — Unraid has no Python
+
+- name: Ensure compose directory exists
+  ansible.builtin.raw: mkdir -p {{ crawl4ai_compose_dir }}
+  changed_when: false
+
+- name: Generate docker-compose.yml content
+  ansible.builtin.set_fact:
+    crawl4ai_compose_content: "{{ lookup('template', role_path + '/templates/docker-compose.yml.j2') }}"
+
+- name: Write docker-compose.yml
+  ansible.builtin.raw: |
+    cat > {{ crawl4ai_compose_dir }}/docker-compose.yml << 'EOFCOMPOSE'
+    {{ crawl4ai_compose_content }}
+    EOFCOMPOSE
+  changed_when: true
+
+- name: Pull crawl4ai image
+  ansible.builtin.raw: docker pull {{ crawl4ai_image }}
+  register: pull_crawl4ai
+  changed_when: "'Downloaded newer image' in pull_crawl4ai.stdout or 'Pull complete' in pull_crawl4ai.stdout"
+  tags: [image]
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ crawl4ai_compose_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Wait for crawl4ai to be healthy
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      if curl -sf http://localhost:{{ crawl4ai_port }}/health > /dev/null 2>&1; then
+        echo "healthy"; exit 0
+      fi
+      sleep 5
+    done
+    echo "timeout waiting for crawl4ai" >&2; exit 1
+  changed_when: false

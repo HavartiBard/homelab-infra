@@ -1,0 +1,33 @@
+---
+# Deploy Crawl4AI headless-browser scraping service on Unraid
+#
+# REST API + MCP endpoint for agent-driven web scraping (issues #35/#38).
+# Part of the web research stack: SearXNG (discover) -> Crawl4AI (retrieve)
+# -> hister (archive). LAN-only — do NOT register an NPM proxy host.
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-crawl4ai.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
+
+- name: Deploy Crawl4AI on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: crawl4ai
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: crawl4ai
+            cluster: unraid-docker
+            role: Application
+            comments: "Headless browser scraping (REST+MCP) — http://{{ ansible_host }}:{{ crawl4ai_port }}"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          Crawl4AI deployed.
+          Health:     http://{{ ansible_host }}:{{ crawl4ai_port }}/health
+          Playground: http://{{ ansible_host }}:{{ crawl4ai_port }}/playground
+          MCP:        http://{{ ansible_host }}:{{ crawl4ai_port }}/mcp

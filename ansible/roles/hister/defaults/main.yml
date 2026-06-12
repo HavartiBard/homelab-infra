@@ -9,3 +9,6 @@ hister_base_url: "https://search.klsll.com"
 # which swallows VLAN 1 (192.168.1.x) in the host routing table and broke
 # Orbi router access for bridge containers (issue #79).
 hister_net_subnet: "172.16.10.0/24"
+# 512m OOM-killed the hister indexer on POST /api/add (memcg kills in dmesg,
+# 2026-06-12). 1g gives indexing writes headroom.
+hister_memory: "1g"
