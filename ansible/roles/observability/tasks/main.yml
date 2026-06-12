@@ -12,6 +12,17 @@
     mkdir -p {{ observability_compose_dir }}
   changed_when: false
 
+# Persistent data lives on the array, not the 75G docker overlay loop (issue #129).
+# Bind-mount sources must exist with the container's runtime UID before compose up:
+# grafana runs as 472, alertmanager as nobody (65534).
+- name: Create data directories with container ownership
+  ansible.builtin.raw: |
+    mkdir -p {{ observability_data_dir }}/grafana
+    mkdir -p {{ observability_data_dir }}/alertmanager
+    chown 472:472 {{ observability_data_dir }}/grafana
+    chown 65534:65534 {{ observability_data_dir }}/alertmanager
+  changed_when: false
+
 # --- compose.yml ---
 
 - name: Read compose.yml content

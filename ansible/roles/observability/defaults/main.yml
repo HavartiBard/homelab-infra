@@ -4,3 +4,6 @@ observability_appdata_dir: /mnt/user/appdata/observability/config
 observability_port_grafana: 3030
 # Unraid rsyslogd owns :514 — syslog-ng binds :5514 externally, :514 internally
 observability_port_syslog: 5514
+# Persistent data (TSDB, grafana.db, alertmanager state) — on the user share,
+# never on the docker overlay loop (issue #129)
+observability_data_dir: /mnt/user/appdata/observability/data
