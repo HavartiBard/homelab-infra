@@ -65,3 +65,34 @@ groups:
         annotations:
           summary: "Promtail on {{ $labels.instance }} is not shipping logs"
           description: "Promtail on {{ $labels.instance }} is running but has sent zero entries to Loki for 15+ minutes (push failures or stalled tail)."
+
+  - name: backup.rules
+    rules:
+      # Metrics come from the restic-backup role's textfile collector output
+      # (/var/lib/node_exporter/textfile_collector/restic_backup.prom).
+      - alert: BackupStale
+        expr: time() - restic_backup_last_success_timestamp > 26 * 3600
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nightly restic backup is stale"
+          description: "Last successful restic backup was more than 26h ago. Check /var/log/restic-backup.log on Unraid."
+
+      - alert: BackupNeverRan
+        expr: absent(restic_backup_last_success_timestamp)
+        for: 6h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Restic backup metric is missing"
+          description: "restic_backup_last_success_timestamp is absent — backups have never run, the textfile was lost (reboot), or node_exporter is down on Unraid."
+
+      - alert: ResticCheckStale
+        expr: time() - restic_check_last_success_timestamp > 8 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Weekly restic repository check is stale"
+          description: "Last successful 'restic check' was more than 8 days ago. Run backup.sh check manually on Unraid and inspect /var/log/restic-backup.log."
