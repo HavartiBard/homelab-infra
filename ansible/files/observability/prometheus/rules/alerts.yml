@@ -31,3 +31,37 @@ groups:
         annotations:
           summary: "Container {{ $labels.name }} is restarting frequently"
           description: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted more than 3 times in 10 minutes."
+
+  - name: log-pipeline.rules
+    rules:
+      # The 2026-06 failure mode: Loki healthy, promtail Up, zero logs flowing.
+      # absent() also fires if the loki scrape target itself disappears.
+      - alert: LokiNoLogIngestion
+        expr: >-
+          sum(rate(loki_distributor_lines_received_total[10m])) == 0
+          or absent(loki_distributor_lines_received_total)
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki is not receiving any logs"
+          description: "No log lines have reached Loki in 15+ minutes. Check `docker logs promtail` on Unraid and that 192.168.20.14:3100 is published."
+
+      - alert: PromtailDown
+        expr: up{job="promtail"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promtail on {{ $labels.instance }} is down"
+          description: "Promtail metrics endpoint {{ $labels.instance }} has been unreachable for 10 minutes — logs from this host are not being shipped."
+
+      - alert: PromtailNotShipping
+        # Per-host stall: promtail is up but hasn't successfully sent anything.
+        expr: rate(promtail_sent_entries_total[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promtail on {{ $labels.instance }} is not shipping logs"
+          description: "Promtail on {{ $labels.instance }} is running but has sent zero entries to Loki for 15+ minutes (push failures or stalled tail)."
