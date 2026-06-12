@@ -21,7 +21,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: {{ hister_memory }}
           cpus: "1.0"
 
 networks:
