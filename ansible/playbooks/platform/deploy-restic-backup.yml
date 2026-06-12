@@ -1,0 +1,17 @@
+---
+# Deploy restic → B2 nightly backups to Unraid (issue #31)
+#
+# Required vault vars (ansible/group_vars/all/vault.yml):
+#   vault_restic_repo_password, vault_b2_account_id, vault_b2_account_key
+#
+# Run:
+#   ansible-playbook playbooks/platform/deploy-restic-backup.yml \
+#     --limit unraid --vault-password-file ~/.vault-pass
+
+- name: Deploy restic backups to Unraid
+  hosts: unraid
+  gather_facts: false
+  vars_files:
+    - ../../group_vars/all/vault.yml
+  roles:
+    - restic-backup
