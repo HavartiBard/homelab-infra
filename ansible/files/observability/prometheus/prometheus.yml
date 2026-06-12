@@ -41,3 +41,21 @@ scrape_configs:
         labels:
           service: personal-agent-llm
           model: qwen/qwen3.6-27b-mtp
+
+  # Log pipeline self-monitoring (ingestion died silently for 24h once —
+  # Loki healthcheck and container status both looked fine, see PR #189)
+  - job_name: loki
+    static_configs:
+      - targets:
+          - 'loki:3100'            # same compose network
+
+  - job_name: promtail
+    static_configs:
+      - targets:
+          - '192.168.20.14:9080'   # unraid-server
+          - '192.168.20.2:9080'    # tt1
+          - '192.168.20.3:9080'    # tt2
+          - '192.168.20.4:9080'    # agh1
+          - '192.168.20.5:9080'    # agh2
+          - '192.168.20.169:9080'  # jetson.lab
+          - '192.168.20.150:9080'  # goudai
