@@ -1,0 +1,70 @@
+#!/bin/bash
+# restic-backup — nightly appdata backup to B2 (issue #31)
+# Managed by Ansible: ansible/roles/restic-backup
+# Usage: backup.sh [backup|check]
+set -euo pipefail
+
+BASE={{ restic_backup_base }}
+ENV_FILE=$BASE/restic.env
+DUMPS=$BASE/dumps
+TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
+MODE="${1:-backup}"
+START=$(date +%s)
+
+run_restic() {
+  docker run --rm --env-file "$ENV_FILE" --hostname unraid-server \
+    -v restic-cache:/root/.cache/restic \
+    -v /mnt/user/appdata:/data/appdata:ro \
+    -v /mnt/user/paperless:/data/paperless:ro \
+    {{ restic_backup_image }} "$@"
+}
+
+emit_metrics() {  # $1 = metric prefix (restic_backup | restic_check)
+  # Textfile dir is RAM-backed on Unraid — recreate after reboots.
+  mkdir -p "$TEXTFILE_DIR"
+  local now; now=$(date +%s)
+  cat > "$TEXTFILE_DIR/$1.prom.tmp" << EOF
+# HELP $1_last_success_timestamp Unix time of last successful $1 run.
+# TYPE $1_last_success_timestamp gauge
+$1_last_success_timestamp $now
+# HELP $1_duration_seconds Duration of last successful $1 run.
+# TYPE $1_duration_seconds gauge
+$1_duration_seconds $(( now - START ))
+EOF
+  mv "$TEXTFILE_DIR/$1.prom.tmp" "$TEXTFILE_DIR/$1.prom"
+}
+
+if [ "$MODE" = "check" ]; then
+  run_restic check
+  emit_metrics restic_check
+  echo "[restic-backup] check OK"
+  exit 0
+fi
+
+# Initialize repo on first run only
+run_restic cat config > /dev/null 2>&1 || run_restic init
+
+# 1. Postgres dumps (logical, consistent) — raw pg data dirs are excluded below
+mkdir -p "$DUMPS"
+{% for c in restic_backup_pg_containers %}
+docker exec {{ c }} sh -c 'pg_dumpall -U "$POSTGRES_USER"' | gzip > "$DUMPS/{{ c }}.sql.gz"
+{% endfor %}
+
+# 2. File backup (read-only mounts; metrics only advance on full success)
+run_restic backup \
+{% for d in restic_backup_dirs %}
+  /data/{{ d }} \
+{% endfor %}
+{% for e in restic_backup_excludes %}
+  --exclude {{ e }} \
+{% endfor %}
+  --no-scan
+
+# 3. Retention
+run_restic forget --prune \
+  --keep-daily {{ restic_keep_daily }} \
+  --keep-weekly {{ restic_keep_weekly }} \
+  --keep-monthly {{ restic_keep_monthly }}
+
+emit_metrics restic_backup
+echo "[restic-backup] backup OK ($(( $(date +%s) - START ))s)"
