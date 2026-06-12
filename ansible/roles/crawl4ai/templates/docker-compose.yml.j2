@@ -1,0 +1,27 @@
+services:
+  crawl4ai:
+    image: "{{ crawl4ai_image }}"
+    container_name: crawl4ai
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-chrome.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ crawl4ai_port }}/playground"
+    environment:
+      TZ: America/Phoenix
+    ports:
+      - "{{ crawl4ai_port }}:11235"
+    networks:
+      - crawl4ai-net
+    shm_size: "1g"
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+
+networks:
+  crawl4ai-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ crawl4ai_net_subnet }}
