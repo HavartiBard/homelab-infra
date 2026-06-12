@@ -1,7 +1,8 @@
 # Observability Stack — Unraid
 # Managed by Ansible: ansible/playbooks/platform/deploy-observability.yml
 # All services on observability-net (internal)
-# Exposed: Grafana :3030, syslog-ng UDP/TCP :5514 (514 taken by Unraid rsyslogd)
+# Exposed: Grafana :3030, Loki :3100 (promtail push from remote hosts),
+# syslog-ng UDP/TCP :5514 (514 taken by Unraid rsyslogd)
 
 services:
   loki:
@@ -11,6 +12,10 @@ services:
     labels:
       net.unraid.docker.icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/loki.png
       net.unraid.docker.webui: http://[IP]:[PORT:3100]
+    # Promtail on every host (incl. remote agh/tt/goudai/jetson) pushes to
+    # 192.168.20.14:3100 — this mapping is required for ingestion (issue #65).
+    ports:
+      - "3100:3100"
     volumes:
       - ${OBSERVABILITY_APPDATA:?OBSERVABILITY_APPDATA is required}/loki/config.yml:/etc/loki/config.yml:ro
       - /mnt/user/appdata/observability/data/loki:/loki
