@@ -6,7 +6,8 @@
 # -> hister (archive). LAN-only — do NOT register an NPM proxy host.
 #
 # Usage:
-#   ansible-playbook playbooks/mcp/deploy-crawl4ai.yml --limit unraid
+#   ansible-playbook playbooks/mcp/deploy-crawl4ai.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid
 
 - name: Deploy Crawl4AI on Unraid
   hosts: unraid

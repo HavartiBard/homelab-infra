@@ -29,3 +29,5 @@ Recent platform/service additions:
 - `ai/deploy-lm-eval-harness.yml`
 - `bootstrap/deploy-tailscale.yml`
 - `bootstrap/provision-tailscale-router.yml`
+- `mcp/deploy-crawl4ai.yml`
+- `mcp/deploy-research-mcp.yml`

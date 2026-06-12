@@ -20,7 +20,7 @@
         netbox_services:
           - name: research-mcp
             cluster: unraid-docker
-            role: Application
+            role: MCP Server
             comments: "hister archive MCP bridge — http://{{ ansible_host }}:{{ research_mcp_port }}/mcp"
 
   post_tasks:
