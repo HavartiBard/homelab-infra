@@ -39,6 +39,24 @@ def _pick(obj: dict, keys: list[str]) -> dict:
     return {k: obj[k] for k in keys if k in obj}
 
 
+def _resolve_label_ids(owner: str, repo: str, labels: list[str]) -> list[int]:
+    """Map label names (or numeric ID strings) to label IDs."""
+    ids: list[int] = []
+    names: list[str] = []
+    for lb in labels:
+        if str(lb).isdigit():
+            ids.append(int(lb))
+        else:
+            names.append(str(lb))
+    if names:
+        existing = {l["name"]: l["id"] for l in _api("GET", f"/repos/{owner}/{repo}/labels")}
+        missing = [n for n in names if n not in existing]
+        if missing:
+            raise ValueError(f"Labels not found in {owner}/{repo}: {missing}")
+        ids.extend(existing[n] for n in names)
+    return ids
+
+
 # ---------------------------------------------------------------------------
 # Repos
 # ---------------------------------------------------------------------------
@@ -102,12 +120,12 @@ def get_issue(owner: str, repo: str, index: int) -> str:
 @mcp.tool()
 def create_issue(owner: str, repo: str, title: str, body: str = "",
                  labels: list[str] | None = None, assignees: list[str] | None = None) -> str:
-    """Create a new issue. Labels should be label IDs (numbers), assignees are usernames."""
+    """Create a new issue. Labels accept names or IDs, assignees are usernames."""
     payload: dict[str, Any] = {"title": title}
     if body:
         payload["body"] = body
     if labels:
-        payload["labels"] = [int(lb) for lb in labels]
+        payload["labels"] = _resolve_label_ids(owner, repo, labels)
     if assignees:
         payload["assignees"] = assignees
     data = _api("POST", f"/repos/{owner}/{repo}/issues", json=payload)
@@ -160,8 +178,9 @@ def list_labels(owner: str, repo: str) -> str:
 
 
 @mcp.tool()
-def add_labels(owner: str, repo: str, index: int, label_ids: list[int]) -> str:
-    """Add labels to an issue by label IDs."""
+def add_labels(owner: str, repo: str, index: int, labels: list[str]) -> str:
+    """Add labels to an issue or PR. Labels accept names or IDs."""
+    label_ids = _resolve_label_ids(owner, repo, labels)
     data = _api("POST", f"/repos/{owner}/{repo}/issues/{index}/labels", json={"labels": label_ids})
     labels = [_pick(lb, ["id", "name"]) for lb in data]
     return json.dumps(labels, indent=2)
@@ -210,6 +229,23 @@ def create_pull_request(owner: str, repo: str, title: str, body: str,
 
 
 @mcp.tool()
+def merge_pull_request(owner: str, repo: str, index: int, merge_style: str = "merge",
+                       delete_branch_after_merge: bool = False) -> str:
+    """Merge a pull request. merge_style: merge, rebase, rebase-merge, or squash.
+    Set delete_branch_after_merge to also delete the head branch."""
+    payload: dict[str, Any] = {"Do": merge_style}
+    if delete_branch_after_merge:
+        payload["delete_branch_after_merge"] = True
+    # Gitea returns 200 with an empty body on success — don't go through _api's .json()
+    url = f"{GITEA_HOST}/api/v1/repos/{owner}/{repo}/pulls/{index}/merge"
+    with httpx.Client(timeout=60) as client:
+        resp = client.post(url, headers=_headers(), json=payload)
+        resp.raise_for_status()
+    return json.dumps({"merged": True, "number": index, "merge_style": merge_style,
+                       "branch_deleted": delete_branch_after_merge}, indent=2)
+
+
+@mcp.tool()
 def get_pull_request_diff(owner: str, repo: str, index: int) -> str:
     """Get the diff for a pull request."""
     url = f"{GITEA_HOST}/api/v1/repos/{owner}/{repo}/pulls/{index}.diff"
@@ -238,6 +274,13 @@ def create_branch(owner: str, repo: str, branch_name: str,
     data = _api("POST", f"/repos/{owner}/{repo}/branches",
                 json={"new_branch_name": branch_name, "old_branch_name": old_branch})
     return json.dumps(_pick(data, ["name"]), indent=2)
+
+
+@mcp.tool()
+def delete_branch(owner: str, repo: str, branch: str) -> str:
+    """Delete a branch. The default branch and protected branches cannot be deleted."""
+    data = _api("DELETE", f"/repos/{owner}/{repo}/branches/{branch}")
+    return json.dumps({"deleted": branch, **data}, indent=2)
 
 
 # ---------------------------------------------------------------------------
