@@ -1,0 +1,51 @@
+---
+# restic-backup — nightly critical-appdata backup to Backblaze B2 (issue #31)
+restic_backup_base: /mnt/user/appdata/restic-backup
+restic_backup_image: restic/restic:0.17.3
+restic_b2_bucket: klsll-homelab-backups
+restic_repo_path: unraid-appdata
+
+# Paths relative to the /data mount root inside the restic container.
+# /data/appdata = /mnt/user/appdata (ro), /data/paperless = /mnt/user/paperless (ro).
+# This list is the "does this service need backup?" onboarding answer (issue #31):
+# adding a service to backups = one line here + PR.
+restic_backup_dirs:
+  - appdata/gitea
+  - appdata/paperless-ngx
+  - appdata/npm
+  - appdata/netbox
+  - appdata/couchdb
+  - appdata/obsidian
+  - appdata/hister
+  - appdata/ironclaw
+  - appdata/n8n
+  - appdata/portainer
+  - appdata/agent-cp
+  - appdata/chiffon
+  - appdata/chiffon-executor
+  - appdata/sprite-smith
+  - appdata/llm-bench
+  - appdata/observability/data/grafana
+  - appdata/restic-backup/dumps
+  - paperless
+
+# Raw pg data dirs are excluded — pg_dumpall covers the databases.
+restic_backup_excludes:
+  - /data/appdata/gitea/postgres
+  - /data/appdata/netbox/postgres
+  - /data/paperless/pgdata
+
+# Postgres containers to pg_dumpall before the file backup.
+# Each must have POSTGRES_USER in its env. ironclaw-postgres: add when redeployed.
+restic_backup_pg_containers:
+  - gitea-db
+  - netbox-postgres
+  - paperless-db
+
+restic_keep_daily: 7
+restic_keep_weekly: 4
+restic_keep_monthly: 6
+
+# 3:00am nightly backup, 5:00am Sunday integrity check (America/Phoenix system TZ)
+restic_backup_cron: "0 3 * * *"
+restic_check_cron: "0 5 * * 0"
