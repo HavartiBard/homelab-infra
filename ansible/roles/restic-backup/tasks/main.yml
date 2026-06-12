@@ -42,5 +42,7 @@
   changed_when: true
 
 - name: Verify cron registered
-  ansible.builtin.raw: crontab -l | grep restic-backup
+  # Unraid's update_cron assembles plugin crons into /etc/cron.d/root,
+  # not the default user crontab — must pass -c /etc/cron.d.
+  ansible.builtin.raw: crontab -c /etc/cron.d -l | grep restic-backup
   changed_when: false
