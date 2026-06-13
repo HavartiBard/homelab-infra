@@ -2,6 +2,10 @@
 # AdGuard Home query log path for Promtail scraping
 promtail_adguard_log_path: "/opt/adguard/data/adguard/work/data/querylog.json"
 
+# Internet bedtime block disabled 2026-06-12 per user request.
+# Re-enable by removing this override (role default is true).
+adguard_bedtime_enabled: false
+
 # Persistent AdGuard clients (managed in IaC — the Clients UI is now
 # authoritative-from-here; UI-only edits are reverted on the next deploy).
 # Seeded 2026-06-06 from the live agh1 export. Add `user_child` to a device's
