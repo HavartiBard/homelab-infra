@@ -16,6 +16,7 @@ run_restic() {
     -v restic-cache:/root/.cache/restic \
     -v /mnt/user/appdata:/data/appdata:ro \
     -v /mnt/user/paperless:/data/paperless:ro \
+    -v /mnt/user/media:/data/media:ro \
     {{ restic_backup_image }} "$@"
 }
 

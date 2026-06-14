@@ -1,0 +1,26 @@
+---
+# Deploy Immich photo management platform
+# Unraid: server + postgres + redis
+# Goudai: machine learning container (NFS model cache at /mnt/ai-models/immich)
+#
+# Usage:
+#   ansible-playbook playbooks/platform/deploy-immich.yml --limit unraid-server,goudai
+#
+# Secrets (vault.yml):
+#   vault_immich_db_password, vault_immich_jwt_secret, vault_immich_admin_password
+
+- name: Deploy Immich server stack (Unraid)
+  hosts: unraid
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../../group_vars/all/vault.yml"
+  roles:
+    - immich
+
+- name: Deploy Immich ML container (Goudai)
+  hosts: goudai
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../../group_vars/all/vault.yml"
+  roles:
+    - immich-ml

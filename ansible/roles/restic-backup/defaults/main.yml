@@ -27,13 +27,16 @@ restic_backup_dirs:
   - appdata/llm-bench
   - appdata/observability/data/grafana
   - appdata/restic-backup/dumps
+  - appdata/immich
   - paperless
+  - media/photos
 
 # Raw pg data dirs are excluded — pg_dumpall covers the databases.
 restic_backup_excludes:
   - /data/appdata/gitea/postgres
   - /data/appdata/netbox/postgres
   - /data/paperless/pgdata
+  - /data/appdata/immich/postgres
 
 # Postgres containers to pg_dumpall before the file backup.
 # Each must have POSTGRES_USER in its env. ironclaw-postgres: add when redeployed.
@@ -41,6 +44,7 @@ restic_backup_pg_containers:
   - gitea-db
   - netbox-postgres
   - paperless-db
+  - immich-postgres
 
 restic_keep_daily: 7
 restic_keep_weekly: 4

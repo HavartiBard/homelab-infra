@@ -1,0 +1,41 @@
+---
+- name: Create immich-ml directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ immich_ml_base_dir }}"
+    - "{{ immich_ml_model_cache }}"
+
+- name: Write immich-ml.env
+  ansible.builtin.template:
+    src: immich-ml.env.j2
+    dest: "{{ immich_ml_base_dir }}/immich-ml.env"
+    mode: "0600"
+
+- name: Write compose.yml
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ immich_ml_base_dir }}/compose.yml"
+    mode: "0644"
+
+- name: Pull immich-ml image
+  community.docker.docker_compose_v2_pull:
+    project_src: "{{ immich_ml_base_dir }}"
+
+- name: Deploy immich-ml stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ immich_ml_base_dir }}"
+    state: present
+    remove_orphans: true
+
+- name: Wait for immich-ml to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ immich_ml_port }}/ping"
+    method: GET
+    status_code: 200
+  register: ml_ping
+  until: ml_ping.status == 200
+  retries: 24
+  delay: 5
