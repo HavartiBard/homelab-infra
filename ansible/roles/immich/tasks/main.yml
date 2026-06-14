@@ -1,0 +1,53 @@
+---
+- name: Create immich directories
+  raw: mkdir -p {{ immich_base_dir }}/postgres {{ immich_photos_dir }}
+
+- name: Write immich.env
+  raw: |
+    cat > {{ immich_base_dir }}/immich.env << 'EOFMARKER'
+    {{ lookup('template', 'immich.env.j2') }}
+    EOFMARKER
+
+- name: Write compose.yml
+  raw: |
+    cat > {{ immich_base_dir }}/compose.yml << 'EOFMARKER'
+    {{ lookup('template', 'compose.yml.j2') }}
+    EOFMARKER
+
+- name: Pull immich images
+  raw: >
+    docker compose -f {{ immich_base_dir }}/compose.yml pull
+
+- name: Deploy immich stack
+  raw: >
+    docker compose -f {{ immich_base_dir }}/compose.yml up -d --remove-orphans
+
+- name: Wait for immich server to be ready
+  raw: |
+    for i in $(seq 1 30); do
+      if wget -qO- http://localhost:{{ immich_port }}/api/server/ping 2>/dev/null | grep -q pong; then
+        echo "Immich is up"
+        exit 0
+      fi
+      sleep 5
+    done
+    echo "Timeout waiting for immich"
+    exit 1
+
+- name: Bootstrap admin account
+  raw: |
+    HTTP_CODE=$(wget -qO- --server-response \
+      --header="Content-Type: application/json" \
+      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ vault_immich_admin_password }}","name":"James"}' \
+      http://localhost:{{ immich_port }}/api/auth/admin-sign-up 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
+    if [ "$HTTP_CODE" = "201" ]; then
+      echo "Admin account created"
+    elif wget -qO- \
+      --header="Content-Type: application/json" \
+      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ vault_immich_admin_password }}"}' \
+      http://localhost:{{ immich_port }}/api/auth/login 2>/dev/null | grep -q '"accessToken"'; then
+      echo "Admin account already exists"
+    else
+      echo "Admin bootstrap failed"
+      exit 1
+    fi

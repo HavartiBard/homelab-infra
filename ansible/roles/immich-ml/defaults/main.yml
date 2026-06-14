@@ -1,0 +1,5 @@
+---
+immich_version: v1.134.0
+immich_ml_base_dir: /home/james/docker/immich-ml
+immich_ml_model_cache: /mnt/ai-models/immich/model-cache
+immich_ml_port: 3003

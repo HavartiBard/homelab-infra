@@ -1,0 +1,55 @@
+---
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:{{ immich_version }}
+    container_name: immich-server
+    env_file: /mnt/user/appdata/immich/immich.env
+    volumes:
+      - {{ immich_photos_dir }}:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "{{ immich_port }}:2283"
+    depends_on:
+      immich-postgres:
+        condition: service_healthy
+      immich-redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - immich
+
+  immich-postgres:
+    image: {{ immich_db_image }}
+    container_name: immich-postgres
+    environment:
+      POSTGRES_DB: "{{ immich_db_name }}"
+      POSTGRES_USER: "{{ immich_db_user }}"
+      POSTGRES_PASSWORD: "{{ vault_immich_db_password }}"
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - {{ immich_base_dir }}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U {{ immich_db_user }} -d {{ immich_db_name }}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - immich
+
+  immich-redis:
+    image: {{ immich_redis_image }}
+    container_name: immich-redis
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - immich
+
+networks:
+  immich:
+    name: immich

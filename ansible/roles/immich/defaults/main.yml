@@ -1,0 +1,14 @@
+---
+immich_version: v1.134.0
+immich_base_dir: /mnt/user/appdata/immich
+immich_photos_dir: /mnt/user/media/photos
+immich_port: 2283
+
+immich_db_name: immich
+immich_db_user: immich
+immich_db_image: tensorchord/pgvecto-rs:pg14-v0.2.0
+immich_redis_image: redis:6.2-alpine
+
+immich_ml_url: http://192.168.20.150:3003
+
+immich_admin_email: james@klsll.com

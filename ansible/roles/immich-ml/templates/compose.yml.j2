@@ -1,0 +1,17 @@
+---
+services:
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}
+    container_name: immich-machine-learning
+    env_file: {{ immich_ml_base_dir }}/immich-ml.env
+    volumes:
+      - {{ immich_ml_model_cache }}:/cache
+    ports:
+      - "{{ immich_ml_port }}:3003"
+    restart: unless-stopped
+    networks:
+      - immich-ml
+
+networks:
+  immich-ml:
+    name: immich-ml
