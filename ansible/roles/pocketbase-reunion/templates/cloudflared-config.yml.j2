@@ -2,6 +2,6 @@ tunnel: {{ pocketbase_reunion_cf_tunnel_id }}
 credentials-file: /etc/cloudflared/creds.json
 
 ingress:
-  - hostname: api.reunion.klsll.com
+  - hostname: reunion-api.klsll.com
     service: http://pocketbase-reunion:8090
   - service: http_status:404
