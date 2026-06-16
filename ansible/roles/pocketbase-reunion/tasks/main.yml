@@ -1,13 +1,19 @@
 ---
-- name: Create pocketbase-reunion directory
-  raw: mkdir -p {{ pocketbase_reunion_base_dir }}/data
+- name: Create pocketbase-reunion directories
+  raw: mkdir -p {{ pocketbase_reunion_base_dir }}/data {{ pocketbase_reunion_base_dir }}/cloudflared
 
-- name: Write tunnel.env
+- name: Write cloudflared credentials
   raw: |
-    cat > {{ pocketbase_reunion_base_dir }}/tunnel.env << 'EOFMARKER'
-    TUNNEL_TOKEN={{ vault_cloudflare_reunion_tunnel_token }}
+    cat > {{ pocketbase_reunion_base_dir }}/cloudflared/creds.json << 'EOFMARKER'
+    {{ lookup('template', 'cloudflared-creds.json.j2') }}
     EOFMARKER
-    chmod 600 {{ pocketbase_reunion_base_dir }}/tunnel.env
+    chmod 600 {{ pocketbase_reunion_base_dir }}/cloudflared/creds.json
+
+- name: Write cloudflared config
+  raw: |
+    cat > {{ pocketbase_reunion_base_dir }}/cloudflared/config.yml << 'EOFMARKER'
+    {{ lookup('template', 'cloudflared-config.yml.j2') }}
+    EOFMARKER
 
 - name: Write compose.yml
   raw: |
@@ -15,7 +21,7 @@
     {{ lookup('template', 'compose.yml.j2') }}
     EOFMARKER
 
-- name: Pull pocketbase image
+- name: Pull images
   raw: docker compose -f {{ pocketbase_reunion_base_dir }}/compose.yml pull
 
 - name: Deploy pocketbase-reunion

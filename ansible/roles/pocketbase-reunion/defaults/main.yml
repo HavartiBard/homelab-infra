@@ -2,4 +2,6 @@
 pocketbase_reunion_version: "0.22.20"
 pocketbase_reunion_base_dir: /mnt/user/appdata/pocketbase-reunion
 pocketbase_reunion_port: 8094
-pocketbase_reunion_tunnel_token: "{{ vault_cloudflare_reunion_tunnel_token }}"
+pocketbase_reunion_cf_tunnel_id: "796ea425-81ce-4ce4-bd3a-41bd5adba0d7"
+pocketbase_reunion_cf_account_tag: "{{ vault_cloudflare_reunion_account_tag }}"
+pocketbase_reunion_cf_tunnel_secret: "{{ vault_cloudflare_reunion_tunnel_secret }}"
