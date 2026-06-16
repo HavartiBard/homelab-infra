@@ -1,0 +1,16 @@
+---
+services:
+  pocketbase-reunion:
+    image: ghcr.io/muchobien/pocketbase:{{ pocketbase_reunion_version }}
+    container_name: pocketbase-reunion
+    volumes:
+      - {{ pocketbase_reunion_base_dir }}/data:/pb/pb_data
+    ports:
+      - "{{ pocketbase_reunion_port }}:8090"
+    restart: unless-stopped
+    healthcheck:
+      test: wget -qO- http://localhost:8090/api/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

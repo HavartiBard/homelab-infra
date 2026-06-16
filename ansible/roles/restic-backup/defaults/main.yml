@@ -28,6 +28,7 @@ restic_backup_dirs:
   - appdata/observability/data/grafana
   - appdata/restic-backup/dumps
   - appdata/immich
+  - appdata/pocketbase-reunion
   - paperless
   - media/photos
 
