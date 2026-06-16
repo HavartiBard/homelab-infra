@@ -7,7 +7,7 @@
     cat > {{ pocketbase_reunion_base_dir }}/cloudflared/creds.json << 'EOFMARKER'
     {{ lookup('template', 'cloudflared-creds.json.j2') }}
     EOFMARKER
-    chmod 600 {{ pocketbase_reunion_base_dir }}/cloudflared/creds.json
+    chmod 644 {{ pocketbase_reunion_base_dir }}/cloudflared/creds.json
 
 - name: Write cloudflared config
   raw: |
