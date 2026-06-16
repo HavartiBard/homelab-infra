@@ -2,3 +2,4 @@
 pocketbase_reunion_version: "0.22.20"
 pocketbase_reunion_base_dir: /mnt/user/appdata/pocketbase-reunion
 pocketbase_reunion_port: 8094
+pocketbase_reunion_tunnel_token: "{{ vault_cloudflare_reunion_tunnel_token }}"

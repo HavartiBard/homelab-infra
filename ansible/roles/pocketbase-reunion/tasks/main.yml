@@ -2,6 +2,13 @@
 - name: Create pocketbase-reunion directory
   raw: mkdir -p {{ pocketbase_reunion_base_dir }}/data
 
+- name: Write tunnel.env
+  raw: |
+    cat > {{ pocketbase_reunion_base_dir }}/tunnel.env << 'EOFMARKER'
+    TUNNEL_TOKEN={{ vault_cloudflare_reunion_tunnel_token }}
+    EOFMARKER
+    chmod 600 {{ pocketbase_reunion_base_dir }}/tunnel.env
+
 - name: Write compose.yml
   raw: |
     cat > {{ pocketbase_reunion_base_dir }}/compose.yml << 'EOFMARKER'

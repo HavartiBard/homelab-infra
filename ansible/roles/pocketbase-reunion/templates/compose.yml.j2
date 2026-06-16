@@ -8,9 +8,26 @@ services:
     ports:
       - "{{ pocketbase_reunion_port }}:8090"
     restart: unless-stopped
+    networks:
+      - reunion
     healthcheck:
       test: wget -qO- http://localhost:8090/api/health || exit 1
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-reunion
+    command: tunnel --no-autoupdate run
+    env_file: {{ pocketbase_reunion_base_dir }}/tunnel.env
+    restart: unless-stopped
+    depends_on:
+      - pocketbase-reunion
+    networks:
+      - reunion
+
+networks:
+  reunion:
+    driver: bridge
