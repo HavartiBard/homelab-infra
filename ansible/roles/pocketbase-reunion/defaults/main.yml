@@ -1,0 +1,7 @@
+---
+pocketbase_reunion_version: "0.22.20"
+pocketbase_reunion_base_dir: /mnt/user/appdata/pocketbase-reunion
+pocketbase_reunion_port: 8094
+pocketbase_reunion_cf_tunnel_id: "{{ vault_cloudflare_reunion_tunnel_id }}"
+pocketbase_reunion_cf_account_tag: "{{ vault_cloudflare_reunion_account_tag }}"
+pocketbase_reunion_cf_tunnel_secret: "{{ vault_cloudflare_reunion_tunnel_secret }}"
