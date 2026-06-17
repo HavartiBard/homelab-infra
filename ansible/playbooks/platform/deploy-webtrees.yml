@@ -1,0 +1,17 @@
+---
+# Deploy Webtrees self-hosted family tree (fisharebest/webtrees)
+# Unraid: webtrees + mariadb stack
+#
+# Usage:
+#   ansible-playbook playbooks/platform/deploy-webtrees.yml --limit unraid-server
+#
+# Secrets (vault.yml):
+#   vault_webtrees_db_password, vault_webtrees_admin_password
+
+- name: Deploy Webtrees stack (Unraid)
+  hosts: unraid
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../../group_vars/all/vault.yml"
+  roles:
+    - webtrees

@@ -1,0 +1,11 @@
+---
+webtrees_version: "2.2.6"
+webtrees_base_dir: /mnt/user/appdata/webtrees
+webtrees_port: 2284
+
+webtrees_db_name: webtrees
+webtrees_db_user: webtrees
+
+webtrees_admin_user: james
+webtrees_admin_email: james@klsll.com
+webtrees_admin_name: James

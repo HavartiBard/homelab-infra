@@ -28,7 +28,7 @@ restic_backup_dirs:
   - appdata/observability/data/grafana
   - appdata/restic-backup/dumps
   - appdata/immich
-  - appdata/pocketbase-reunion
+  - appdata/webtrees/data
   - paperless
   - media/photos
 
@@ -38,6 +38,7 @@ restic_backup_excludes:
   - /data/appdata/netbox/postgres
   - /data/paperless/pgdata
   - /data/appdata/immich/postgres
+  - /data/appdata/webtrees/db
 
 # Postgres containers to pg_dumpall before the file backup.
 # Each must have POSTGRES_USER in its env. ironclaw-postgres: add when redeployed.

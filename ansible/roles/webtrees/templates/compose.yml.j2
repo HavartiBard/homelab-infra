@@ -1,0 +1,54 @@
+---
+services:
+  webtrees:
+    image: nathanvaughn/webtrees:{{ webtrees_version }}
+    container_name: webtrees
+    environment:
+      PRETTY_URLS: "TRUE"
+      BASE_URL: https://webtrees.klsll.com
+      DB_TYPE: mysql
+      DB_HOST: webtrees-db
+      DB_PORT: 3306
+      DB_USER: "{{ webtrees_db_user }}"
+      DB_PASS: "{{ vault_webtrees_db_password }}"
+      DB_NAME: "{{ webtrees_db_name }}"
+      DB_PREFIX: wt_
+      WT_NAME: "Family Tree"
+      WT_USER: "{{ webtrees_admin_user }}"
+      WT_PASS: "{{ vault_webtrees_admin_password }}"
+      WT_EMAIL: "{{ webtrees_admin_email }}"
+      TZ: America/Phoenix
+    volumes:
+      - {{ webtrees_base_dir }}/data:/var/www/webtrees/data
+    ports:
+      - "{{ webtrees_port }}:80"
+    depends_on:
+      webtrees-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - webtrees
+
+  webtrees-db:
+    image: mariadb:11
+    container_name: webtrees-db
+    environment:
+      MARIADB_DATABASE: "{{ webtrees_db_name }}"
+      MARIADB_USER: "{{ webtrees_db_user }}"
+      MARIADB_PASSWORD: "{{ vault_webtrees_db_password }}"
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - {{ webtrees_base_dir }}/db:/var/lib/mysql
+    healthcheck:
+      test: healthcheck.sh --connect --innodb_initialized
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - webtrees
+
+networks:
+  webtrees:
+    name: webtrees
