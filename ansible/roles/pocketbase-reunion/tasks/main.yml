@@ -1,6 +1,12 @@
 ---
 - name: Create pocketbase-reunion directories
-  raw: mkdir -p {{ pocketbase_reunion_base_dir }}/data {{ pocketbase_reunion_base_dir }}/cloudflared
+  raw: mkdir -p {{ pocketbase_reunion_base_dir }}/data {{ pocketbase_reunion_base_dir }}/cloudflared {{ pocketbase_reunion_base_dir }}/pb_migrations
+
+# Clear stale migration files first so renamed/removed migrations don't linger
+# in the container and crash PocketBase on startup (e.g. a duplicate-collection
+# UNIQUE constraint). The authoritative set is rewritten by the next task.
+- name: Clear stale PocketBase migration files
+  raw: rm -f {{ pocketbase_reunion_base_dir }}/pb_migrations/*.js
 
 - name: Write cloudflared credentials
   raw: |
@@ -15,6 +21,16 @@
     {{ lookup('template', 'cloudflared-config.yml.j2') }}
     EOFMARKER
 
+- name: Write PocketBase migration files
+  raw: |
+    cat > {{ pocketbase_reunion_base_dir }}/pb_migrations/{{ item }} << 'EOFMARKER'
+    {{ lookup('file', 'pb_migrations/' + item) }}
+    EOFMARKER
+  loop:
+    - 1718500000_create_persons.js
+    - 1718500001_create_couples.js
+    - 1718500002_create_news.js
+
 - name: Write compose.yml
   raw: |
     cat > {{ pocketbase_reunion_base_dir }}/compose.yml << 'EOFMARKER'
@@ -26,6 +42,12 @@
 
 - name: Deploy pocketbase-reunion
   raw: docker compose -f {{ pocketbase_reunion_base_dir }}/compose.yml up -d --remove-orphans
+
+# PocketBase only scans pb_migrations on startup. `up -d` is a no-op when the
+# compose file is unchanged, so restart explicitly to apply any new/changed
+# migrations. Re-applying already-recorded migrations is a safe no-op.
+- name: Restart pocketbase to apply migrations
+  raw: docker restart pocketbase-reunion
 
 - name: Wait for pocketbase to be ready
   raw: |
