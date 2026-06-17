@@ -2,7 +2,7 @@
 proxy_hosts:
   - name: reunion-api
     domains:
-      - api.reunion.klsll.com
+      - reunion-api.klsll.com
     forward_host: 192.168.20.14
     forward_port: 8094
     scheme: http
@@ -13,7 +13,7 @@ proxy_hosts:
     http2: true
 
 dns_records:
-  - name: api.reunion.klsll.com
+  - name: reunion-api.klsll.com
     type: A
     value: 192.168.20.50
     ttl: 3600
