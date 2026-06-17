@@ -5,3 +5,15 @@ pocketbase_reunion_port: 8094
 pocketbase_reunion_cf_tunnel_id: "{{ vault_cloudflare_reunion_tunnel_id }}"
 pocketbase_reunion_cf_account_tag: "{{ vault_cloudflare_reunion_account_tag }}"
 pocketbase_reunion_cf_tunnel_secret: "{{ vault_cloudflare_reunion_tunnel_secret }}"
+
+# Apple Sign In — leave empty until Apple Developer account is approved.
+# Required values (all come from Apple Developer Console):
+#   client_id:     Services ID (e.g. com.klsll.reunion)
+#   client_secret: JWT signed with .p8 key (max 6-month expiry) — generate with
+#                  sign_in_with_apple or python-jose; store result in vault
+#   team_id:       10-char Team ID from Apple Developer account
+#   key_id:        Key ID of the Sign in with Apple key (.p8)
+pocketbase_reunion_apple_client_id: "{{ vault_pocketbase_reunion_apple_client_id | default('') }}"
+pocketbase_reunion_apple_client_secret: "{{ vault_pocketbase_reunion_apple_client_secret | default('') }}"
+pocketbase_reunion_apple_team_id: "{{ vault_pocketbase_reunion_apple_team_id | default('') }}"
+pocketbase_reunion_apple_key_id: "{{ vault_pocketbase_reunion_apple_key_id | default('') }}"

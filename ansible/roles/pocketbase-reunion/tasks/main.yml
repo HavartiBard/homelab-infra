@@ -38,3 +38,11 @@
     done
     echo "Timeout"
     exit 1
+
+- name: Configure Apple Sign In
+  raw: |
+    wget -qO- --post-data='{"appleAuth":{"enabled":true,"clientId":"{{ pocketbase_reunion_apple_client_id }}","clientSecret":"{{ pocketbase_reunion_apple_client_secret }}","teamId":"{{ pocketbase_reunion_apple_team_id }}","keyId":"{{ pocketbase_reunion_apple_key_id }}"}}' \
+      --header='Content-Type: application/json' \
+      --header='Authorization: {{ pocketbase_reunion_admin_token }}' \
+      http://localhost:{{ pocketbase_reunion_port }}/api/settings > /dev/null && echo "Apple auth configured"
+  when: pocketbase_reunion_apple_client_id != '' and pocketbase_reunion_admin_token is defined
