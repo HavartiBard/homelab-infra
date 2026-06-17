@@ -4,7 +4,11 @@ services:
     image: ghcr.io/muchobien/pocketbase:{{ pocketbase_reunion_version }}
     container_name: pocketbase-reunion
     volumes:
-      - {{ pocketbase_reunion_base_dir }}/data:/pb/pb_data
+      # muchobien image runs `pocketbase serve --dir=/pb_data`; PocketBase reads
+      # migrations from the sibling /pb_migrations. Mount targets must match those
+      # exact paths or data is not persisted and migrations never apply.
+      - {{ pocketbase_reunion_base_dir }}/data:/pb_data
+      - {{ pocketbase_reunion_base_dir }}/pb_migrations:/pb_migrations
     ports:
       - "{{ pocketbase_reunion_port }}:8090"
     restart: unless-stopped
