@@ -1,0 +1,27 @@
+---
+- name: Create webtrees directories
+  raw: mkdir -p {{ webtrees_base_dir }}/data {{ webtrees_base_dir }}/db
+
+- name: Write compose.yml
+  raw: |
+    cat > {{ webtrees_base_dir }}/compose.yml << 'EOFMARKER'
+    {{ lookup('template', 'compose.yml.j2') }}
+    EOFMARKER
+
+- name: Pull webtrees images
+  raw: docker compose -f {{ webtrees_base_dir }}/compose.yml pull
+
+- name: Deploy webtrees stack
+  raw: docker compose -f {{ webtrees_base_dir }}/compose.yml up -d --remove-orphans
+
+- name: Wait for webtrees to be ready
+  raw: |
+    for i in $(seq 1 30); do
+      if wget -qO- http://localhost:{{ webtrees_port }}/ 2>/dev/null | grep -qi "webtrees\|family"; then
+        echo "Webtrees is up"
+        exit 0
+      fi
+      sleep 5
+    done
+    echo "Timeout waiting for webtrees"
+    exit 1

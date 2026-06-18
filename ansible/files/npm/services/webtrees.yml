@@ -1,0 +1,19 @@
+---
+proxy_hosts:
+  - name: webtrees
+    domains:
+      - webtrees.klsll.com
+    forward_host: 192.168.20.14
+    forward_port: 2284
+    scheme: http
+    websocket: false
+    certificate: klsll-wildcard
+    ssl_forced: true
+    hsts: true
+    http2: true
+
+dns_records:
+  - name: webtrees.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600
