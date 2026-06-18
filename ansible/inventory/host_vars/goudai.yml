@@ -1,0 +1,10 @@
+---
+# Use the Unraid NFS share for large Hugging Face model caches on goudai.
+# This avoids exhausting the local root filesystem during first-time GGUF
+# downloads while keeping the mount path host-specific and predictable.
+llama_swap_hf_cache_dir: /mnt/ai-models/goudai/huggingface
+llama_swap_hf_cache_manage_owner: false
+
+# Keep the legacy personal-agent-llm role aligned with the same external cache
+# location in case it is redeployed for debugging or rollback.
+personal_agent_llm_cache_dir: /mnt/ai-models/goudai/huggingface
