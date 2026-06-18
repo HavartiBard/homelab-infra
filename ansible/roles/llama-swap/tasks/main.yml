@@ -18,8 +18,8 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ llama_swap_user }}"
-    group: "{{ llama_swap_user }}"
+    owner: "{{ llama_swap_user if llama_swap_hf_cache_manage_owner or item != llama_swap_hf_cache_dir else omit }}"
+    group: "{{ llama_swap_user if llama_swap_hf_cache_manage_owner or item != llama_swap_hf_cache_dir else omit }}"
     mode: '0755'
   become: true
   loop:

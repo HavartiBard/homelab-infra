@@ -31,6 +31,7 @@ llama_swap_llama_server_binary: /usr/local/bin/llama-server
 # When personal-agent-llm is eventually removed, migrate the cache directory
 # to /var/lib/llama-swap/huggingface (or similar shared location).
 llama_swap_hf_cache_dir: /var/lib/personal-agent-llm/huggingface
+llama_swap_hf_cache_manage_owner: true
 
 # Per-model configuration. Each key becomes an OpenAI `model:` alias. Provide
 # either `cmd` (full llama-server invocation) or `hf` + `flags` for the
@@ -170,7 +171,8 @@ llama_swap_models:
     ttl: 0
 
   # ── Uncensored chat — 35B-A3B fine-tune ────────────────────────────────
-  # Keep this on-demand; it is not part of the persistent warm set.
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # use, subject to the available VRAM budget.
   "qwen/qwen3.6-35b-uncensored":
     hf: "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4_K_M"
     alias: "qwen/qwen3.6-35b-uncensored"
@@ -229,15 +231,101 @@ llama_swap_models:
       - "--spec-draft-n-max 5"
     ttl: 0
 
+  # ── 122B-A10B MoE reasoning ─────────────────────────────────────────────
+  # Keep this warm with the agent-stack so it stays resident for repeated
+  # use, subject to the available VRAM budget.
+  "qwen/qwen3.5-122b-a10b":
+    hf: "mradermacher/Qwen3.5-122B-A10B-GGUF:Q4_K_M"
+    alias: "qwen/qwen3.5-122b-a10b"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--reasoning-budget 4096"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 0
+
+  # ── Gemma 4 31B instruct QAT ────────────────────────────────────────────
+  # Keep this on-demand for now; it should swap in when requested without
+  # increasing the persistent warm-set footprint.
+  "google/gemma-4-31b-it-qat":
+    hf: "unsloth/gemma-4-31B-it-qat-GGUF:UD-Q4_K_XL"
+    alias: "google/gemma-4-31b-it-qat"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  # ── Gemma 4 E4B uncensored ──────────────────────────────────────────────
+  # Small enough to co-reside with the agent-stack when VRAM allows; keep it
+  # in the multi-load group but allow idle unloads to free memory.
+  "google/gemma-4-e4b-uncensored-hauhaucs-aggressive":
+    hf: "HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive:Q5_K_M"
+    alias: "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
 # ── Group configuration ────────────────────────────────────────────────────
 #
 # llama-swap groups control whether multiple models can be loaded
 # simultaneously vs. swap each other out.
 #
-# Group configuration — keeps the heavy reasoning worker (27B-MTP, now quantized)
-# and the snappy chat model (coder-next) BOTH WARM continuously. Switching
-# between them has no swap latency. PR #143 made this fit by switching the
-# 27B worker to a smaller quant.
+# Group configuration — keeps the selected always-on agent models warm
+# continuously so switching between them has no swap latency.
 #
 # qwen3-next-instruct is intentionally NOT in this group — it's larger and
 # would need to swap one member out. First request to next-instruct will
@@ -249,10 +337,13 @@ llama_swap_groups:
     swap: false
     exclusive: false
     members:
-      - "qwen/qwen3.6-27b-mtp"
       - "qwen/qwen3-coder-next"
       - "qwen/qwen3.5-medical-gspo"
+      - "qwen/qwen3.6-35b-uncensored"
       - "qwen/qwen3.6-35b-a3b-mtp"
+      - "qwen/qwen3.5-122b-a10b"
+      - "google/gemma-4-31b-it-qat"
+      - "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
 
 # How long llama-swap waits for a child llama-server to become healthy
 # before declaring the spawn a failure. Bumped from the 120s default to
