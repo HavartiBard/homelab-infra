@@ -2,9 +2,9 @@
 # llama-swap — OpenAI-compatible proxy that hot-swaps llama-server processes per
 # requested model. Replaces the per-model systemd units we'd otherwise need.
 
-# Pin the binary version to a known-good release (latest at role creation: v216).
+# Pin the binary version to a known-good release (latest at role creation: v228).
 # Bump intentionally — `latest` would change behavior under our feet.
-llama_swap_version: "v216"
+llama_swap_version: "v228"
 llama_swap_arch: "linux_amd64"   # Strix Halo runs x86_64; ARM hosts override
 
 llama_swap_user: james
