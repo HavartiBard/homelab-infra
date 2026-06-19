@@ -111,14 +111,12 @@ llama_swap_models:
     # 10-min auto-unload — frees VRAM for the warm 27B when idle.
     ttl: 600
 
-  # ── Snappy conversation — 80B-A3B MoE ──────────────────────────────────
-  # Needs a first-time download (~46GB). 80B total / 3B active per token →
-  # similar speed budget to coder-next but with broader chat training.
-  # No thinking mode (instruct only) — fast direct responses.
-  # Sampling per Qwen3-Next-Instruct official recipe.
-  "qwen/qwen3-next-instruct":
-    hf: "unsloth/Qwen3-Next-80B-A3B-Instruct-GGUF:UD-Q4_K_XL"
-    alias: "qwen/qwen3-next-instruct"
+
+  # ── Lightweight code/infra variant — Qwen3 Coder Next Q4 ───────────────
+  # Lower-VRAM alternative to the Q5_K_M coder model above.
+  "qwen/qwen3-coder-next-q4":
+    hf: "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_M"
+    alias: "qwen/qwen3-coder-next-q4"
     flags:
       - "--jinja"
       - "-ngl 99"
@@ -134,6 +132,7 @@ llama_swap_models:
       - "--top-k 20"
       - "--top-p 0.8"
       - "--min-p 0"
+      - "--repeat-penalty 1.05"
       - "--cache-prompt"
       - "--cache-reuse 256"
       - "--ctx-checkpoints 10"
@@ -231,42 +230,12 @@ llama_swap_models:
       - "--spec-draft-n-max 5"
     ttl: 0
 
-  # ── 122B-A10B MoE reasoning ─────────────────────────────────────────────
-  # Keep this warm with the agent-stack so it stays resident for repeated
-  # use, subject to the available VRAM budget.
-  "qwen/qwen3.5-122b-a10b":
-    hf: "mradermacher/Qwen3.5-122B-A10B-GGUF:Q4_K_M"
-    alias: "qwen/qwen3.5-122b-a10b"
-    flags:
-      - "--jinja"
-      - "-ngl 99"
-      - "-fa on"
-      - "-sm row"
-      - "--ctx-size 131072"
-      - "--predict 8192"
-      - "--parallel 1"
-      - "--threads 32"
-      - "--metrics"
-      - "--slots"
-      - "--temp 0.6"
-      - "--top-k 20"
-      - "--top-p 0.95"
-      - "--min-p 0"
-      - "--repeat-penalty 1.05"
-      - "--cache-prompt"
-      - "--cache-reuse 256"
-      - "--ctx-checkpoints 10"
-      - "--reasoning-budget 4096"
-      - "--cache-type-k q8_0"
-      - "--cache-type-v q8_0"
-    ttl: 0
-
-  # ── Gemma 4 31B instruct QAT ────────────────────────────────────────────
-  # Keep this on-demand for now; it should swap in when requested without
-  # increasing the persistent warm-set footprint.
-  "google/gemma-4-31b-it-qat":
-    hf: "unsloth/gemma-4-31B-it-qat-GGUF:UD-Q4_K_XL"
-    alias: "google/gemma-4-31b-it-qat"
+  # ── Gemma 4 E4B uncensored ──────────────────────────────────────────────
+  # Small enough to co-reside with the agent-stack when VRAM allows; keep it
+  # in the multi-load group but allow idle unloads to free memory.
+  "google/gemma-4-e4b-uncensored-hauhaucs-aggressive":
+    hf: "HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive:Q5_K_M"
+    alias: "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
     flags:
       - "--jinja"
       - "-ngl 99"
@@ -290,12 +259,88 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
-  # ── Gemma 4 E4B uncensored ──────────────────────────────────────────────
-  # Small enough to co-reside with the agent-stack when VRAM allows; keep it
-  # in the multi-load group but allow idle unloads to free memory.
-  "google/gemma-4-e4b-uncensored-hauhaucs-aggressive":
-    hf: "HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive:Q5_K_M"
-    alias: "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
+  # ── GLM family — lightweight general/chat variants ─────────────────────
+  "glm/glm-4.7-flash-q8":
+    hf: "unsloth/GLM-4.7-Flash-GGUF:Q8_0"
+    alias: "glm/glm-4.7-flash-q8"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  "glm/glm-4.7-flash-q4":
+    hf: "unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL"
+    alias: "glm/glm-4.7-flash-q4"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  "glm/glm-4.5-air-q4":
+    hf: "unsloth/GLM-4.5-Air-GGUF:Q4_K_M"
+    alias: "glm/glm-4.5-air-q4"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "-sm row"
+      - "--ctx-size 131072"
+      - "--predict 8192"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.7"
+      - "--top-k 20"
+      - "--top-p 0.8"
+      - "--min-p 0"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--ctx-checkpoints 10"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 600
+
+  "glm/glm-4.5-air-q4-xl":
+    hf: "unsloth/GLM-4.5-Air-GGUF:UD-Q4_K_XL"
+    alias: "glm/glm-4.5-air-q4-xl"
     flags:
       - "--jinja"
       - "-ngl 99"
@@ -341,8 +386,6 @@ llama_swap_groups:
       - "qwen/qwen3.5-medical-gspo"
       - "qwen/qwen3.6-35b-uncensored"
       - "qwen/qwen3.6-35b-a3b-mtp"
-      - "qwen/qwen3.5-122b-a10b"
-      - "google/gemma-4-31b-it-qat"
       - "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
 
 # How long llama-swap waits for a child llama-server to become healthy
