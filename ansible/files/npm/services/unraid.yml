@@ -4,8 +4,8 @@ proxy_hosts:
     domains:
       - unraid.klsll.com
     forward_host: 192.168.20.14
-    forward_port: 9443
-    scheme: https
+    forward_port: 80
+    scheme: http
     websocket: true
     certificate: klsll-wildcard
     ssl_forced: true
