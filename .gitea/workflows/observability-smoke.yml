@@ -14,6 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: f6bf682d98d4fb66ef088767278707f695a17e33
           fetch-depth: 0
       - name: Static checks (config validation — always)
         run: |
