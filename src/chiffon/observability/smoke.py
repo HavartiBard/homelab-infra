@@ -132,7 +132,7 @@ def _check_compose_config() -> CheckResult:
         env_path = Path(handle.name)
     try:
         proc = _run_command(
-            ["docker", "compose", "--env-file", str(env_path), "-f", str(COMPOSE_FILE), "config"],
+            ["docker", "compose", "-e", str(env_path), "-f", str(COMPOSE_FILE), "config"],
             cwd=OBSERVABILITY_DIR,
             timeout=60.0,
         )
