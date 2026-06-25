@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          clean: true
       - name: Static checks (config validation — always)
         run: |
           python3 --version
