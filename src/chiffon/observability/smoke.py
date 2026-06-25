@@ -129,14 +129,17 @@ def _check_compose_config() -> CheckResult:
             "",
         ]
     )
-    with tempfile.TemporaryDirectory() as tmpdir:
-        env_path = Path(tmpdir) / ".env"
-        env_path.write_text(env_content, encoding="utf-8")
+    # Docker Compose reads .env files from the same directory as the compose file
+    env_path = COMPOSE_FILE.parent / ".env"
+    env_path.write_text(env_content, encoding="utf-8")
+    try:
         proc = _run_command(
             ["/usr/bin/docker-compose", "-f", str(COMPOSE_FILE), "config"],
-            cwd=tmpdir,
             timeout=60.0,
         )
+    finally:
+        # Clean up the .env file
+        env_path.unlink(missing_ok=True)
 
     if proc.returncode == 0:
         return _result("docker compose config", True, "configuration renders successfully")
