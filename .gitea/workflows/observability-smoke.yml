@@ -3,9 +3,10 @@ name: observability-smoke
 on:
   push:
     branches:
-      - feat/observability-smoke-test
-      - feature/observability
+      - '**'
   pull_request:
+    branches:
+      - '**'
 
 jobs:
   smoke:
