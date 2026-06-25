@@ -29,13 +29,15 @@ services:
       CODE_INTERPRETER_ENGINE: pyodide
       ENABLE_CODE_EXECUTION: "true"
       CODE_EXECUTION_ENGINE: pyodide
+      ENABLE_IMAGE_GENERATION: "True"
+      COMFYUI_BASE_URL: "{{ open_webui_comfyui_base_url }}"
       RAG_EMBEDDING_ENGINE: ollama
       RAG_EMBEDDING_MODEL: nomic-embed-text
       RAG_TOP_K: "5"
       ENABLE_RAG_HYBRID_SEARCH: "true"
       ENABLE_RAG_HYBRID_SEARCH_ENRICHED_TEXTS: "true"
       RAG_HYBRID_BM25_WEIGHT: "0.5"
-      DEFAULT_MODEL_METADATA: '{"capabilities":{"web_search":true,"code_interpreter":true}}'
+      DEFAULT_MODEL_METADATA: '{"capabilities":{"web_search":true,"code_interpreter":true,"image_generation":true}}'
       USER_PERMISSIONS_FEATURES_WEB_SEARCH: "True"
       USER_PERMISSIONS_FEATURES_CODE_INTERPRETER: "True"
       USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS: "False"

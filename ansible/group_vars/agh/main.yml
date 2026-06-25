@@ -3,6 +3,7 @@
 promtail_adguard_log_path: "/opt/adguard/data/adguard/work/data/querylog.json"
 
 adguard_bedtime_enabled: true
+adguard_roblox_cap_enabled: false
 adguard_bedtime_start: "02:00"
 adguard_bedtime_end: "07:00"
 

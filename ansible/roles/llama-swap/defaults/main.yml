@@ -80,43 +80,13 @@ llama_swap_models:
     ttl: 0
 
   # ── Snappy code/infra work — 30B-A3B MoE ───────────────────────────────
-  # Already cached on goudai. 30B total / 3B active per token → 3-5× faster
-  # decode than the 27B dense. Coder-tuned but handles general structured
-  # tasks well (Ansible/Python/shell). Q5_K_M, ~25GB VRAM.
-  # Sampling per Qwen3-Coder official recipe (non-thinking instruct).
+  # Best current balance for goudai: keep the higher-quality Q5_K_M variant
+  # and expose a single alias so we don't advertise half-downloaded fallbacks.
+  # Not part of the persistent agent-stack because it is large and used more
+  # intermittently than the always-warm reasoning/chat models.
   "qwen/qwen3-coder-next":
     hf: "Qwen/Qwen3-Coder-Next-GGUF:Q5_K_M"
     alias: "qwen/qwen3-coder-next"
-    flags:
-      - "--jinja"
-      - "-ngl 99"
-      - "-fa on"
-      - "-sm row"
-      - "--ctx-size 131072"
-      - "--predict 8192"
-      - "--parallel 1"
-      - "--threads 32"
-      - "--metrics"
-      - "--slots"
-      - "--temp 0.7"
-      - "--top-k 20"
-      - "--top-p 0.8"
-      - "--min-p 0"
-      - "--repeat-penalty 1.05"
-      - "--cache-prompt"
-      - "--cache-reuse 256"
-      - "--ctx-checkpoints 10"
-      - "--cache-type-k q8_0"
-      - "--cache-type-v q8_0"
-    # 10-min auto-unload — frees VRAM for the warm 27B when idle.
-    ttl: 600
-
-
-  # ── Lightweight code/infra variant — Qwen3 Coder Next Q4 ───────────────
-  # Lower-VRAM alternative to the Q5_K_M coder model above.
-  "qwen/qwen3-coder-next-q4":
-    hf: "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_M"
-    alias: "qwen/qwen3-coder-next-q4"
     flags:
       - "--jinja"
       - "-ngl 99"
@@ -338,31 +308,6 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
-  "glm/glm-4.5-air-q4-xl":
-    hf: "unsloth/GLM-4.5-Air-GGUF:UD-Q4_K_XL"
-    alias: "glm/glm-4.5-air-q4-xl"
-    flags:
-      - "--jinja"
-      - "-ngl 99"
-      - "-fa on"
-      - "-sm row"
-      - "--ctx-size 131072"
-      - "--predict 8192"
-      - "--parallel 1"
-      - "--threads 32"
-      - "--metrics"
-      - "--slots"
-      - "--temp 0.7"
-      - "--top-k 20"
-      - "--top-p 0.8"
-      - "--min-p 0"
-      - "--repeat-penalty 1.05"
-      - "--cache-prompt"
-      - "--cache-reuse 256"
-      - "--ctx-checkpoints 10"
-      - "--cache-type-k q8_0"
-      - "--cache-type-v q8_0"
-    ttl: 600
 
 # ── Group configuration ────────────────────────────────────────────────────
 #
@@ -372,17 +317,13 @@ llama_swap_models:
 # Group configuration — keeps the selected always-on agent models warm
 # continuously so switching between them has no swap latency.
 #
-# qwen3-next-instruct is intentionally NOT in this group — it's larger and
-# would need to swap one member out. First request to next-instruct will
-# trigger llama-swap's default behaviour and unload one of the agent-stack
-# members. Acceptable for an occasional-use model.
+# Keep only models with verified local cache in the persistent agent stack.
 llama_swap_groups:
   "agent-stack":
     persistent: true
     swap: false
     exclusive: false
     members:
-      - "qwen/qwen3-coder-next"
       - "qwen/qwen3.5-medical-gspo"
       - "qwen/qwen3.6-35b-uncensored"
       - "qwen/qwen3.6-35b-a3b-mtp"

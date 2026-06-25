@@ -1,0 +1,38 @@
+name: comfyui
+
+services:
+  comfyui:
+    image: "{{ comfyui_image }}"
+    container_name: comfyui
+    restart: unless-stopped
+    ports:
+      - "{{ comfyui_port }}:8188"
+    environment:
+      TZ: "{{ comfyui_timezone }}"
+      CLI_ARGS: "--listen 0.0.0.0"
+      USER_ID: "1000"
+      GROUP_ID: "1000"
+{% if comfyui_accelerator == 'rocm' %}
+      HSA_OVERRIDE_GFX_VERSION: "{{ comfyui_hsa_override_gfx_version }}"
+{% endif %}
+    volumes:
+      - "{{ comfyui_models_dir }}:/workspace/storage/stable_diffusion/models"
+      - "{{ comfyui_custom_nodes_dir }}:/workspace/storage/stable_diffusion/custom_nodes"
+      - "{{ comfyui_outputs_dir }}:/workspace/output"
+      - "{{ comfyui_home_dir }}:/home/user"
+{% if comfyui_accelerator == 'nvidia' %}
+    gpus: all
+{% elif comfyui_accelerator == 'rocm' %}
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - "{{ comfyui_video_gid }}"
+      - "{{ comfyui_render_gid }}"
+{% endif %}
+    networks:
+      - comfyui
+
+networks:
+  comfyui:
+    name: comfyui

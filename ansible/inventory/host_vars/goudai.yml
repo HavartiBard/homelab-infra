@@ -4,6 +4,7 @@
 # downloads while keeping the mount path host-specific and predictable.
 llama_swap_hf_cache_dir: /mnt/ai-models/goudai/huggingface
 llama_swap_hf_cache_manage_owner: false
+llama_swap_require_external_cache: true
 
 # Keep the legacy personal-agent-llm role aligned with the same external cache
 # location in case it is redeployed for debugging or rollback.
