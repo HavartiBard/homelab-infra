@@ -29,7 +29,7 @@ services:
         max-size: "100m"
         max-file: "5"
         labels: "service={{ gitea_runner_container_name }},index={{ i }}"
-    entrypoint: ["/bin/sh", "-c", "apk add --no-cache docker-cli-compose || true && exec /sbin/tini -- run.sh"]
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache nodejs npm python3 py3-pip docker-cli docker-cli-compose || true && exec /sbin/tini -- run.sh"]
     healthcheck:
       test:
         - CMD-SHELL
