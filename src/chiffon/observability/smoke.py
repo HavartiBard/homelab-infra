@@ -133,7 +133,7 @@ def _check_compose_config() -> CheckResult:
         env_path = Path(tmpdir) / ".env"
         env_path.write_text(env_content, encoding="utf-8")
         proc = _run_command(
-            ["docker-compose", "-f", str(COMPOSE_FILE), "config"],
+            ["/usr/local/bin/docker-compose", "-f", str(COMPOSE_FILE), "config"],
             cwd=tmpdir,
             timeout=60.0,
         )
