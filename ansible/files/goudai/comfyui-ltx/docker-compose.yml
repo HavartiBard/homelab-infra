@@ -1,0 +1,51 @@
+name: comfyui
+
+# ComfyUI for AMD Strix Halo (Ryzen AI MAX+ 395 / Radeon 8060S, gfx1151) on goudai.
+# Base image bundles ROCm 7.2 + PyTorch 2.9.1 + flash-attention (native gfx1151).
+# Derived image (comfyui-gfx1151-ltx:local, built from docker/comfyui-gfx1151)
+# adds the LTX2_SM python deps and bakes ComfyUI into /opt/ComfyUI. Models, custom
+# node, output and workflows come from the Unraid NFS share so the model library
+# is shared with the rest of the homelab.
+services:
+  comfyui:
+    image: comfyui-gfx1151-ltx:local
+    container_name: comfyui
+    restart: unless-stopped
+    shm_size: 8g
+    ports:
+      - "8188:8188"
+    environment:
+      TZ: "America/Phoenix"
+      FLASH_ATTENTION_TRITON_AMD_ENABLE: "TRUE"
+      TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL: "1"
+    command:
+      - python3
+      - /opt/ComfyUI/main.py
+      - --listen
+      - 0.0.0.0
+      - --port
+      - "8188"
+      - --use-pytorch-cross-attention
+      - --disable-mmap
+    volumes:
+      - "/mnt/ai-models/comfyui/models:/opt/ComfyUI/models"
+      - "/mnt/ai-models/comfyui/output:/opt/ComfyUI/output"
+      - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI_LTX2_SM:/opt/ComfyUI/custom_nodes/ComfyUI_LTX2_SM"
+      - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI-Frame-Interpolation:/opt/ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation"
+      - "/mnt/ai-models/comfyui/workflows:/opt/ComfyUI/user/default/workflows"
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - "44"   # video
+      - "991"  # render
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    networks:
+      - comfyui
+
+networks:
+  comfyui:
+    name: comfyui
