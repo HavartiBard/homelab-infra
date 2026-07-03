@@ -40,13 +40,15 @@ Run from `ansible/`:
 ```bash
 ansible-playbook playbooks/ai/deploy-comfyui.yml --syntax-check
 ansible-playbook playbooks/ai/deploy-open-webui.yml --syntax-check
-ansible-playbook playbooks/ai/deploy-comfyui.yml --check --diff --limit spraycheese
+ansible-playbook playbooks/ai/deploy-comfyui.yml --check --diff --limit unraid,spraycheese
 ansible-playbook playbooks/ai/deploy-open-webui.yml --check --diff --limit goudai
-ansible-playbook playbooks/ai/deploy-comfyui.yml --diff --limit spraycheese -v
+ansible-playbook playbooks/ai/deploy-comfyui.yml --diff --limit unraid,spraycheese -v
 ansible-playbook playbooks/ai/deploy-open-webui.yml --diff --limit goudai -v
 ```
 
 **For spraycheese (NVIDIA):** The playbook uses the existing `yanwk/comfyui-boot:cu130-slim` image which has CUDA 13.0 support. No manual pull required.
+
+`deploy-comfyui.yml` also prepares `/mnt/user/ai-models/comfyui` on Unraid and enforces shared-write permissions (`0777` on directories, `0666` on files) so the SMB share remains writable from Windows.
 
 `deploy-comfyui.yml` validates the required FLUX files by default. On `goudai` it is configured for an AMD ROCm container image and also performs a HIP availability preflight before starting the stack.
 
@@ -114,4 +116,5 @@ ssh goudai 'docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | gre
 - `ENABLE_IMAGE_GENERATION=True` and `COMFYUI_BASE_URL=http://spraycheese.lab.klsll.com:8188/` are persisted through the Open WebUI compose template.
 - The shipped workflow is FLUX-specific, so the model mapping uses `unet_name` instead of the default `ckpt_name`.
 - `deploy-comfyui.yml` now targets `spraycheese` with NVIDIA CUDA support via `gpus: all` and the `yanwk/comfyui-boot:cu130-slim` image (CUDA 13.0).
+- The ComfyUI share prep step runs on `unraid`, so use `--limit unraid,spraycheese` when deploying ComfyUI if you want the SMB permission fix applied.
 - spraycheese is reachable via its LAN hostname: `spraycheese.lab.klsll.com`.

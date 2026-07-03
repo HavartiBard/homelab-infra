@@ -7,8 +7,42 @@
 #
 # Run:
 #   ansible-playbook playbooks/ai/deploy-comfyui.yml \
-#     --vault-password-file ~/.vault-pass --limit spraycheese
+#     --vault-password-file ~/.vault-pass --limit unraid,spraycheese
 # =============================================================================
+
+- name: Prepare ComfyUI share permissions on Unraid
+  hosts: unraid
+  gather_facts: false
+  vars:
+    comfyui_unraid_share_dir: "/mnt/user/ai-models/comfyui"
+    comfyui_unraid_dirs:
+      - "{{ comfyui_unraid_share_dir }}"
+      - "{{ comfyui_unraid_share_dir }}/custom-nodes"
+      - "{{ comfyui_unraid_share_dir }}/home"
+      - "{{ comfyui_unraid_share_dir }}/output"
+      - "{{ comfyui_unraid_share_dir }}/workflows"
+      - "{{ comfyui_unraid_share_dir }}/models"
+      - "{{ comfyui_unraid_share_dir }}/models/audio_encoders"
+      - "{{ comfyui_unraid_share_dir }}/models/checkpoints"
+      - "{{ comfyui_unraid_share_dir }}/models/controlnet"
+      - "{{ comfyui_unraid_share_dir }}/models/detection"
+      - "{{ comfyui_unraid_share_dir }}/models/diffusion_models"
+      - "{{ comfyui_unraid_share_dir }}/models/frame_interpolation"
+      - "{{ comfyui_unraid_share_dir }}/models/latent_upscale_models"
+      - "{{ comfyui_unraid_share_dir }}/models/loras"
+      - "{{ comfyui_unraid_share_dir }}/models/optical_flow"
+      - "{{ comfyui_unraid_share_dir }}/models/text_encoders"
+      - "{{ comfyui_unraid_share_dir }}/models/upscale_models"
+      - "{{ comfyui_unraid_share_dir }}/models/vae"
+  tasks:
+    - name: Ensure ComfyUI share directories exist and remain SMB-writable
+      ansible.builtin.raw: |
+        set -eu
+        mkdir -p {{ comfyui_unraid_dirs | map('quote') | join(' ') }}
+        find "{{ comfyui_unraid_share_dir }}" -type d -exec chmod 0777 {} +
+        find "{{ comfyui_unraid_share_dir }}" -type f -exec chmod 0666 {} +
+      when: not ansible_check_mode
+      changed_when: false
 
 - name: Deploy ComfyUI
   hosts: windows_gpu

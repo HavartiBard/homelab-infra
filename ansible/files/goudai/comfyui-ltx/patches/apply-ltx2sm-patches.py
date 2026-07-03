@@ -17,6 +17,27 @@ crash the BestQuality/HQ 30s workflows:
      passed through, and Perturbation.is_perturbed() then does `block in <int>`
      -> "TypeError: argument of type 'int' is not iterable". Wrap in a list.
 
+  3. blocks.py -- DiffusionStage leaks its transformer in the gguf+offload
+     path; two-stage modes then hold stage 1's weights while building stage
+     2's, OOM-killing the host at stage-2 entry. Free it after each stage.
+
+  4. merge_pipeline.py -- the twostages_hq stage-2 call passes the res2s
+     denoising loop but no stepper, so the default EulerDiffusionStep is
+     rejected by the res2s loop's isinstance guard. Pass Res2sDiffusionStep.
+
+  5. constants.py -- STAGE_2_DISTILLED_SIGMA_VALUES starts at sigma=0.909,
+     so twostages_hq stage 2 regenerates ~91% of the frame from scratch
+     under a CFG-less SimpleDenoiser (the negative prompt has no effect).
+     At portrait resolutions this reliably produces a translucent duplicate
+     subject offset ~1/3 frame height, blended with the correctly-anchored
+     stage-1 upscale. Root-caused by an isolated test that ruled out the
+     upsampler/VAE round-trip, the res2s sampler math, and the SDPA
+     attention kernel (all verified geometry/numerically exact) -- the
+     ghost is painted by stage-2 diffusion itself. Trimming the schedule to
+     a single low-sigma refinement step removes the artifact (confirmed on
+     goudai 2026-07-02/03): single subject, no duplication, and stage 2
+     runs ~3x faster (1 step vs 3).
+
 Idempotent and version-safe: for each edit, if the patched text is already
 present it is skipped; if neither the original nor patched text is found the
 script exits non-zero so a node update that moved this code is caught loudly
@@ -101,6 +122,52 @@ EDITS = [
         "tqdm(range(n_full_steps))",
         "tqdm_ui(range(n_full_steps))",
         1,
+    ),
+    # --- blocks.py: free the transformer after each diffusion stage ---
+    # The gguf+offload branch of DiffusionStage.__call__ rebuilds
+    # self._transformer unconditionally on every call, so the copy retained on
+    # the instance is never reused -- it is a pure leak. In two-stage modes,
+    # stage 1's weights stay resident while stage 2 dequantizes + LoRA-merges
+    # its own copy, and the combined spike OOM-kills the 64 GB unified-memory
+    # host right at "start inferS Stage 2" (kernel oom-killer, exit 137).
+    (
+        "LTX2/ltx_pipelines/utils/blocks.py",
+        "        if gpu_manager is not None:\n"
+        "                gpu_manager.unload_all_blocks_to_cpu()   \n"
+        "        return video_state, audio_state",
+        "        if gpu_manager is not None:\n"
+        "                gpu_manager.unload_all_blocks_to_cpu()\n"
+        "        if self._transformer is not None:\n"
+        "            self._transformer = None\n"
+        "            cleanup_memory()\n"
+        "            try:\n"
+        "                if hasattr(torch._C, \"_host_emptyCache\"):\n"
+        "                    torch._C._host_emptyCache()\n"
+        "            except Exception:\n"
+        "                logger.warning(\"Host empty cache cleanup failed; ignoring.\", exc_info=True)\n"
+        "        return video_state, audio_state",
+    ),
+    # --- merge_pipeline.py: stage 2 of twostages_hq needs a res2s stepper ---
+    # The stage-2 call passes loop=res2s_audio_video_denoising_loop but omits
+    # `stepper`, so DiffusionStage.__call__ defaults to EulerDiffusionStep and
+    # the res2s loop raises "ValueError: stepper must be an instance of
+    # Res2sDiffusionStep" (samplers.py guard). Pass the right stepper. Only
+    # reachable once patch #3 stops the stage-2 OOM that used to hide it.
+    (
+        "LTX2/ltx_pipelines/merge_pipeline.py",
+        "            state_outputs = self.stage_2(\n"
+        "                denoiser=SimpleDenoiser(v_context_p, a_context_p),\n"
+        "                sigmas=stage_2_sigmas,",
+        "            state_outputs = self.stage_2(\n"
+        "                denoiser=SimpleDenoiser(v_context_p, a_context_p),\n"
+        "                stepper=Res2sDiffusionStep() if self.infer_mode == \"twostages_hq\" else None,\n"
+        "                sigmas=stage_2_sigmas,",
+    ),
+    # --- constants.py: shorten the stage-2 sigma schedule ---
+    (
+        "LTX2/ltx_pipelines/utils/constants.py",
+        "STAGE_2_DISTILLED_SIGMA_VALUES = [0.909375, 0.725, 0.421875, 0.0]",
+        "STAGE_2_DISTILLED_SIGMA_VALUES = [0.421875, 0.0]",
     ),
 ]
 
