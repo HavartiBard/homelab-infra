@@ -32,6 +32,9 @@ services:
       - "/mnt/ai-models/comfyui/output:/opt/ComfyUI/output"
       - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI_LTX2_SM:/opt/ComfyUI/custom_nodes/ComfyUI_LTX2_SM"
       - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI-Frame-Interpolation:/opt/ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation"
+      # SwarmUI remote-backend node packs (synced to the share by deploy-swarmui.yml)
+      - "/mnt/ai-models/comfyui/custom-nodes/SwarmComfyCommon:/opt/ComfyUI/custom_nodes/SwarmComfyCommon"
+      - "/mnt/ai-models/comfyui/custom-nodes/SwarmComfyExtra:/opt/ComfyUI/custom_nodes/SwarmComfyExtra"
       - "/mnt/ai-models/comfyui/workflows:/opt/ComfyUI/user/default/workflows"
     devices:
       - /dev/kfd
