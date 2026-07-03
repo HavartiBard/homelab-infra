@@ -15,10 +15,10 @@
     comfyui_models:
       - name: "Juggernaut-XL_v9_RunDiffusionPhoto_v2"
         url: "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9/resolve/main/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
-        subdir: "diffusion_models"
+        subdir: "checkpoints"
       - name: "RealVisXL_V4.0"
         url: "https://huggingface.co/SG161222/RealVisXL_V4.0/resolve/main/RealVisXL_V4.0.safetensors"
-        subdir: "diffusion_models"
+        subdir: "checkpoints"
 
     # Unraid paths
     unraid_ai_models_dir: "/mnt/user/ai-models/comfyui/models"
