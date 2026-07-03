@@ -36,11 +36,12 @@
       - "{{ comfyui_unraid_share_dir }}/models/vae"
   tasks:
     - name: Ensure ComfyUI share directories exist and remain SMB-writable
+      # Only touch the known directories: a recursive find/chmod would crawl
+      # the entire model library (hundreds of GB of files) on every deploy.
       ansible.builtin.raw: |
         set -eu
         mkdir -p {{ comfyui_unraid_dirs | map('quote') | join(' ') }}
-        find "{{ comfyui_unraid_share_dir }}" -type d -exec chmod 0777 {} +
-        find "{{ comfyui_unraid_share_dir }}" -type f -exec chmod 0666 {} +
+        chmod 0777 {{ comfyui_unraid_dirs | map('quote') | join(' ') }}
       when: not ansible_check_mode
       changed_when: false
 
@@ -106,18 +107,22 @@
       delegate_to: localhost
       run_once: true
 
+    # win_copy: the python-based builtin.copy can't run on the Windows/SSH
+    # target (and remote_user is not a copy module argument).
     - name: Copy docker-compose.yml to Windows host
-      ansible.builtin.copy:
+      ansible.windows.win_copy:
         src: /tmp/comfyui-docker-compose.yml
         dest: "{{ service_dir }}\\docker-compose.yml"
-        remote_user: "{{ host_user }}"
       register: compose_copy
 
+    # comfyui_workflows_dir sits on the shared ai-models SMB mount, so this
+    # also publishes the workflow to the ComfyUI instances that mount the
+    # share's workflows dir (e.g. goudai). The spraycheese container itself
+    # doesn't mount it — Open WebUI gets the workflow via its own config.
     - name: Copy Open WebUI workflows
-      ansible.builtin.copy:
+      ansible.windows.win_copy:
         src: ../../files/spraycheese/comfyui/workflows/
         dest: "{{ comfyui_workflows_dir }}\\"
-        remote_user: "{{ host_user }}"
       register: workflow_copy
 
     # Note: Using existing image yanwk/comfyui-boot:cu130-slim on spraycheese
@@ -132,22 +137,21 @@
       when: not ansible_check_mode
 
     - name: Wait for ComfyUI to respond
-      ansible.builtin.uri:
+      ansible.windows.win_uri:
         url: "http://localhost:{{ comfyui_port }}/"
         method: GET
         status_code: 200
       register: health_result
       changed_when: false
-      failed_when: false
+      retries: 30
+      delay: 5
+      until: health_result.status_code | default(0) == 200
       when: not ansible_check_mode
 
     - name: Check ComfyUI health
       ansible.builtin.debug:
-        msg: "ComfyUI is running at http://localhost:{{ comfyui_port }}/"
-      when:
-        - health_result is defined
-        - health_result.status is defined
-        - health_result.status == 200
+        msg: "ComfyUI is running at http://{{ comfyui_target_hostname }}:{{ comfyui_port }}/"
+      when: not ansible_check_mode
 
     - name: Register ComfyUI in NetBox
       ansible.builtin.include_role:
