@@ -1,0 +1,43 @@
+name: swarmui
+
+# SwarmUI on goudai — web portal + model manager over the homelab's ComfyUI
+# backends (spraycheese/NVIDIA for images, goudai/ROCm for LTX video). SwarmUI
+# itself needs no GPU: both backends are registered as remote "ComfyUI API by
+# URL" instances, so no --gpus/devices are passed here.
+#
+# Models dir is the shared Unraid library (same tree ComfyUI uses). SwarmUI's
+# expected subfolder names (Stable-Diffusion, Lora, ...) differ from ComfyUI's
+# (checkpoints, loras, ...) — remap them once in the UI under Server ->
+# Server Configuration -> Paths.
+services:
+  swarmui:
+    image: swarmui:local
+    container_name: swarmui
+    restart: unless-stopped
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    ports:
+      - "7801:7801"
+    environment:
+      TZ: "America/Phoenix"
+    command: ["--forward_restart"]
+    volumes:
+      - swarmdata:/SwarmUI/Data
+      - swarmbackend:/SwarmUI/dlbackend
+      - swarmdlnodes:/SwarmUI/src/BuiltinExtensions/ComfyUIBackend/DLNodes
+      - swarmextensions:/SwarmUI/src/Extensions
+      - /mnt/ai-models/comfyui/models:/SwarmUI/Models
+      - /mnt/ai-models/comfyui/output/swarmui:/SwarmUI/Output
+    networks:
+      - swarmui
+
+volumes:
+  swarmdata:
+  swarmbackend:
+  swarmdlnodes:
+  swarmextensions:
+
+networks:
+  swarmui:
+    name: swarmui
