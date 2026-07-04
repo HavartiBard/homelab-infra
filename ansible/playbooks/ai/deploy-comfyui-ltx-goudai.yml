@@ -1,0 +1,133 @@
+---
+# =============================================================================
+# Deploy ComfyUI (LTX-2.3 / Sulphur video generation) on goudai
+#
+# goudai is an AMD Strix Halo box (Ryzen AI MAX+ 395 / Radeon 8060S iGPU,
+# gfx1151, 61 GiB unified memory). This builds a gfx1151-native ComfyUI image
+# (ROCm 7.2 / PyTorch 2.9.1, no HSA override), wires it to the shared Unraid NFS
+# model library, ensures the gemma gguf symlink the LTX2_SM node expects, and
+# validates that the LTX2_SM node family loads.
+#
+# Run:
+#   cd ansible
+#   ansible-playbook playbooks/ai/deploy-comfyui-ltx-goudai.yml --limit goudai
+# =============================================================================
+
+- name: Deploy ComfyUI (LTX2_SM) on goudai
+  hosts: goudai
+  gather_facts: false
+  vars:
+    comfyui_service_dir: /opt/comfyui
+    comfyui_build_dir: /opt/comfyui/build
+    comfyui_image: comfyui-gfx1151-ltx:local
+    comfyui_port: 8188
+    comfyui_models_dir: /mnt/ai-models/comfyui/models
+    comfyui_custom_node_dir: /mnt/ai-models/comfyui/custom-nodes/ComfyUI_LTX2_SM
+    comfyui_force_rebuild: false
+  tasks:
+
+    - name: Ensure service and build directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ comfyui_service_dir }}"
+        - "{{ comfyui_build_dir }}"
+
+    - name: Copy Dockerfile for the gfx1151 image
+      ansible.builtin.copy:
+        src: ../../../docker/comfyui-gfx1151/Dockerfile
+        dest: "{{ comfyui_build_dir }}/Dockerfile"
+        mode: "0644"
+      register: dockerfile_copy
+
+    - name: Check whether the derived image already exists
+      ansible.builtin.command: "docker image inspect {{ comfyui_image }}"
+      register: image_present
+      changed_when: false
+      failed_when: false
+
+    - name: Build the gfx1151 ComfyUI image
+      ansible.builtin.command: "docker build -t {{ comfyui_image }} ."
+      args:
+        chdir: "{{ comfyui_build_dir }}"
+      when: >-
+        comfyui_force_rebuild or dockerfile_copy.changed
+        or image_present.rc != 0
+      changed_when: true
+
+    - name: Ensure the gemma text encoder is visible under the gguf folder
+      # ComfyUI_LTX2_SM lists the clip (gemma) from the "gguf" folder, but the
+      # file is stored under text_encoders/. A relative symlink keeps a single
+      # copy on the share while satisfying the node's folder lookup.
+      ansible.builtin.file:
+        src: ../text_encoders/gemma-3-12b-it-qat-Q4_0.gguf
+        dest: "{{ comfyui_models_dir }}/gguf/gemma-3-12b-it-qat-Q4_0.gguf"
+        state: link
+        force: true
+        follow: false
+
+    - name: Copy ComfyUI_LTX2_SM patch script
+      ansible.builtin.copy:
+        src: ../../files/goudai/comfyui-ltx/patches/apply-ltx2sm-patches.py
+        dest: "{{ comfyui_build_dir }}/apply-ltx2sm-patches.py"
+        mode: "0755"
+
+    - name: Apply ComfyUI_LTX2_SM HQ/STG fixes (gpu_manager + stg_blocks)
+      # Idempotent and version-safe: only edits when the original code is present;
+      # errors loudly if a node update moved the anchors. See the script header.
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ comfyui_build_dir }}/apply-ltx2sm-patches.py"
+          - "{{ comfyui_custom_node_dir }}"
+      register: node_patch
+      changed_when: "'CHANGED' in node_patch.stdout"
+
+    - name: Deploy docker-compose.yml
+      ansible.builtin.copy:
+        src: ../../files/goudai/comfyui-ltx/docker-compose.yml
+        dest: "{{ comfyui_service_dir }}/docker-compose.yml"
+        mode: "0644"
+      register: compose_copy
+
+    - name: Start / update ComfyUI
+      ansible.builtin.command: "docker compose up -d"
+      args:
+        chdir: "{{ comfyui_service_dir }}"
+      changed_when: true
+
+    - name: Reload ComfyUI to pick up node patches
+      # `up -d` does not restart an already-running container, so a node code
+      # change needs an explicit restart for ComfyUI to re-import it.
+      ansible.builtin.command: "docker compose restart"
+      args:
+        chdir: "{{ comfyui_service_dir }}"
+      when: node_patch.changed
+      changed_when: true
+
+    - name: Wait for ComfyUI to respond
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ comfyui_port }}/system_stats"
+        method: GET
+        status_code: 200
+      register: health
+      retries: 30
+      delay: 5
+      until: health.status is defined and health.status == 200
+
+    - name: Verify the LTX2_SM node family is loaded
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ comfyui_port }}/object_info/LTX2_SM_Model"
+        method: GET
+        status_code: 200
+      register: ltx_node
+      failed_when: ltx_node.status != 200
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          ComfyUI (LTX2_SM) is up at http://{{ ansible_host }}:{{ comfyui_port }} —
+          GPU: {{ health.json.devices[0].name | default('unknown') }},
+          torch {{ health.json.system.pytorch_version | default('?') }}

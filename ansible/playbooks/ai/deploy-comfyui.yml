@@ -1,0 +1,164 @@
+---
+# =============================================================================
+# Deploy ComfyUI on spraycheese (NVIDIA)
+#
+# Image generation backend for Open WebUI.
+# Uses NVIDIA CUDA via Docker GPU support.
+#
+# Run:
+#   ansible-playbook playbooks/ai/deploy-comfyui.yml \
+#     --vault-password-file ~/.vault-pass --limit unraid,spraycheese
+# =============================================================================
+
+- name: Prepare ComfyUI share permissions on Unraid
+  hosts: unraid
+  gather_facts: false
+  vars:
+    comfyui_unraid_share_dir: "/mnt/user/ai-models/comfyui"
+    comfyui_unraid_dirs:
+      - "{{ comfyui_unraid_share_dir }}"
+      - "{{ comfyui_unraid_share_dir }}/custom-nodes"
+      - "{{ comfyui_unraid_share_dir }}/home"
+      - "{{ comfyui_unraid_share_dir }}/output"
+      - "{{ comfyui_unraid_share_dir }}/workflows"
+      - "{{ comfyui_unraid_share_dir }}/models"
+      - "{{ comfyui_unraid_share_dir }}/models/audio_encoders"
+      - "{{ comfyui_unraid_share_dir }}/models/checkpoints"
+      - "{{ comfyui_unraid_share_dir }}/models/controlnet"
+      - "{{ comfyui_unraid_share_dir }}/models/detection"
+      - "{{ comfyui_unraid_share_dir }}/models/diffusion_models"
+      - "{{ comfyui_unraid_share_dir }}/models/frame_interpolation"
+      - "{{ comfyui_unraid_share_dir }}/models/latent_upscale_models"
+      - "{{ comfyui_unraid_share_dir }}/models/loras"
+      - "{{ comfyui_unraid_share_dir }}/models/optical_flow"
+      - "{{ comfyui_unraid_share_dir }}/models/text_encoders"
+      - "{{ comfyui_unraid_share_dir }}/models/upscale_models"
+      - "{{ comfyui_unraid_share_dir }}/models/vae"
+  tasks:
+    - name: Ensure ComfyUI share directories exist and remain SMB-writable
+      # Only touch the known directories: a recursive find/chmod would crawl
+      # the entire model library (hundreds of GB of files) on every deploy.
+      ansible.builtin.raw: |
+        set -eu
+        mkdir -p {{ comfyui_unraid_dirs | map('quote') | join(' ') }}
+        chmod 0777 {{ comfyui_unraid_dirs | map('quote') | join(' ') }}
+      when: not ansible_check_mode
+      changed_when: false
+
+- name: Deploy ComfyUI
+  hosts: windows_gpu
+  gather_facts: false
+  vars:
+    host_user: james
+    service_dir: "C:\\opt\\comfyui"
+    comfyui_data_dir: "C:\\mnt\\ai-models\\comfyui"
+    comfyui_models_dir: "{{ comfyui_data_dir }}\\models"
+    comfyui_text_encoders_dir: "{{ comfyui_data_dir }}\\text_encoders"
+    comfyui_vae_dir: "{{ comfyui_data_dir }}\\vae"
+    comfyui_outputs_dir: "{{ comfyui_data_dir }}\\output"
+    comfyui_custom_nodes_dir: "{{ comfyui_data_dir }}\\custom-nodes"
+    comfyui_workflows_dir: "{{ comfyui_data_dir }}\\workflows"
+    comfyui_home_dir: "{{ comfyui_data_dir }}\\home"
+    comfyui_accelerator: nvidia
+    comfyui_image: yanwk/comfyui-boot:cu130-slim
+    comfyui_port: 8188
+    comfyui_timezone: America/Phoenix
+    comfyui_require_gpu: true
+
+    # spraycheese LAN hostname for Open WebUI to reach ComfyUI
+    comfyui_target_hostname: spraycheese.lab.klsll.com
+
+  tasks:
+
+    - name: Ensure ComfyUI service directory exists
+      ansible.builtin.win_shell: |
+        if (!(Test-Path "{{ service_dir | replace('\\', '\\\\') }}")) {
+          New-Item -ItemType Directory -Path "{{ service_dir | replace('\\', '\\\\') }}" | Out-Null
+        }
+        Write-Output "Directory {{ service_dir }} ready"
+      changed_when: false
+
+    - name: Ensure ComfyUI data directories exist
+      ansible.builtin.win_shell: |
+        $dirs = @(
+          "{{ comfyui_data_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_models_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_text_encoders_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_vae_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_outputs_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_custom_nodes_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_workflows_dir | replace('\\', '\\\\') }}",
+          "{{ comfyui_home_dir | replace('\\', '\\\\') }}"
+        )
+        foreach ($dir in $dirs) {
+          if (!(Test-Path $dir)) {
+            New-Item -ItemType Directory -Path $dir | Out-Null
+          }
+        }
+        Write-Output "Data directories ready"
+      changed_when: false
+
+    # Render docker-compose.yml locally and copy to Windows host
+    - name: Render docker-compose.yml template locally
+      ansible.builtin.template:
+        src: ../../files/spraycheese/comfyui/docker-compose.yml
+        dest: /tmp/comfyui-docker-compose.yml
+        mode: '0644'
+      delegate_to: localhost
+      run_once: true
+
+    # win_copy: the python-based builtin.copy can't run on the Windows/SSH
+    # target (and remote_user is not a copy module argument).
+    - name: Copy docker-compose.yml to Windows host
+      ansible.windows.win_copy:
+        src: /tmp/comfyui-docker-compose.yml
+        dest: "{{ service_dir }}\\docker-compose.yml"
+      register: compose_copy
+
+    # comfyui_workflows_dir sits on the shared ai-models SMB mount, so this
+    # also publishes the workflow to the ComfyUI instances that mount the
+    # share's workflows dir (e.g. goudai). The spraycheese container itself
+    # doesn't mount it — Open WebUI gets the workflow via its own config.
+    - name: Copy Open WebUI workflows
+      ansible.windows.win_copy:
+        src: ../../files/spraycheese/comfyui/workflows/
+        dest: "{{ comfyui_workflows_dir }}\\"
+      register: workflow_copy
+
+    # Note: Using existing image yanwk/comfyui-boot:cu130-slim on spraycheese
+    # No manual pull required
+
+    - name: Start ComfyUI using docker compose
+      ansible.builtin.win_shell: |
+        docker compose up -d
+      args:
+        chdir: "{{ service_dir }}"
+      changed_when: true
+      when: not ansible_check_mode
+
+    - name: Wait for ComfyUI to respond
+      ansible.windows.win_uri:
+        url: "http://localhost:{{ comfyui_port }}/"
+        method: GET
+        status_code: 200
+      register: health_result
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: health_result.status_code | default(0) == 200
+      when: not ansible_check_mode
+
+    - name: Check ComfyUI health
+      ansible.builtin.debug:
+        msg: "ComfyUI is running at http://{{ comfyui_target_hostname }}:{{ comfyui_port }}/"
+      when: not ansible_check_mode
+
+    - name: Register ComfyUI in NetBox
+      ansible.builtin.include_role:
+        name: netbox-service
+      vars:
+        netbox_services:
+          - name: comfyui
+            cluster: spraycheese-docker
+            role: LLM Service
+            comments: "Image generation backend for Open WebUI — http://{{ comfyui_target_hostname }}:{{ comfyui_port }}"

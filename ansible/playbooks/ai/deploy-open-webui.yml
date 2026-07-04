@@ -6,7 +6,7 @@
 # Ollama must already be running — see setup-goudai-host.yml.
 #
 # Run:
-#   ansible-playbook playbooks/platform/deploy-open-webui.yml \
+#   ansible-playbook playbooks/ai/deploy-open-webui.yml \
 #     --vault-password-file ~/.vault-pass --limit goudai
 # =============================================================================
 
@@ -23,6 +23,21 @@
     open_webui_openai_api_key: "{{ vault_litellm_master_key | default('', true) }}"
     open_webui_searxng_query_url: "http://192.168.20.14:6979/search?q=<query>&format=json&engines=bing,startpage,wikipedia"
     open_webui_default_user_email: james@klsll.com
+    # ComfyUI runs on spraycheese (NVIDIA) and is reachable via its LAN hostname
+    open_webui_comfyui_base_url: http://spraycheese.lab.klsll.com:8188/
+    open_webui_image_generation_engine: comfyui
+    open_webui_image_generation_model: flux1-schnell.safetensors
+    open_webui_image_size: 1024x1024
+    open_webui_image_steps: 4
+    open_webui_enable_image_prompt_generation: true
+    open_webui_comfyui_workflow: "{{ lookup('file', playbook_dir + '/../../files/spraycheese/comfyui/workflows/open-webui-flux-schnell-api.json') | trim }}"
+    open_webui_comfyui_workflow_nodes:
+      - { type: prompt, key: text, node_ids: ["19"] }
+      - { type: model, key: unet_name, node_ids: ["10"] }
+      - { type: width, key: width, node_ids: ["18"] }
+      - { type: height, key: height, node_ids: ["18"] }
+      - { type: steps, key: steps, node_ids: ["20"] }
+      - { type: seed, key: seed, node_ids: ["20"] }
 
   tasks:
 
@@ -70,6 +85,79 @@
       until: health.status == 200
       retries: 12
       delay: 10
+
+    - name: Configure Open WebUI image generation defaults in database
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - open-webui
+          - python
+          - -c
+          - |
+            import json, sqlite3
+            conn = sqlite3.connect('/app/backend/data/webui.db')
+            cur = conn.cursor()
+            row = cur.execute('select id, data from config limit 1').fetchone()
+            if not row:
+                raise SystemExit('missing config row')
+            config_id, raw = row
+            data = json.loads(raw or '{}')
+            desired = json.loads({{ {
+              'ENABLE_IMAGE_GENERATION': true,
+              'IMAGE_GENERATION_ENGINE': open_webui_image_generation_engine,
+              'COMFYUI_BASE_URL': open_webui_comfyui_base_url,
+              'IMAGE_GENERATION_MODEL': open_webui_image_generation_model,
+              'IMAGE_SIZE': open_webui_image_size,
+              'IMAGE_STEPS': open_webui_image_steps,
+              'ENABLE_IMAGE_PROMPT_GENERATION': open_webui_enable_image_prompt_generation,
+              'COMFYUI_WORKFLOW': open_webui_comfyui_workflow,
+              'COMFYUI_WORKFLOW_NODES': open_webui_comfyui_workflow_nodes,
+            } | to_json | to_json }})
+            data.update(desired)
+            cur.execute(
+                'update config set data = ?, updated_at = CURRENT_TIMESTAMP where id = ?',
+                (json.dumps(data), config_id),
+            )
+            conn.commit()
+      args:
+        chdir: "{{ service_dir }}"
+      changed_when: true
+      no_log: true
+
+    - name: Verify Open WebUI image generation defaults in database
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - open-webui
+          - python
+          - -c
+          - |
+            import json, sqlite3, sys
+            conn = sqlite3.connect('/app/backend/data/webui.db')
+            data = json.loads(conn.cursor().execute('select data from config limit 1').fetchone()[0])
+            expected = json.loads({{ {
+              'ENABLE_IMAGE_GENERATION': true,
+              'IMAGE_GENERATION_ENGINE': open_webui_image_generation_engine,
+              'COMFYUI_BASE_URL': open_webui_comfyui_base_url,
+              'IMAGE_GENERATION_MODEL': open_webui_image_generation_model,
+              'IMAGE_SIZE': open_webui_image_size,
+              'IMAGE_STEPS': open_webui_image_steps,
+              'ENABLE_IMAGE_PROMPT_GENERATION': open_webui_enable_image_prompt_generation,
+            } | to_json | to_json }})
+            mismatches = {k: {'expected': v, 'actual': data.get(k)} for k, v in expected.items() if data.get(k) != v}
+            if not data.get('COMFYUI_WORKFLOW'):
+                mismatches['COMFYUI_WORKFLOW'] = {'expected': 'non-empty', 'actual': 'empty'}
+            if not data.get('COMFYUI_WORKFLOW_NODES'):
+                mismatches['COMFYUI_WORKFLOW_NODES'] = {'expected': 'non-empty', 'actual': 'empty'}
+            if mismatches:
+                print(json.dumps(mismatches, indent=2))
+                sys.exit(1)
+      args:
+        chdir: "{{ service_dir }}"
+      changed_when: false
+      no_log: true
 
     - name: Set default user's web search mode to always
       ansible.builtin.command:

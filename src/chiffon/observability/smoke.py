@@ -120,6 +120,8 @@ def _check_expected_content() -> list[CheckResult]:
 
 
 def _check_compose_config() -> CheckResult:
+    # Docker Compose reads .env files from the current directory
+    # Write a temporary .env file and run config from that directory
     env_content = "\n".join(
         [
             "OBSERVABILITY_APPDATA=/tmp/observability-smoke",
@@ -127,16 +129,16 @@ def _check_compose_config() -> CheckResult:
             "",
         ]
     )
-    with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
-        handle.write(env_content)
-        env_path = Path(handle.name)
+    # Docker Compose reads .env files from the same directory as the compose file
+    env_path = COMPOSE_FILE.parent / ".env"
+    env_path.write_text(env_content, encoding="utf-8")
     try:
         proc = _run_command(
-            ["docker", "compose", "--env-file", str(env_path), "-f", str(COMPOSE_FILE), "config"],
-            cwd=OBSERVABILITY_DIR,
+            ["/usr/bin/docker-compose", "-f", str(COMPOSE_FILE), "config"],
             timeout=60.0,
         )
     finally:
+        # Clean up the .env file
         env_path.unlink(missing_ok=True)
 
     if proc.returncode == 0:

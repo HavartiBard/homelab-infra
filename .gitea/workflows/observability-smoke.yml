@@ -3,21 +3,25 @@ name: observability-smoke
 on:
   push:
     branches:
-      - feat/observability-smoke-test
-      - feature/observability
+      - '**'
   pull_request:
+    branches:
+      - '**'
 
 jobs:
   smoke:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          fetch-depth: 0
+          clean: true
       - name: Static checks (config validation — always)
-        run: python3 scripts/test-observability-alerting.py static
+        run: |
+          python3 --version
+          python3 scripts/test-observability-alerting.py static
       - name: Live checks (requires Unraid stack — push only)
         if: github.event_name == 'push'
-        run: python3 scripts/test-observability-alerting.py live --docker-exec
+        run: |
+          python3 --version
+          python3 scripts/test-observability-alerting.py live --docker-exec

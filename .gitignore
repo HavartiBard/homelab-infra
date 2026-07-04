@@ -51,3 +51,4 @@ ansible/artifacts/
 
 # Superpowers brainstorming sessions (visual companion mockups)
 .superpowers/
+.gradio/

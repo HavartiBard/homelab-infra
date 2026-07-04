@@ -14,6 +14,16 @@
     - llama_swap_port | int == 8010
   failed_when: false   # absent unit is fine post-cutover
 
+- name: Guard llama-swap cache location on hosts that require external model storage
+  ansible.builtin.assert:
+    that:
+      - llama_swap_hf_cache_dir is match('^/mnt/ai-models(/.*)?$')
+    fail_msg: >-
+      llama_swap_hf_cache_dir must stay on /mnt/ai-models for this host to avoid
+      filling the root filesystem. Current value: {{ llama_swap_hf_cache_dir }}
+    success_msg: "llama-swap cache dir is pinned to external model storage: {{ llama_swap_hf_cache_dir }}"
+  when: llama_swap_require_external_cache | default(false) | bool
+
 - name: Create llama-swap runtime + config directories
   ansible.builtin.file:
     path: "{{ item }}"

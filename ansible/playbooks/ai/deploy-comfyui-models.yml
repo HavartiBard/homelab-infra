@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# Download ComfyUI models to Unraid from HuggingFace
+#
+# Run:
+#   ansible-playbook playbooks/ai/deploy-comfyui-models.yml \
+#     --vault-password-file ~/.vault-pass
+# =============================================================================
+
+- name: Download ComfyUI models to Unraid
+  hosts: unraid
+  gather_facts: false
+  vars:
+    # Models to download - list of {name, url, subdir}
+    comfyui_models:
+      - name: "Juggernaut-XL_v9_RunDiffusionPhoto_v2"
+        url: "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9/resolve/main/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+        subdir: "checkpoints"
+      - name: "RealVisXL_V4.0"
+        url: "https://huggingface.co/SG161222/RealVisXL_V4.0/resolve/main/RealVisXL_V4.0.safetensors"
+        subdir: "checkpoints"
+
+    # Unraid paths
+    unraid_ai_models_dir: "/mnt/user/ai-models/comfyui/models"
+    unraid_models_dir: "{{ unraid_ai_models_dir }}/{{ item.subdir }}"
+    unraid_model_path: "{{ unraid_models_dir }}/{{ item.name }}.safetensors"
+
+  tasks:
+
+    - name: Display model download info
+      ansible.builtin.debug:
+        msg: "Downloading {{ item.name }} to {{ unraid_models_dir }}"
+      loop: "{{ comfyui_models }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Ensure model directories exist
+      ansible.builtin.file:
+        path: "{{ unraid_models_dir }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ comfyui_models }}"
+      loop_control:
+        label: "{{ item.subdir }}"
+
+    - name: Download models from HuggingFace
+      ansible.builtin.get_url:
+        url: "{{ item.url }}"
+        dest: "{{ unraid_model_path }}"
+        mode: '0644'
+        force: false  # Don't re-download if file exists
+      loop: "{{ comfyui_models }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: download_result
+      failed_when: false
+
+    - name: Report download results
+      ansible.builtin.debug:
+        msg: |
+          Model: {{ item.item.name }}
+          URL: {{ item.item.url }}
+          Status: {{ 'SUCCESS' if item.changed else 'SKIPPED (already exists)' }}
+          Path: {{ item.dest }}
+      loop: "{{ download_result.results }}"
+      when: download_result is defined
+
+    - name: Report failed downloads
+      ansible.builtin.debug:
+        msg: "FAILED: {{ item.item.name }} - {{ item.msg | default('Unknown error') }}"
+      loop: "{{ download_result.results }}"
+      when:
+        - download_result is defined
+        - item.failed
