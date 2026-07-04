@@ -77,7 +77,7 @@ llama_swap_models:
     # on. When swapping to another model, llama-swap unloads this anyway
     # (only one model resident at a time within the VRAM budget); TTL=0
     # just means "don't auto-unload after idle".
-    ttl: 0
+    ttl: 900
 
   # ── Snappy code/infra work — 30B-A3B MoE ───────────────────────────────
   # Best current balance for goudai: keep the higher-quality Q5_K_M variant
@@ -137,7 +137,7 @@ llama_swap_models:
       - "--ctx-checkpoints 10"
       - "--cache-type-k q8_0"
       - "--cache-type-v q8_0"
-    ttl: 0
+    ttl: 900
 
   # ── Uncensored chat — 35B-A3B fine-tune ────────────────────────────────
   # Keep this warm with the agent-stack so it stays resident for repeated
@@ -198,7 +198,7 @@ llama_swap_models:
       - "--cache-type-v q8_0"
       - "--spec-type draft-mtp"
       - "--spec-draft-n-max 5"
-    ttl: 0
+    ttl: 900
 
   # ── Gemma 4 E4B uncensored ──────────────────────────────────────────────
   # Small enough to co-reside with the agent-stack when VRAM allows; keep it
