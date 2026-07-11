@@ -84,3 +84,23 @@
   ansible.builtin.debug:
     msg: "1password-mcp smoke test passed: {{ smoke_test.stdout[:120] }}"
   when: smoke_test.stdout is defined
+
+- name: Restart mcp-proxy to reconnect onepassword stdio session
+  ansible.builtin.raw: |
+    if docker ps --filter "name=^/{{ onepassword_mcp_proxy_container_name }}$" --filter "status=running" -q | grep -q .; then
+      docker restart {{ onepassword_mcp_proxy_container_name }}
+    else
+      echo "{{ onepassword_mcp_proxy_container_name }} not running"
+    fi
+  register: mcp_proxy_restart
+  changed_when: "onepassword_mcp_proxy_container_name in mcp_proxy_restart.stdout"
+
+- name: Restart Director to refresh proxied MCP clients
+  ansible.builtin.raw: |
+    if docker ps --filter "name=^/{{ onepassword_mcp_director_container_name }}$" --filter "status=running" -q | grep -q .; then
+      docker restart {{ onepassword_mcp_director_container_name }}
+    else
+      echo "{{ onepassword_mcp_director_container_name }} not running"
+    fi
+  register: director_restart
+  changed_when: "onepassword_mcp_director_container_name in director_restart.stdout"
