@@ -61,7 +61,7 @@
         {
           "refId": "A",
           "expr": "lora_training_state{training_job=~\".+\",state=\"running\"}",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -116,7 +116,7 @@
         {
           "refId": "A",
           "expr": "lora_training_step{training_job=~\".+\"}",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -167,7 +167,7 @@
         {
           "refId": "A",
           "expr": "lora_training_total_steps{training_job=~\".+\"}",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -218,7 +218,7 @@
         {
           "refId": "A",
           "expr": "lora_training_eta_seconds{training_job=~\".+\"}",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -269,7 +269,7 @@
         {
           "refId": "A",
           "expr": "lora_training_estimated_completion_timestamp_seconds{training_job=~\".+\"} * 1000",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -320,7 +320,7 @@
         {
           "refId": "A",
           "expr": "lora_training_latest_checkpoint_step{training_job=~\".+\"}",
-          "instant": true
+          "range": true
         }
       ],
       "options": {
@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "Goudai LoRA / LoKr Training",
   "uid": "goudai-lora-lokr-training",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
