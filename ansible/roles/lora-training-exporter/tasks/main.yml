@@ -1,0 +1,38 @@
+---
+- name: Ensure LoRA training exporter directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ lora_training_exporter_dir }}"
+    - "{{ lora_training_exporter_textfile_dir }}"
+
+- name: Deploy LoRA training metrics collector
+  ansible.builtin.template:
+    src: lora-training-exporter.py.j2
+    dest: "{{ lora_training_exporter_dir }}/exporter.py"
+    mode: '0755'
+
+- name: Deploy LoRA training exporter systemd units
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - { src: lora-training-exporter.service.j2, dest: /etc/systemd/system/lora-training-exporter.service }
+    - { src: lora-training-exporter.timer.j2, dest: /etc/systemd/system/lora-training-exporter.timer }
+
+- name: Enable LoRA training exporter timer
+  ansible.builtin.systemd:
+    name: lora-training-exporter.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Run LoRA training collector immediately
+  ansible.builtin.systemd:
+    name: lora-training-exporter.service
+    state: started
+  when: not ansible_check_mode

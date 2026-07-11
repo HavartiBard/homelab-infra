@@ -1,0 +1,10 @@
+---
+lora_training_exporter_dir: /opt/lora-training-exporter
+lora_training_exporter_textfile_dir: /var/lib/node_exporter/textfile_collector
+lora_training_log: /mnt/ai-models/lora-training/lyra-blume/v5-lokr-train.log
+lora_training_pid_file: /mnt/ai-models/lora-training/lyra-blume/v5-lokr-train.pid
+lora_training_checkpoint_dir: /mnt/ai-models/lora-training/lyra-blume/v5-lokr-output
+lora_training_job: lyra_blume_krea2_lokr_r4
+lora_training_type: lokr
+lora_training_model: krea2_raw
+lora_training_metrics_interval: 15s

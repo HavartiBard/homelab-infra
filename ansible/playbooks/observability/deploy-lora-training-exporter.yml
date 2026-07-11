@@ -1,0 +1,7 @@
+---
+- name: Deploy LoRA and LoKr training metrics exporter
+  hosts: goudai
+  become: true
+  gather_facts: true
+  roles:
+    - lora-training-exporter

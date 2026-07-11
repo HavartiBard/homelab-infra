@@ -1,0 +1,8 @@
+[Unit]
+Description=Export LoRA/LoKr training progress for Prometheus node-exporter
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 {{ lora_training_exporter_dir }}/exporter.py
+User=root
+Group=root

@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+import math
+import os
+import re
+import time
+from pathlib import Path
+
+LOG = Path("{{ lora_training_log }}")
+PID = Path("{{ lora_training_pid_file }}")
+OUT = Path("{{ lora_training_exporter_textfile_dir }}/lora_training.prom")
+CHECKPOINT_DIR = Path("{{ lora_training_checkpoint_dir }}")
+LABELS = 'host="{{ inventory_hostname }}",training_job="{{ lora_training_job }}",type="{{ lora_training_type }}",model="{{ lora_training_model }}"'
+
+PROGRESS_RE = re.compile(
+    r"steps:\s+([0-9.]+)%\|.*?\|\s*(\d+)/(\d+)\s*\[([^<]*?)<([^,]*),\s*([0-9.]+)s/it,\s*avr_loss=([0-9.eE+-]+)\]"
+)
+STEP_RE = re.compile(r"step(\d+)\.safetensors$")
+
+
+def metric(name, value, help_text, kind="gauge"):
+    return f"# HELP {name} {help_text}\n# TYPE {name} {kind}\n{name}{{{LABELS}}} {value}\n"
+
+
+def process_alive():
+    try:
+        pid = int(PID.read_text().strip())
+        os.kill(pid, 0)
+        return 1
+    except (ValueError, FileNotFoundError, ProcessLookupError, PermissionError):
+        return 0
+
+
+def parse_progress():
+    try:
+        with LOG.open("rb") as f:
+            f.seek(max(0, LOG.stat().st_size - 2_000_000))
+            text = f.read().decode("utf-8", "replace").replace("\r", "\n")
+    except FileNotFoundError:
+        return None, "missing"
+    matches = list(PROGRESS_RE.finditer(text))
+    if not matches:
+        if "Traceback (most recent call last)" in text:
+            return None, "failed"
+        return None, "initializing"
+    m = matches[-1]
+    percent, step, total, elapsed, remaining, sec_per_step, loss = m.groups()
+    return {
+        "percent": float(percent), "step": int(step), "total": int(total),
+        "sec_per_step": float(sec_per_step), "loss": float(loss),
+    }, "running"
+
+
+def latest_checkpoint():
+    best_step, best_mtime = 0, 0.0
+    if CHECKPOINT_DIR.exists():
+        for path in CHECKPOINT_DIR.glob("*.safetensors"):
+            match = STEP_RE.search(path.name)
+            step = int(match.group(1)) if match else 0
+            if step > best_step or (step == best_step and path.stat().st_mtime > best_mtime):
+                best_step, best_mtime = step, path.stat().st_mtime
+    return best_step, best_mtime
+
+
+def read_int(path):
+    try:
+        return int(Path(path).read_text().strip())
+    except (FileNotFoundError, ValueError, PermissionError):
+        return 0
+
+
+def main():
+    now = time.time()
+    progress, state = parse_progress()
+    alive = process_alive()
+    if progress and progress["step"] >= progress["total"]:
+        state = "completed"
+    elif not alive and state == "running":
+        state = "stopped"
+    states = ["initializing", "running", "completed", "failed", "stopped", "missing"]
+    lines = [metric("lora_training_exporter_timestamp_seconds", f"{now:.3f}", "Unix timestamp of the last successful collector run.")]
+    lines.append(metric("lora_training_process_running", alive, "Whether the training launcher PID is alive."))
+    for item in states:
+        lines.append(f'lora_training_state{{{LABELS},state="{item}"}} {1 if state == item else 0}\n')
+    if progress:
+        remaining_steps = max(0, progress["total"] - progress["step"])
+        eta_seconds = remaining_steps * progress["sec_per_step"]
+        lines += [
+            metric("lora_training_step", progress["step"], "Current optimization step."),
+            metric("lora_training_total_steps", progress["total"], "Configured total optimization steps."),
+            metric("lora_training_progress_percent", progress["percent"], "Training completion percentage."),
+            metric("lora_training_seconds_per_step", progress["sec_per_step"], "Rolling seconds per optimization step."),
+            metric("lora_training_loss", progress["loss"], "Rolling average training loss."),
+            metric("lora_training_eta_seconds", f"{eta_seconds:.3f}", "Estimated seconds remaining."),
+            metric("lora_training_estimated_completion_timestamp_seconds", f"{now + eta_seconds:.3f}", "Estimated Unix completion timestamp."),
+        ]
+    checkpoint_step, checkpoint_mtime = latest_checkpoint()
+    lines.append(metric("lora_training_latest_checkpoint_step", checkpoint_step, "Latest saved step checkpoint."))
+    lines.append(metric("lora_training_latest_checkpoint_timestamp_seconds", f"{checkpoint_mtime:.3f}", "Unix timestamp of latest checkpoint, or zero."))
+    vram_total = read_int("/sys/class/drm/card0/device/mem_info_vram_total")
+    vram_used = read_int("/sys/class/drm/card0/device/mem_info_vram_used")
+    gpu_busy = read_int("/sys/class/drm/card0/device/gpu_busy_percent")
+    lines += [
+        metric("amd_training_gpu_busy_percent", gpu_busy, "AMD GPU busy percentage sampled by the training collector."),
+        metric("amd_training_vram_total_bytes", vram_total, "AMD VRAM or unified-memory aperture size in bytes."),
+        metric("amd_training_vram_used_bytes", vram_used, "AMD VRAM or unified-memory aperture usage in bytes."),
+    ]
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    temp = OUT.with_suffix(".prom.tmp")
+    temp.write_text("".join(lines))
+    os.replace(temp, OUT)
+
+
+if __name__ == "__main__":
+    main()
+
+

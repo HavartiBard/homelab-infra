@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect LoRA/LoKr training metrics
+
+[Timer]
+OnBootSec={{ lora_training_metrics_interval }}
+OnUnitActiveSec={{ lora_training_metrics_interval }}
+AccuracySec=2s
+Unit=lora-training-exporter.service
+
+[Install]
+WantedBy=timers.target
