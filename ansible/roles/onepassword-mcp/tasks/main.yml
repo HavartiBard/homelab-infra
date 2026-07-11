@@ -20,7 +20,10 @@
 
 - name: Build onepassword-mcp image locally on Unraid
   ansible.builtin.raw: |
-    docker build -t {{ onepassword_mcp_image }} /tmp/onepassword-mcp-build/
+    docker build \
+      --build-arg ONEPASSWORD_MCP_VERSION={{ onepassword_mcp_version }} \
+      -t {{ onepassword_mcp_image }} \
+      /tmp/onepassword-mcp-build/
   register: build_result
   changed_when: "'Successfully built' in build_result.stdout or 'writing image' in build_result.stdout"
 
@@ -46,6 +49,7 @@
       {{ onepassword_mcp_image }}
   register: container_result
   changed_when: container_result.rc == 0
+  no_log: true
 
 - name: Wait for container to start
   ansible.builtin.raw: sleep 3
@@ -58,15 +62,45 @@
   failed_when: running_check.stdout | trim == ""
   changed_when: false
 
-- name: Smoke-test 1password-mcp tool list
+- name: Smoke-test 1password-mcp capabilities
   ansible.builtin.raw: |
-    echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' \
+    printf '%s\n' \
+      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' \
+      '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' \
+      '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+      '{"jsonrpc":"2.0","id":3,"method":"prompts/list","params":{}}' \
+      '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' \
     | docker exec -i {{ onepassword_mcp_container_name }} onepassword-mcp-wrapper 2>/dev/null \
-    | head -1
+    | head -4
   register: smoke_test
   changed_when: false
-  failed_when: "'protocolVersion' not in smoke_test.stdout"
+  failed_when: >-
+    'protocolVersion' not in smoke_test.stdout
+    or 'vault_list' not in smoke_test.stdout
+    or 'generate-secure-password' not in smoke_test.stdout
+    or 'onepassword://config' not in smoke_test.stdout
 
 - name: Display smoke test result
   ansible.builtin.debug:
     msg: "1password-mcp smoke test passed: {{ smoke_test.stdout[:120] }}"
+  when: smoke_test.stdout is defined
+
+- name: Restart mcp-proxy to reconnect onepassword stdio session
+  ansible.builtin.raw: |
+    if docker ps --filter "name=^/{{ onepassword_mcp_proxy_container_name }}$" --filter "status=running" -q | grep -q .; then
+      docker restart {{ onepassword_mcp_proxy_container_name }}
+    else
+      echo "{{ onepassword_mcp_proxy_container_name }} not running"
+    fi
+  register: mcp_proxy_restart
+  changed_when: "onepassword_mcp_proxy_container_name in mcp_proxy_restart.stdout"
+
+- name: Restart Director to refresh proxied MCP clients
+  ansible.builtin.raw: |
+    if docker ps --filter "name=^/{{ onepassword_mcp_director_container_name }}$" --filter "status=running" -q | grep -q .; then
+      docker restart {{ onepassword_mcp_director_container_name }}
+    else
+      echo "{{ onepassword_mcp_director_container_name }} not running"
+    fi
+  register: director_restart
+  changed_when: "onepassword_mcp_director_container_name in director_restart.stdout"
