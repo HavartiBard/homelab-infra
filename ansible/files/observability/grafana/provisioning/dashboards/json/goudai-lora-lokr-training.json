@@ -989,9 +989,14 @@
           "refId": "VariableQueryEditor-Job"
         },
         "refresh": 1,
-        "includeAll": false,
-        "multi": false,
-        "current": {}
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "allValue": ".*"
       },
       {
         "name": "instance",
@@ -1020,8 +1025,6 @@
   "timezone": "browser",
   "title": "Goudai LoRA / LoKr Training",
   "uid": "goudai-lora-lokr-training",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
-
-
