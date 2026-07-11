@@ -62,7 +62,7 @@ ROLE_MAP = [
         "role": "mcp-proxy",
         "name": "onepassword-mcp",
         "port_var": "mcp_proxy_port",
-        "path": "/servers/onepassword/mcp",
+        "path": "/servers/onepassword/sse",
     },
     {
         "role": "mcp-proxy",

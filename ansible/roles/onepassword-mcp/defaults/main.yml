@@ -4,7 +4,8 @@
 # Image is built locally from docker/onepassword-mcp/Dockerfile.
 
 # Container settings
-onepassword_mcp_image: "local/onepassword-mcp:latest"
+onepassword_mcp_version: "2.5.0"
+onepassword_mcp_image: "local/onepassword-mcp:{{ onepassword_mcp_version }}"
 onepassword_mcp_container_name: "onepassword-mcp"
 onepassword_mcp_icon: >-
   https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/1password.png
@@ -14,7 +15,9 @@ onepassword_mcp_dockerfile_dir: "{{ playbook_dir }}/../../../docker/onepassword-
 
 # 1Password settings
 op_vault: "AI Wedge"
-op_service_account_token: "{{ vault_op_service_account_token }}"
+op_service_account_token: >-
+  {{ lookup('ansible.builtin.env', 'OP_SERVICE_ACCOUNT_TOKEN')
+     | default(vault_op_service_account_token | default(''), true) }}
 
 # Timezone
 timezone: "America/Phoenix"
