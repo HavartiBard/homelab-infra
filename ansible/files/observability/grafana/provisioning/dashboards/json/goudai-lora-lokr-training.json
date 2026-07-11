@@ -60,7 +60,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_state{training_job=~\"$training_job\",state=\"running\"}",
+          "expr": "lora_training_state{training_job=~\".+\",state=\"running\"}",
           "instant": true
         }
       ],
@@ -115,7 +115,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_step{training_job=~\"$training_job\"}",
+          "expr": "lora_training_step{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -166,7 +166,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_total_steps{training_job=~\"$training_job\"}",
+          "expr": "lora_training_total_steps{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -217,7 +217,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_eta_seconds{training_job=~\"$training_job\"}",
+          "expr": "lora_training_eta_seconds{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -268,7 +268,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_estimated_completion_timestamp_seconds{training_job=~\"$training_job\"} * 1000",
+          "expr": "lora_training_estimated_completion_timestamp_seconds{training_job=~\".+\"} * 1000",
           "instant": true
         }
       ],
@@ -319,7 +319,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_latest_checkpoint_step{training_job=~\"$training_job\"}",
+          "expr": "lora_training_latest_checkpoint_step{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -370,7 +370,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_progress_percent{training_job=~\"$training_job\"}",
+          "expr": "lora_training_progress_percent{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -428,7 +428,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "amd_training_gpu_busy_percent{training_job=~\"$training_job\"}",
+          "expr": "amd_training_gpu_busy_percent{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -486,7 +486,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * amd_training_vram_used_bytes{training_job=~\"$training_job\"} / amd_training_vram_total_bytes{training_job=~\"$training_job\"}",
+          "expr": "100 * amd_training_vram_used_bytes{training_job=~\".+\"} / amd_training_vram_total_bytes{training_job=~\".+\"}",
           "instant": true
         }
       ],
@@ -602,7 +602,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_loss{training_job=~\"$training_job\"}",
+          "expr": "lora_training_loss{training_job=~\".+\"}",
           "legendFormat": "Loss"
         }
       ],
@@ -652,7 +652,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_seconds_per_step{training_job=~\"$training_job\"}",
+          "expr": "lora_training_seconds_per_step{training_job=~\".+\"}",
           "legendFormat": "Seconds / step"
         }
       ],
@@ -702,12 +702,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "amd_training_gpu_busy_percent{training_job=~\"$training_job\"}",
+          "expr": "amd_training_gpu_busy_percent{training_job=~\".+\"}",
           "legendFormat": "GPU busy"
         },
         {
           "refId": "B",
-          "expr": "100 * amd_training_vram_used_bytes{training_job=~\"$training_job\"} / amd_training_vram_total_bytes{training_job=~\"$training_job\"}",
+          "expr": "100 * amd_training_vram_used_bytes{training_job=~\".+\"} / amd_training_vram_total_bytes{training_job=~\".+\"}",
           "legendFormat": "VRAM used"
         },
         {
@@ -817,12 +817,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_step{training_job=~\"$training_job\"}",
+          "expr": "lora_training_step{training_job=~\".+\"}",
           "legendFormat": "Training step"
         },
         {
           "refId": "B",
-          "expr": "lora_training_latest_checkpoint_step{training_job=~\"$training_job\"}",
+          "expr": "lora_training_latest_checkpoint_step{training_job=~\".+\"}",
           "legendFormat": "Latest checkpoint"
         }
       ],
@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "Goudai LoRA / LoKr Training",
   "uid": "goudai-lora-lokr-training",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
