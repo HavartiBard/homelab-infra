@@ -77,13 +77,17 @@ def main():
     elif not alive and state == "running":
         state = "stopped"
     states = ["initializing", "running", "completed", "failed", "stopped", "missing"]
+    status_codes = {name: code for code, name in enumerate(states)}
     lines = [metric("lora_training_exporter_timestamp_seconds", f"{now:.3f}", "Unix timestamp of the last successful collector run.")]
     lines.append(metric("lora_training_process_running", alive, "Whether the training launcher PID is alive."))
+    lines.append(metric("lora_training_status_code", status_codes[state], "Training state code: 0 initializing, 1 running, 2 completed, 3 failed, 4 stopped, 5 missing."))
     for item in states:
         lines.append(f'lora_training_state{{{LABELS},state="{item}"}} {1 if state == item else 0}\n')
+    checkpoint_step, checkpoint_mtime = latest_checkpoint()
     if progress:
         remaining_steps = max(0, progress["total"] - progress["step"])
         eta_seconds = remaining_steps * progress["sec_per_step"]
+        completion_timestamp = checkpoint_mtime if state == "completed" and checkpoint_mtime else now + eta_seconds
         lines += [
             metric("lora_training_step", progress["step"], "Current optimization step."),
             metric("lora_training_total_steps", progress["total"], "Configured total optimization steps."),
@@ -91,9 +95,8 @@ def main():
             metric("lora_training_seconds_per_step", progress["sec_per_step"], "Rolling seconds per optimization step."),
             metric("lora_training_loss", progress["loss"], "Rolling average training loss."),
             metric("lora_training_eta_seconds", f"{eta_seconds:.3f}", "Estimated seconds remaining."),
-            metric("lora_training_estimated_completion_timestamp_seconds", f"{now + eta_seconds:.3f}", "Estimated Unix completion timestamp."),
+            metric("lora_training_estimated_completion_timestamp_seconds", f"{completion_timestamp:.3f}", "Estimated completion timestamp while running; final checkpoint timestamp when completed."),
         ]
-    checkpoint_step, checkpoint_mtime = latest_checkpoint()
     lines.append(metric("lora_training_latest_checkpoint_step", checkpoint_step, "Latest saved step checkpoint."))
     lines.append(metric("lora_training_latest_checkpoint_timestamp_seconds", f"{checkpoint_mtime:.3f}", "Unix timestamp of latest checkpoint, or zero."))
     vram_total = read_int("/sys/class/drm/card0/device/mem_info_vram_total")

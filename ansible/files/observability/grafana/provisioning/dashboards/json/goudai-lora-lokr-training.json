@@ -60,7 +60,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "lora_training_state{training_job=~\".+\",state=\"running\"}",
+          "expr": "lora_training_status_code{training_job=~\".+\"}",
           "range": true
         }
       ],
@@ -75,25 +75,72 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bool",
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "yellow",
                 "value": null
               },
               {
                 "color": "green",
                 "value": 1
+              },
+              {
+                "color": "blue",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 3
+              },
+              {
+                "color": "orange",
+                "value": 4
+              },
+              {
+                "color": "red",
+                "value": 5
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Initializing",
+                  "color": "yellow"
+                },
+                "1": {
+                  "text": "Running",
+                  "color": "green"
+                },
+                "2": {
+                  "text": "Completed",
+                  "color": "blue"
+                },
+                "3": {
+                  "text": "Failed",
+                  "color": "red"
+                },
+                "4": {
+                  "text": "Stopped",
+                  "color": "orange"
+                },
+                "5": {
+                  "text": "Missing",
+                  "color": "red"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       }
@@ -1025,6 +1072,6 @@
   "timezone": "browser",
   "title": "Goudai LoRA / LoKr Training",
   "uid": "goudai-lora-lokr-training",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }
