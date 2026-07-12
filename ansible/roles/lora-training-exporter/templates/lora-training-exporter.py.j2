@@ -12,9 +12,19 @@ CHECKPOINT_DIR = Path("{{ lora_training_checkpoint_dir }}")
 LABELS = 'host="{{ inventory_hostname }}",training_job="{{ lora_training_job }}",type="{{ lora_training_type }}",model="{{ lora_training_model }}"'
 
 PROGRESS_RE = re.compile(
-    r"steps:\s+([0-9.]+)%\|.*?\|\s*(\d+)/(\d+)\s*\[([^<]*?)<([^,]*),\s*([0-9.]+)s/it,\s*avr_loss=([0-9.eE+-]+)\]"
+    r"steps:\s+([0-9.]+)%\|.*?\|\s*(\d+)/(\d+)\s*\[([0-9:]+)<[^\]]*?avr_loss=([0-9.eE+-]+)\]"
 )
+RESUME_RE = re.compile(r"resume training from local state: .*step(\d+)-state")
 STEP_RE = re.compile(r"step(\d+)\.safetensors$")
+
+
+def duration_seconds(value):
+    parts = [int(part) for part in value.split(":")]
+    total = 0
+    for part in parts:
+        total = total * 60 + part
+    return total
+
 
 
 def metric(name, value, help_text, kind="gauge"):
@@ -43,10 +53,16 @@ def parse_progress():
             return None, "failed"
         return None, "initializing"
     m = matches[-1]
-    percent, step, total, elapsed, remaining, sec_per_step, loss = m.groups()
+    percent, step, total, elapsed, loss = m.groups()
+    step = int(step)
+    resume_matches = RESUME_RE.findall(text)
+    base_step = int(resume_matches[-1]) if resume_matches else 0
+    completed_steps = step - base_step
+    elapsed_seconds = duration_seconds(elapsed)
+    sec_per_step = elapsed_seconds / completed_steps if completed_steps > 0 and elapsed_seconds > 0 else 0.0
     return {
-        "percent": float(percent), "step": int(step), "total": int(total),
-        "sec_per_step": float(sec_per_step), "loss": float(loss),
+        "percent": float(percent), "step": step, "total": int(total),
+        "sec_per_step": sec_per_step, "loss": float(loss),
     }, "running"
 
 
