@@ -292,7 +292,7 @@
         - { name: pihole,          device_type: Raspberry Pi 3 Model B+, device_role: Application,    location: Bookcase }
         # Desk
         - { name: spraycheese, device_type: Generic Workstation, device_role: GPU Workstation, platform: Windows 11,   location: Desk }
-        - { name: goudai,      device_type: AI Workstation 300,  device_role: GPU Workstation, platform: Ubuntu 26.04, location: Desk }
+        - { name: goudai,      device_type: AI Workstation 300,  device_role: GPU Workstation, platform: Ubuntu 24.04, location: Desk }
 
     - name: Create physical device interfaces
       netbox.netbox.netbox_device_interface:

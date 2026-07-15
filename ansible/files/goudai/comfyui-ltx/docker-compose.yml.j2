@@ -40,8 +40,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - "44"   # video
-      - "991"  # render
+      - "{{ comfyui_video_gid }}"   # video
+      - "{{ comfyui_render_gid }}"  # render
     cap_add:
       - SYS_PTRACE
     security_opt:

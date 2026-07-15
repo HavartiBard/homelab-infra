@@ -35,6 +35,23 @@
         - "{{ comfyui_service_dir }}"
         - "{{ comfyui_build_dir }}"
 
+    - name: Look up host video group GID
+      ansible.builtin.getent:
+        database: group
+        key: video
+      failed_when: false
+
+    - name: Look up host render group GID
+      ansible.builtin.getent:
+        database: group
+        key: render
+      failed_when: false
+
+    - name: Set ComfyUI GPU group GID facts
+      ansible.builtin.set_fact:
+        comfyui_video_gid: "{{ ansible_facts.getent_group.video[1] | default('44') }}"
+        comfyui_render_gid: "{{ ansible_facts.getent_group.render[1] | default('991') }}"
+
     - name: Copy Dockerfile for the gfx1151 image
       ansible.builtin.copy:
         src: ../../../docker/comfyui-gfx1151/Dockerfile
@@ -86,8 +103,8 @@
       changed_when: "'CHANGED' in node_patch.stdout"
 
     - name: Deploy docker-compose.yml
-      ansible.builtin.copy:
-        src: ../../files/goudai/comfyui-ltx/docker-compose.yml
+      ansible.builtin.template:
+        src: ../../files/goudai/comfyui-ltx/docker-compose.yml.j2
         dest: "{{ comfyui_service_dir }}/docker-compose.yml"
         mode: "0644"
       register: compose_copy

@@ -1,3 +1,11 @@
+> **Superseded note (2026-07-15):** The "ROCm path on goudai fails (PyTorch/ComfyUI
+> segfaults even with HSA override)" finding below is outdated. A working ROCm
+> ComfyUI pipeline now runs on goudai via `ansible/playbooks/ai/deploy-comfyui-ltx-goudai.yml`
+> (custom `docker/comfyui-gfx1151` image, ROCm 7.2 / PyTorch 2.9.1) — it serves the
+> LTX2_SM video-generation workflow, not the FLUX image-gen use case this doc covers.
+> The spraycheese-based Open WebUI image-generation pipeline described below is still
+> current and unaffected by the goudai reimage.
+
 # Open WebUI + ComfyUI Image Generation Plan
 
 ## Goal
