@@ -1,3 +1,11 @@
+> **Superseded note (2026-07-15):** The line below stating that `deploy-comfyui.yml`
+> configures goudai for a ROCm container with a HIP preflight is outdated —
+> `deploy-comfyui.yml` targets only `unraid` and `windows_gpu` (spraycheese) today.
+> goudai's ROCm ComfyUI pipeline is a separate playbook,
+> `ansible/playbooks/ai/deploy-comfyui-ltx-goudai.yml`, serving a different
+> (LTX2_SM video-gen) use case. The rest of this runbook (spraycheese ComfyUI +
+> Open WebUI wiring) is still current.
+
 # Open WebUI + ComfyUI Image Generation
 
 ## Scope
