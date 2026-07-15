@@ -493,7 +493,7 @@ git commit -m "Add goudai reimage orchestration playbook"
 Once goudai has actually been reimaged to Ubuntu 24.04:
 
 1. `ansible-playbook -e target_hosts=goudai playbooks/bootstrap/bootstrap-ubuntu.yml --limit goudai --vault-password-file ~/.vault-pass`
-2. `ansible-playbook playbooks/bootstrap/reimage-goudai.yml --limit goudai --vault-password-file ~/.vault-pass` (Open WebUI's step will need `op run --env-file=envs/goudai.env --` prefixed, or export `LITELLM_MASTER_KEY` some other way, before invoking the whole chain — evaluate at that time whether `op run` wraps cleanly around `import_playbook`-based multi-play runs or whether `deploy-open-webui.yml` needs to be run as a separate `op run`-wrapped step)
+2. `op run --env-file=envs/goudai.env -- ansible-playbook playbooks/bootstrap/reimage-goudai.yml --limit goudai --vault-password-file ~/.vault-pass` (confirmed: `op run` sets a process-level env var that every play in the `import_playbook` chain inherits, so wrapping this single invocation is sufficient — `deploy-open-webui.yml` does NOT need to be run as a separate `op run`-wrapped step)
 3. `rocminfo` / `rocm-smi` on host — confirm ROCm sees the gfx1151 GPU
 4. `getent group render video` — confirm actual GIDs match what got templated into the ComfyUI compose file (re-run `deploy-comfyui-ltx-goudai.yml` if they differ; the templating in Task 2 already handles this automatically)
 5. `docker compose ps` for each service (open-webui, qdrant, comfyui-ltx, swarmui, immich-ml)

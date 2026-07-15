@@ -13,12 +13,21 @@
 # Run:
 #   cd ansible
 #   ansible-playbook -e target_hosts=goudai playbooks/bootstrap/bootstrap-ubuntu.yml --limit goudai
-#   ansible-playbook playbooks/bootstrap/reimage-goudai.yml --limit goudai --vault-password-file ~/.vault-pass
+#   op run --env-file=envs/goudai.env -- \
+#     ansible-playbook playbooks/bootstrap/reimage-goudai.yml --limit goudai --vault-password-file ~/.vault-pass
 #
 # (bootstrap-ubuntu.yml is run separately first since it targets `hosts: all`
 # gated by -e target_hosts, not `hosts: goudai` — importing it here would
 # require passing target_hosts through, which import_playbook vars don't
 # propagate cleanly. Run it as its own explicit step before this playbook.)
+#
+# (The op run wrapper is required because the imported deploy-open-webui.yml
+# reads its LiteLLM API key via lookup('env', 'LITELLM_MASTER_KEY'), populated
+# by op run from envs/goudai.env. op run sets a process-level env var that
+# every play in this import_playbook chain inherits, so wrapping this single
+# invocation is sufficient — no separate op run step is needed per sub-play.
+# Running without the wrapper does not fail; it silently deploys Open WebUI
+# with an empty API key.)
 # =============================================================================
 
 - ansible.builtin.import_playbook: setup-goudai-host.yml
