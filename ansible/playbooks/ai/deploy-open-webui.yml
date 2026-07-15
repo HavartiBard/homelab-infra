@@ -5,9 +5,11 @@
 # Chat UI backed by native Ollama (port 11434 on the host).
 # Ollama must already be running — see setup-goudai-host.yml.
 #
-# Run:
-#   ansible-playbook playbooks/ai/deploy-open-webui.yml \
-#     --vault-password-file ~/.vault-pass --limit goudai
+# LiteLLM API key is sourced from a 1Password Environment (pilot — see
+# docs/superpowers/specs/2026-07-15-goudai-reimage-safety-design.md), not
+# ansible-vault. Run via:
+#   op run --env-file=../envs/goudai.env -- \
+#     ansible-playbook playbooks/ai/deploy-open-webui.yml --limit goudai
 # =============================================================================
 
 - name: Deploy Open WebUI
@@ -20,7 +22,7 @@
     service_dir: /opt/open-webui
     open_webui_external_files_dir: /mnt/ai-models/open-webui/files
     open_webui_openai_api_base_url: http://192.168.20.14:4000/v1
-    open_webui_openai_api_key: "{{ vault_litellm_master_key | default('', true) }}"
+    open_webui_openai_api_key: "{{ lookup('env', 'LITELLM_MASTER_KEY') | default('', true) }}"
     open_webui_searxng_query_url: "http://192.168.20.14:6979/search?q=<query>&format=json&engines=bing,startpage,wikipedia"
     open_webui_default_user_email: james@klsll.com
     # ComfyUI runs on spraycheese (NVIDIA) and is reachable via its LAN hostname
