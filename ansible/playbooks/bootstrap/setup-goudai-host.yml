@@ -3,10 +3,11 @@
 # Setup goudai AI workstation — host platform layer
 #
 # Installs everything that runs natively on the host:
-#   - Vulkan runtime (Mesa RADV — native RDNA 3.5 support on Ubuntu 26.04)
+#   - ROCm host packages (rocminfo, rocm-smi, HIP runtime) — noble/jammy only,
+#     per AMD's apt repo support matrix. Playbook asserts the host is
+#     Ubuntu 24.04 (noble) and fails loudly otherwise.
+#   - Vulkan runtime (Mesa RADV — fallback GPU compute backend)
 #   - llama.cpp (built from source, Vulkan backend only)
-#   Note: ROCm system packages not installed — Ubuntu 26.04 (resolute) not yet
-#         supported by AMD's apt repo. Ollama bundles its own ROCm stack.
 #   - Ollama (native systemd service)
 #   - LM Studio CLI (lms, for Link feature)
 #   - Docker CE (container runtime for the service layer)
@@ -15,7 +16,7 @@
 # Memory: 128GB LPDDR5 unified — 64GB VRAM + ~31GB GTT ≈ 95GB GPU-accessible
 #
 # Run:
-#   ansible-playbook playbooks/platform/setup-goudai-host.yml \
+#   ansible-playbook playbooks/bootstrap/setup-goudai-host.yml \
 #     --vault-password-file ~/.vault-pass --limit goudai
 #
 # Force llama.cpp rebuild:
@@ -30,10 +31,10 @@
   vars:
     host_user: james
 
-    # ROCm — Ollama bundles its own ROCm/HIP stack; system ROCm packages not required.
-    # Ubuntu 26.04 (resolute) is not yet supported by AMD's apt repo (noble/jammy only).
-    # llama.cpp uses the Vulkan backend (Mesa RADV, native on RDNA 3.5 / Ubuntu 26.04).
-    # HSA override is kept in the Ollama systemd unit for Ollama's bundled runtime.
+    # ROCm — host packages installed below (noble/jammy apt repo support).
+    # llama.cpp still uses the Vulkan backend (Mesa RADV) as a proven fallback;
+    # both backends coexisting is harmless.
+    # HSA override is kept for Ollama's bundled runtime and LM Studio's llmster.
     amdgpu_gfx_override: "11.0.0"
 
     # NFS — Unraid ai-models share
@@ -57,6 +58,16 @@
     lmstudio_bin: /usr/local/bin/lms
 
   pre_tasks:
+    - name: Verify host is Ubuntu 24.04 (noble) — required for ROCm apt repo
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_distribution_release == 'noble'
+        fail_msg: >-
+          Host {{ inventory_hostname }} is {{ ansible_distribution }}
+          {{ ansible_distribution_release }}; this playbook requires Ubuntu 24.04 (noble)
+          for AMD's ROCm apt repo. Reimage the host first.
+
     - name: Refresh apt cache
       ansible.builtin.apt:
         update_cache: true
@@ -127,6 +138,37 @@
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
+
+    # ── ROCm host packages ───────────────────────────────────────────────────────
+
+    - name: Download ROCm apt GPG key
+      ansible.builtin.get_url:
+        url: https://repo.radeon.com/rocm/rocm.gpg.key
+        dest: /tmp/rocm.gpg.key
+        mode: '0644'
+
+    - name: Dearmor ROCm apt GPG key
+      ansible.builtin.command: >
+        gpg --batch --yes --dearmor -o /etc/apt/keyrings/rocm.gpg /tmp/rocm.gpg.key
+      args:
+        creates: /etc/apt/keyrings/rocm.gpg
+
+    - name: Add ROCm apt repository
+      ansible.builtin.apt_repository:
+        repo: >
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg]
+          https://repo.radeon.com/rocm/apt/latest noble main
+        filename: rocm
+        state: present
+
+    - name: Install ROCm host packages
+      ansible.builtin.apt:
+        name:
+          - rocm-hip-libraries
+          - rocminfo
+          - rocm-smi-lib
+        state: present
+        update_cache: true
 
     # ── llama.cpp ──────────────────────────────────────────────────────────────
 
