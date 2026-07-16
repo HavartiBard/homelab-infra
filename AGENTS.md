@@ -366,9 +366,11 @@ Obsidian Desktop (LiveSync) ←→ CouchDB (192.168.20.14:5984) ←→ Obsidian 
 
 ### Agent Usage
 
+**For any documentation task (service catalog entries, project notes, design docs), prefer the Obsidian MCP tools (`mcp__obsidian__*`, configured in `.mcp.json`) over direct filesystem/NFS access to the vault.** This keeps writes going through a single path that's safe alongside Obsidian LiveSync's CouchDB sync, and avoids sync conflicts from editing vault files out-of-band.
+
 **Creating/updating service entries:**
 
-Use the Obsidian MCP tools (via Director when integration is complete):
+Use the Obsidian MCP tools:
 - `obsidian_write_note` - Create or update a service entry
 - `obsidian_read_note` - Read existing service documentation
 - `obsidian_search` - Search across the service catalog
