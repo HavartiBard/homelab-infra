@@ -7,5 +7,8 @@ llama_swap_hf_cache_manage_owner: false
 llama_swap_require_external_cache: true
 
 # Keep the legacy personal-agent-llm role aligned with the same external cache
-# location in case it is redeployed for debugging or rollback.
+# location in case it is redeployed for debugging or rollback. Ownership is
+# managed by the llama-swap role (llama_swap_hf_cache_manage_owner above,
+# also false); this NFS export squashes root so a chown here fails.
 personal_agent_llm_cache_dir: /mnt/ai-models/goudai/huggingface
+personal_agent_llm_cache_manage_owner: false
