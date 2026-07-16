@@ -53,7 +53,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -91,7 +90,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -120,7 +118,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -149,7 +146,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -178,7 +174,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -210,7 +205,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -237,7 +231,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -263,7 +256,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -289,7 +281,6 @@ llama_swap_models:
       - "--jinja"
       - "-ngl 99"
       - "-fa on"
-      - "-sm row"
       - "--ctx-size 131072"
       - "--predict 8192"
       - "--parallel 1"
@@ -332,10 +323,14 @@ llama_swap_groups:
 # How long llama-swap waits for a child llama-server to become healthy
 # before declaring the spawn a failure. Bumped from the 120s default to
 # accommodate cold-load of large models AND first-time GGUF downloads
-# (~20GB at typical HF speeds takes 4-6 minutes). After the model is
-# cached on disk, steady-state cold-load is ~30-60s — the high value
-# never bites once the model is on disk.
-llama_swap_health_check_timeout: 900
+# (~20GB at typical HF speeds takes 4-6 minutes). The model cache
+# (HF_HOME) lives on the Unraid NFS share, not local disk — observed
+# cold-load throughput there is ~20-25MB/s, so a ~22GB model can take
+# 15-20+ minutes to become healthy even when already "cached". 900s
+# clipped a real (successful, non-crashing) load in testing; 1800s
+# gives headroom without masking an actually-hung/crashed process for
+# too long.
+llama_swap_health_check_timeout: 1800
 
 # Health-check tuning for the post-deploy verification task
 llama_swap_health_retries: 30
