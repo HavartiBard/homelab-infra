@@ -43,7 +43,7 @@ STATIC_CONTENT_CHECKS = {
     "compose.yml": ["loki", "prometheus", "grafana", "syslog-ng", "alertmanager"],
     "prometheus/rules/alerts.yml": ["HostDown", "DiskSpaceLow", "ContainerRestartLoop"],
     "grafana/provisioning/datasources/datasources.yml": ["Loki", "Prometheus"],
-    "../../roles/observability/templates/alertmanager.yml.j2": ["vault_alertmanager_slack_webhook_url"],
+    "../../roles/observability/templates/alertmanager.yml.j2": ["alertmanager_slack_webhook_url"],
 }
 
 LIVE_CHECKS = [
