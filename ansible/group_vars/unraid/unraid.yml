@@ -57,36 +57,18 @@ acme_base_domain: klsll.com
 acme_wildcard_domain: "*.klsll.com"
 acme_dns_env: {}
 
-# MCP credentials
-# unraid_api_key / orbi_username / orbi_password migrated to 1Password
-# Environments (ansible/envs/unraid-mcp.env, ansible/envs/homelab-mcp.env).
-# Kept here (not just in the role defaults) because deploy-homepage.yml reads
-# them at the play level without including the unraid-mcp/homelab-mcp roles.
+# MCP credentials needed by deploy-homepage.yml, which reads these at the
+# play level without including the owning role (unraid-mcp, homelab-mcp is
+# NOT needed here since deploy-homepage.yml doesn't read orbi_*, proxmox-mcp,
+# adguard). All other vault_*-sourced vars that used to live here were
+# deleted outright once confirmed unused outside their own role's defaults
+# (see git history / docs/plans if you need the full list that was removed).
 unraid_api_key: "{{ lookup('ansible.builtin.env', 'UNRAID_API_KEY') | default('', true) }}"
-orbi_username: "{{ lookup('ansible.builtin.env', 'ORBI_USERNAME') | default('', true) }}"
-orbi_password: "{{ lookup('ansible.builtin.env', 'ORBI_PASSWORD') | default('', true) }}"
-op_service_account_token: "{{ vault_op_service_account_token }}"
-# proxmox_* / gitea_db_password / gitea_admin_password / gitea_mcp_token
-# migrated to 1Password Environments (ansible/envs/proxmox-mcp.env,
-# ansible/envs/gitea.env, ansible/envs/gitea-mcp.env) — kept here because
-# deploy-homepage.yml reads proxmox_* at the play level without including
-# the proxmox-mcp role.
-proxmox_host: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST') | default('', true) }}"
-proxmox_port: "{{ lookup('ansible.builtin.env', 'PROXMOX_PORT') | default('', true) }}"
 proxmox_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USER') | default('', true) }}"
 proxmox_token_name: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_NAME') | default('', true) }}"
 proxmox_token_value: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_VALUE') | default('', true) }}"
-proxmox_allow_elevated: "{{ lookup('ansible.builtin.env', 'PROXMOX_ALLOW_ELEVATED') | default('', true) }}"
-# adguard_admin_user/password here are a separate copy from the adguard role's
-# own defaults (this host group doesn't run the adguard role) — deploy-homepage.yml
-# is the only consumer. Still vault-sourced; not yet migrated.
-adguard_admin_user: "{{ vault_adguard_admin_username }}"
-adguard_admin_password: "{{ vault_adguard_admin_password }}"
-gitea_db_password: "{{ lookup('ansible.builtin.env', 'GITEA_DB_PASSWORD') | default('', true) }}"
-gitea_admin_password: "{{ lookup('ansible.builtin.env', 'GITEA_ADMIN_PASSWORD') | default('', true) }}"
-gitea_mcp_token: >-
-  {{ lookup('ansible.builtin.env', 'GITEA_MCP_TOKEN')
-     | default(lookup('ansible.builtin.env', 'GITEA_TOKEN'), true) }}
+adguard_admin_user: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_USERNAME') | default('', true) }}"
+adguard_admin_password: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_PASSWORD') | default('', true) }}"
 
 # Promtail: Unraid has no systemd journal — Docker socket logs only
 promtail_unraid_mode: true

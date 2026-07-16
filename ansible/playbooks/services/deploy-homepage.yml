@@ -1,4 +1,12 @@
 ---
+# Deploy Homepage on Unraid
+#
+# Usage:
+#   ./scripts/run-playbook.sh homepage playbooks/services/deploy-homepage.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/homepage.env (see
+# docs/secrets-management.md).
+
 - name: Deploy Homepage on Unraid
   hosts: unraid
   become: true
