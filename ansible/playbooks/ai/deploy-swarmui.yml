@@ -42,6 +42,10 @@
         path: "{{ swarmui_service_dir }}"
         state: directory
         mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        recurse: true
+      become: true
 
     - name: Ensure SwarmUI output directory exists on the share
       ansible.builtin.file:
@@ -86,6 +90,20 @@
         dest: "/mnt/ai-models/comfyui/custom-nodes/{{ item }}/"
         remote_src: true
         mode: "0644"
+        directory_mode: "0755"
+      loop:
+        - SwarmComfyCommon
+        - SwarmComfyExtra
+
+    # copy's `mode` is applied to the destination dir itself too (not just the
+    # files inside), stripping its execute bit — directory_mode only covers
+    # subdirectories newly created during the walk, not an already-existing
+    # top-level dest. Fix the top-level dir mode back up explicitly.
+    - name: Fix top-level mode on the shared custom-nodes destination dirs
+      ansible.builtin.file:
+        path: "/mnt/ai-models/comfyui/custom-nodes/{{ item }}"
+        state: directory
+        mode: "0755"
       loop:
         - SwarmComfyCommon
         - SwarmComfyExtra

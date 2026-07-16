@@ -15,6 +15,7 @@
 
 - name: Deploy ComfyUI (LTX2_SM) on goudai
   hosts: goudai
+  become: true
   gather_facts: false
   vars:
     comfyui_service_dir: /opt/comfyui
