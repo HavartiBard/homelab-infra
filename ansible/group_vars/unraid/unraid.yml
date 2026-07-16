@@ -49,10 +49,14 @@ acme_base_domain: klsll.com
 acme_wildcard_domain: "*.klsll.com"
 acme_dns_env: {}
 
-# MCP credentials (from Ansible vault)
-unraid_api_key: "{{ vault_unraid_api_key }}"
-orbi_username: "{{ vault_orbi_username }}"
-orbi_password: "{{ vault_orbi_password }}"
+# MCP credentials
+# unraid_api_key / orbi_username / orbi_password migrated to 1Password
+# Environments (ansible/envs/unraid-mcp.env, ansible/envs/homelab-mcp.env).
+# Kept here (not just in the role defaults) because deploy-homepage.yml reads
+# them at the play level without including the unraid-mcp/homelab-mcp roles.
+unraid_api_key: "{{ lookup('ansible.builtin.env', 'UNRAID_API_KEY') | default('', true) }}"
+orbi_username: "{{ lookup('ansible.builtin.env', 'ORBI_USERNAME') | default('', true) }}"
+orbi_password: "{{ lookup('ansible.builtin.env', 'ORBI_PASSWORD') | default('', true) }}"
 op_service_account_token: "{{ vault_op_service_account_token }}"
 proxmox_host: "{{ vault_proxmox_mcp_host }}"
 proxmox_port: "{{ vault_proxmox_mcp_port }}"

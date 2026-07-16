@@ -2,8 +2,11 @@
 # Deploy Unraid MCP Server to Unraid
 #
 # Usage:
-#   export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge>'
-#   ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
+#   ./scripts/run-playbook.sh unraid-mcp playbooks/mcp/deploy-unraid-mcp.yml
+#
+# Secrets resolved from 1Password via ansible/envs/unraid-mcp.env (see
+# docs/secrets-management.md). UNRAID_API_KEY can still be overridden directly
+# in the environment for testing.
 
 - name: Deploy Unraid MCP to Unraid
   hosts: unraid

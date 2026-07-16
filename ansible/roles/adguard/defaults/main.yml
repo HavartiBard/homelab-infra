@@ -1,6 +1,6 @@
 ---
-adguard_admin_user: "{{ vault_adguard_admin_username }}"
-adguard_admin_password: "{{ vault_adguard_admin_password }}"
+adguard_admin_user: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_USERNAME') | default('', true) }}"
+adguard_admin_password: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_PASSWORD') | default('', true) }}"
 
 adguard_http_port: 3000
 adguard_dns_port: 53
