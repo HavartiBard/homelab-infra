@@ -3,20 +3,27 @@
 # Idempotent: reads current settings, only writes when they differ.
 #
 # Usage:
-#   ansible-playbook playbooks/dns/configure-technitium-settings.yml --limit tt
+#   ./scripts/run-playbook.sh technitium playbooks/dns/configure-technitium-settings.yml --limit tt
 #
-# Auth: vault_technitium_api_token (group_vars/all/vault.yml)
+# Secrets resolved from 1Password via ansible/envs/technitium.env (see
+# docs/secrets-management.md).
 
 - name: Configure Technitium settings
   hosts: tt
   gather_facts: false
   vars:
     technitium_api_url: "http://{{ ansible_host }}:5380"
-    technitium_api_token: "{{ vault_technitium_api_token }}"
+    technitium_api_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
     # Log retention: bind-failure spam once filled tt2's disk (3.2G in
     # /var/log/technitium/dns at 365d retention). A week is plenty.
     technitium_max_log_file_days: 7
   tasks:
+    - name: Assert Technitium API token is provided
+      ansible.builtin.assert:
+        that:
+          - technitium_api_token | length > 0
+        fail_msg: "Set TECHNITIUM_API_TOKEN env var (from 1Password 'DNS Automation Credential'), e.g. via ansible/envs/technitium.env"
+
     - name: Get current Technitium settings
       ansible.builtin.uri:
         url: "{{ technitium_api_url }}/api/settings/get?token={{ technitium_api_token }}"

@@ -1,4 +1,12 @@
 ---
+# Provision DNS/DHCP LXCs on Proxmox
+#
+# Usage:
+#   ./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp.yml
+#
+# Secrets resolved from 1Password via ansible/envs/dns-dhcp.env (see
+# docs/secrets-management.md).
+
 - name: Provision DNS/DHCP LXCs on Proxmox
   hosts: localhost
   connection: local
