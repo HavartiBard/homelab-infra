@@ -11,16 +11,18 @@
 #   2. GITEA_RUNNER_TOKEN from Gitea Admin → Runners → Create
 #   3. Docker available on target host
 #
-# Usage:
+# Usage (registry password resolved from 1Password via ansible/envs/gitea-runner.env,
+# see docs/secrets-management.md; GITEA_RUNNER_TOKEN is a manually-generated
+# per-registration token from the Gitea UI, not stored in 1Password):
 #   # Deploy single runner on Unraid
-#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml
+#   GITEA_RUNNER_TOKEN=xxxxx ./scripts/run-playbook.sh gitea-runner playbooks/platform/deploy-gitea-runners.yml
 #
 #   # Deploy 3 concurrent runners
-#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml \
+#   GITEA_RUNNER_TOKEN=xxxxx ./scripts/run-playbook.sh gitea-runner playbooks/platform/deploy-gitea-runners.yml \
 #     -e gitea_runner_count=3
 #
 #   # Deploy to specific host
-#   GITEA_RUNNER_TOKEN=xxxxx ansible-playbook playbooks/platform/deploy-gitea-runners.yml \
+#   GITEA_RUNNER_TOKEN=xxxxx ./scripts/run-playbook.sh gitea-runner playbooks/platform/deploy-gitea-runners.yml \
 #     --limit unraid-server
 #
 # Scaling:

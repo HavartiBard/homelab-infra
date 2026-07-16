@@ -64,6 +64,6 @@ gitea_db_ip: 192.168.20.53
 gitea_health_interval: 10
 gitea_health_attempts: 6
 
-gitea_db_password: "{{ vault_gitea_db_password }}"
+gitea_db_password: "{{ lookup('ansible.builtin.env', 'GITEA_DB_PASSWORD') | default('', true) }}"
 
-gitea_admin_password: "{{ vault_gitea_service_password }}"
+gitea_admin_password: "{{ lookup('ansible.builtin.env', 'GITEA_ADMIN_PASSWORD') | default('', true) }}"

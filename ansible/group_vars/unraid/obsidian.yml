@@ -1,9 +1,9 @@
 ---
 # Obsidian stack configuration
-couchdb_admin_user: "{{ vault_couchdb_admin_username }}"
-couchdb_admin_password: "{{ vault_couchdb_admin_password }}"
-couchdb_sync_user: "{{ vault_couchdb_sync_username }}"
-couchdb_sync_password: "{{ vault_couchdb_sync_password }}"
+couchdb_admin_user: "{{ lookup('ansible.builtin.env', 'COUCHDB_ADMIN_USERNAME') | default('', true) }}"
+couchdb_admin_password: "{{ lookup('ansible.builtin.env', 'COUCHDB_ADMIN_PASSWORD') | default('', true) }}"
+couchdb_sync_user: "{{ lookup('ansible.builtin.env', 'COUCHDB_SYNC_USERNAME') | default('', true) }}"
+couchdb_sync_password: "{{ lookup('ansible.builtin.env', 'COUCHDB_SYNC_PASSWORD') | default('', true) }}"
 
 obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
 obsidian_mcp_port: 6977

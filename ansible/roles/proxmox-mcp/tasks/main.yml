@@ -1,4 +1,13 @@
 ---
+- name: Assert Proxmox MCP credentials are provided
+  ansible.builtin.assert:
+    that:
+      - proxmox_host | length > 0
+      - proxmox_user | length > 0
+      - proxmox_token_name | length > 0
+      - proxmox_token_value | length > 0
+    fail_msg: "Set PROXMOX_HOST/PROXMOX_USER/PROXMOX_TOKEN_NAME/PROXMOX_TOKEN_VALUE env vars (from 1Password 'Proxmox MCP Token'), e.g. via ansible/envs/proxmox-mcp.env"
+
 - name: Create appdata directory
   ansible.builtin.raw: mkdir -p {{ proxmox_mcp_appdata_dir }}
   changed_when: false
