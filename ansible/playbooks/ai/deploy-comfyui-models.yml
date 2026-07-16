@@ -4,7 +4,7 @@
 #
 # Run:
 #   ansible-playbook playbooks/ai/deploy-comfyui-models.yml \
-#     --vault-password-file ~/.vault-pass
+#    
 # =============================================================================
 
 - name: Download ComfyUI models to Unraid

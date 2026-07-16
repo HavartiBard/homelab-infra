@@ -7,7 +7,7 @@
 #
 # Usage:
 #   ansible-playbook playbooks/mcp/deploy-research-mcp.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#     --limit unraid
 
 - name: Deploy research-mcp on Unraid
   hosts: unraid
