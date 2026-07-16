@@ -8,6 +8,10 @@
       "type": "http",
       "url": "http://192.168.20.14:8092/mcp"
     },
+    "obsidian": {
+      "type": "http",
+      "url": "http://192.168.20.14:6977/mcp"
+    },
     "raclette": {
       "type": "stdio",
       "command": "ssh",
