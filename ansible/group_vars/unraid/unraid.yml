@@ -38,12 +38,13 @@ technitium_api_url: "http://192.168.20.2:5380"
 technitium_zone: klsll.com
 technitium_admin_user: dns-automation
 technitium_api_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
-# NOTE: reuses the API token value as the admin password, same as before this
-# migration — this looks like a pre-existing bug (copy-paste from whenever
-# vault_technitium_api_token was introduced), not something this migration
-# should silently change. Flagged for confirmation of the correct 1Password
-# field; unchanged in behavior for now.
-technitium_admin_password: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
+# Only used as a fallback login (roles/npm/tasks/proxies.yml) when
+# technitium_api_token is empty. Previously reused the API token's value here
+# by mistake (copy-paste from whenever vault_technitium_api_token was
+# introduced) - confirmed via 1Password that a distinct "Technitium Admin"
+# item exists and fixed to use it, once ansible/envs/dns-dhcp.env's
+# TECHNITIUM_ADMIN_PASSWORD was confirmed working (see Phase 3 DNS migration).
+technitium_admin_password: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_ADMIN_PASSWORD') | default('', true) }}"
 cloudflare_dns_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_DNS_TOKEN') | default('', true) }}"
 
 # Optional external ACME issuer

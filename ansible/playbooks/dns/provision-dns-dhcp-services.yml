@@ -1,4 +1,12 @@
 ---
+# Install Docker and deploy DNS/AdGuard via Compose on LXCs
+#
+# Usage:
+#   ./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp-services.yml
+#
+# Secrets resolved from 1Password via ansible/envs/dns-dhcp.env (see
+# docs/secrets-management.md).
+
 - name: Install Docker and deploy DNS/AdGuard via Compose on LXCs
   hosts: localhost
   connection: local
