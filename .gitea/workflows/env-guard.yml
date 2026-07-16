@@ -1,0 +1,44 @@
+name: env-guard
+# Fail any push/PR where a committed 1Password-Environments env file contains
+# anything other than a comment, a blank line, or a KEY=op://vault/item/field
+# reference. These files are safe to commit precisely because they never hold
+# real secret material — this guard keeps that true. Generalizes vault-guard.yml's
+# incident-prevention property (see .gitea/workflows/vault-guard.yml, added after
+# the 2026-06-12 plaintext-vault incident) to the newer ansible/envs/*.env and
+# stacks/*/op.env convention. See docs/secrets-management.md.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-op-refs-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify committed env files contain only op:// references
+        run: |
+          fail=0
+          shopt -s nullglob
+          files=(ansible/envs/*.env stacks/*/op.env docker/dev-environment/op.env)
+          for f in "${files[@]}"; do
+            [ -f "$f" ] || continue
+            line_num=0
+            while IFS= read -r line || [ -n "$line" ]; do
+              line_num=$((line_num + 1))
+              trimmed="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+              [ -z "$trimmed" ] && continue
+              case "$trimmed" in
+                \#*) continue ;;
+                *=op://*) continue ;;
+                *)
+                  echo "::error file=$f,line=$line_num::Non-op:// value committed: $trimmed"
+                  fail=1
+                  ;;
+              esac
+            done < "$f"
+          done
+          if [ "$fail" -eq 1 ]; then
+            echo "::error::One or more env files contain a value that is not an op:// reference. Only KEY=op://vault/item/field lines (plus comments/blank lines) may be committed."
+            exit 1
+          fi
+          echo "All committed env files contain only op:// references ✔"
