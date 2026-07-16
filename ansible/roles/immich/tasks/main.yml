@@ -1,4 +1,12 @@
 ---
+- name: Assert Immich credentials are provided
+  ansible.builtin.assert:
+    that:
+      - immich_db_password | length > 0
+      - immich_jwt_secret | length > 0
+      - immich_admin_password | length > 0
+    fail_msg: "Set IMMICH_DB_PASSWORD/IMMICH_JWT_SECRET/IMMICH_ADMIN_PASSWORD env vars (from 1Password), e.g. via ansible/envs/immich.env"
+
 - name: Create immich directories
   raw: mkdir -p {{ immich_base_dir }}/postgres {{ immich_photos_dir }}
 
@@ -38,13 +46,13 @@
   raw: |
     HTTP_CODE=$(wget -qO- --server-response \
       --header="Content-Type: application/json" \
-      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ vault_immich_admin_password }}","name":"James"}' \
+      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ immich_admin_password }}","name":"James"}' \
       http://localhost:{{ immich_port }}/api/auth/admin-sign-up 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
     if [ "$HTTP_CODE" = "201" ]; then
       echo "Admin account created"
     elif wget -qO- \
       --header="Content-Type: application/json" \
-      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ vault_immich_admin_password }}"}' \
+      --post-data='{"email":"{{ immich_admin_email }}","password":"{{ immich_admin_password }}"}' \
       http://localhost:{{ immich_port }}/api/auth/login 2>/dev/null | grep -q '"accessToken"'; then
       echo "Admin account already exists"
     else

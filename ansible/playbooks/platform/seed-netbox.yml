@@ -16,9 +16,9 @@
 #
 # Idempotent — safe to re-run. Uses netbox.netbox collection.
 #
-# Run:
-#   ansible-playbook playbooks/misc/seed-netbox.yml \
-#     --vault-password-file ~/.vault-pass
+# Run (NETBOX_TOKEN resolved from 1Password via ansible/envs/common.env, see
+# docs/secrets-management.md):
+#   ./scripts/run-playbook.sh netbox playbooks/misc/seed-netbox.yml
 
 - name: Seed NetBox homelab inventory
   hosts: localhost
@@ -26,7 +26,7 @@
 
   vars:
     netbox_url: "http://192.168.20.14:8001"
-    netbox_token: "{{ vault_netbox_api_token }}"
+    netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') | default('', true) }}"
 
   tasks:
 

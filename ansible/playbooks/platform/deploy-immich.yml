@@ -4,10 +4,10 @@
 # Goudai: machine learning container (NFS model cache at /mnt/ai-models/immich)
 #
 # Usage:
-#   ansible-playbook playbooks/platform/deploy-immich.yml --limit unraid-server,goudai
+#   ./scripts/run-playbook.sh immich playbooks/platform/deploy-immich.yml --limit unraid-server,goudai
 #
-# Secrets (vault.yml):
-#   vault_immich_db_password, vault_immich_jwt_secret, vault_immich_admin_password
+# Secrets resolved from 1Password via ansible/envs/immich.env (see
+# docs/secrets-management.md).
 
 - name: Deploy Immich server stack (Unraid)
   hosts: unraid

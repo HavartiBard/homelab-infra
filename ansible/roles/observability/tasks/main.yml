@@ -1,6 +1,13 @@
 ---
 # Deploy observability stack — all tasks use raw since Unraid lacks Python
 
+- name: Assert observability credentials are provided
+  ansible.builtin.assert:
+    that:
+      - grafana_admin_password | length > 0
+      - alertmanager_slack_webhook_url | length > 0
+    fail_msg: "Set GRAFANA_ADMIN_PASSWORD/ALERTMANAGER_SLACK_WEBHOOK_URL env vars (from 1Password), e.g. via ansible/envs/observability.env"
+
 - name: Create appdata directories
   ansible.builtin.raw: |
     mkdir -p {{ observability_appdata_dir }}/loki

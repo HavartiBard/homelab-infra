@@ -1,14 +1,20 @@
 ---
 # Deploy NetBox DCIM/IPAM on Unraid
 #
+# Usage:
+#   ./scripts/run-playbook.sh netbox playbooks/platform/deploy-netbox.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/netbox.env (see
+# docs/secrets-management.md) — NOTE: netbox_db_password and netbox_secret_key
+# have no 1Password item yet, see the TODO in that file.
+#
 # Prerequisites:
-#   - vault.yml contains vault_netbox_* entries
 #   - /mnt/user/appdata/netbox share path exists on Unraid (created by role)
 #
 # After deployment:
 #   Web UI:    http://192.168.20.14:8001    (direct)
 #              https://netbox.klsll.com    (via NPM)
-#   Login:     admin / vault_netbox_superuser_password
+#   Login:     admin / <NETBOX_SUPERUSER_PASSWORD>
 
 - name: Deploy NetBox
   hosts: unraid
@@ -31,6 +37,6 @@
           NetBox deployed successfully!
           Web UI:     http://{{ ansible_host }}:{{ netbox_port }}
           NPM proxy:  https://netbox.klsll.com (configure NPM separately)
-          Login:      {{ netbox_superuser_name }} / <vault_netbox_superuser_password>
+          Login:      {{ netbox_superuser_name }} / <NETBOX_SUPERUSER_PASSWORD>
           Logs:       docker logs netbox -f
           Restart:    cd {{ netbox_compose_dir }} && docker compose restart

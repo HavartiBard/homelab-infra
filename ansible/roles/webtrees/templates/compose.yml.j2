@@ -10,12 +10,12 @@ services:
       DB_HOST: webtrees-db
       DB_PORT: 3306
       DB_USER: "{{ webtrees_db_user }}"
-      DB_PASS: "{{ vault_webtrees_db_password }}"
+      DB_PASS: "{{ webtrees_db_password }}"
       DB_NAME: "{{ webtrees_db_name }}"
       DB_PREFIX: wt_
       WT_NAME: "Family Tree"
       WT_USER: "{{ webtrees_admin_user }}"
-      WT_PASS: "{{ vault_webtrees_admin_password }}"
+      WT_PASS: "{{ webtrees_admin_password }}"
       WT_EMAIL: "{{ webtrees_admin_email }}"
       TZ: America/Phoenix
     volumes:
@@ -35,7 +35,7 @@ services:
     environment:
       MARIADB_DATABASE: "{{ webtrees_db_name }}"
       MARIADB_USER: "{{ webtrees_db_user }}"
-      MARIADB_PASSWORD: "{{ vault_webtrees_db_password }}"
+      MARIADB_PASSWORD: "{{ webtrees_db_password }}"
       MARIADB_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - {{ webtrees_base_dir }}/db:/var/lib/mysql

@@ -56,3 +56,7 @@ restic_keep_monthly: 6
 # 3:00am nightly backup, 5:00am Sunday integrity check (America/Phoenix system TZ)
 restic_backup_cron: "0 3 * * *"
 restic_check_cron: "0 5 * * 0"
+
+restic_repo_password: "{{ lookup('ansible.builtin.env', 'RESTIC_REPO_PASSWORD') | default('', true) }}"
+b2_account_id: "{{ lookup('ansible.builtin.env', 'B2_ACCOUNT_ID') | default('', true) }}"
+b2_account_key: "{{ lookup('ansible.builtin.env', 'B2_ACCOUNT_KEY') | default('', true) }}"

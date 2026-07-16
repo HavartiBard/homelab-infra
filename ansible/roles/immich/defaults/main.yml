@@ -12,3 +12,7 @@ immich_redis_image: redis:6.2-alpine
 immich_ml_url: http://192.168.20.150:3003
 
 immich_admin_email: james@klsll.com
+
+immich_db_password: "{{ lookup('ansible.builtin.env', 'IMMICH_DB_PASSWORD') | default('', true) }}"
+immich_jwt_secret: "{{ lookup('ansible.builtin.env', 'IMMICH_JWT_SECRET') | default('', true) }}"
+immich_admin_password: "{{ lookup('ansible.builtin.env', 'IMMICH_ADMIN_PASSWORD') | default('', true) }}"

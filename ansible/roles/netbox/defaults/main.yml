@@ -35,3 +35,12 @@ netbox_superuser_email: admin@klsll.com
 
 # Unraid labels
 netbox_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/netbox.png
+
+# Secrets. Only netbox_superuser_password has a real 1Password item today
+# ("Netbox"). netbox_db_password and netbox_secret_key have NO backing
+# 1Password item yet — these env vars will resolve empty until new items are
+# created (confirmed with the user rather than assumed). See
+# ansible/envs/netbox.env for the TODO.
+netbox_db_password: "{{ lookup('ansible.builtin.env', 'NETBOX_DB_PASSWORD') | default('', true) }}"
+netbox_secret_key: "{{ lookup('ansible.builtin.env', 'NETBOX_SECRET_KEY') | default('', true) }}"
+netbox_superuser_password: "{{ lookup('ansible.builtin.env', 'NETBOX_SUPERUSER_PASSWORD') | default('', true) }}"

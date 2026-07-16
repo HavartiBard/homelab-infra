@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_DB: {{ netbox_db_name }}
       POSTGRES_USER: {{ netbox_db_user }}
-      POSTGRES_PASSWORD: "{{ vault_netbox_db_password }}"
+      POSTGRES_PASSWORD: "{{ netbox_db_password }}"
     volumes:
       - {{ netbox_appdata_dir }}/postgres:/var/lib/postgresql/data
     networks:

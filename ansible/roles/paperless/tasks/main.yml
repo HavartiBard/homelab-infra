@@ -1,6 +1,14 @@
 ---
 # Deploy Paperless-NGX — all tasks use raw since Unraid lacks Python
 
+- name: Assert Paperless credentials are provided
+  ansible.builtin.assert:
+    that:
+      - paperless_secret_key | length > 0
+      - paperless_db_password | length > 0
+      - paperless_admin_password | length > 0
+    fail_msg: "Set PAPERLESS_SECRET_KEY/PAPERLESS_DB_PASSWORD/PAPERLESS_ADMIN_PASSWORD env vars (from 1Password), e.g. via ansible/envs/paperless.env"
+
 - name: Create appdata directories
   ansible.builtin.raw: |
     mkdir -p {{ paperless_appdata_dir }}/data

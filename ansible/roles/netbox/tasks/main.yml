@@ -1,6 +1,18 @@
 ---
 # Deploy NetBox DCIM/IPAM — all tasks use raw since Unraid lacks Python
 
+- name: Assert NetBox credentials are provided
+  ansible.builtin.assert:
+    that:
+      - netbox_db_password | length > 0
+      - netbox_secret_key | length > 0
+      - netbox_superuser_password | length > 0
+    fail_msg: >-
+      Set NETBOX_DB_PASSWORD/NETBOX_SECRET_KEY/NETBOX_SUPERUSER_PASSWORD env
+      vars, e.g. via ansible/envs/netbox.env. NETBOX_DB_PASSWORD and
+      NETBOX_SECRET_KEY have no 1Password item yet — create one before
+      deploying (see the TODO in ansible/envs/netbox.env).
+
 - name: Create appdata directories
   ansible.builtin.raw: |
     mkdir -p {{ netbox_appdata_dir }}/postgres

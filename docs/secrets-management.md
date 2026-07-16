@@ -78,6 +78,12 @@ cd ansible
 `op://` references that playbook's role(s) need. Playbooks that don't need any secrets are
 unaffected and keep running via plain `ansible-playbook ...` as before.
 
+`ansible/envs/common.env` is merged into *every* invocation automatically, in addition to the
+slug-specific file. It holds cross-cutting secrets needed by roles that many other
+playbooks/roles include as a side effect — e.g. `netbox-service` (used by ~20 deploy playbooks to
+register themselves in NetBox) needs `NETBOX_TOKEN`, which isn't specific to any one service.
+Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
+
 | Slug | Env file | Used by |
 |------|----------|---------|
 | `goudai` | `ansible/envs/goudai.env` | `playbooks/ai/deploy-open-webui.yml --limit goudai` |
