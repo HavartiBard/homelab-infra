@@ -26,29 +26,24 @@ Observability stack:
 
 ## Deployment
 
+Secrets are resolved from 1Password at runtime via `op run` (see
+`docs/secrets-management.md`) — never copied into a local `.env` file.
+
 ```bash
 cd stacks/<stack-name>
 cp .env.example .env
-nano .env  # Fill in required values
-docker compose config  # Validate
-docker compose up -d
+nano .env  # Fill in non-secret values (ports, TZ, etc.)
+op run --env-file=op.env -- docker compose config  # Validate
+op run --env-file=op.env -- docker compose up -d
 ```
 
 ## Environment Variables
 
-Each stack has a `.env.example` template. **Never commit actual `.env` files.**
+Each stack has two files:
+- `.env.example` → copy to `.env` for non-secret config (ports, timezone, feature flags). **Never commit actual `.env` files.**
+- `op.env` → committed, contains only `KEY=op://vault/item/field` references for actual secrets. Safe to commit — it never holds real values. If a secret has no 1Password item yet, its line is commented out with a `TODO` — create the item before deploying.
 
 Required variables are marked with `:?` in compose files and will error if missing.
-
-### Generating Secure Passwords
-
-```bash
-# Generate 32-character password
-openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 32
-
-# Generate hex secret key
-openssl rand -hex 32
-```
 
 ## Stack Files
 

@@ -188,6 +188,25 @@ Restart-Service sshd
 netstat -an | findstr :22
 ```
 
+## Installing the 1Password CLI (for stacks/gpu-worker secrets)
+
+`stacks/gpu-worker` (Ollama + Open WebUI, deployed here) resolves its secrets
+from 1Password via `op run --env-file=op.env -- docker compose up -d` (see
+`docs/secrets-management.md`). Unlike the Linux hosts in this repo — where
+`ansible/playbooks/bootstrap/bootstrap-ubuntu.yml` installs the `op` CLI
+automatically — spraycheese has no equivalent automation, so install it
+manually once:
+
+```powershell
+winget install AgileBits.1Password.CLI
+```
+
+Or from inside WSL2 (if compose is run there instead of native Windows), use
+the Linux install steps from `docs/secrets-management.md`. Either way, this
+only needs `OP_SERVICE_ACCOUNT_TOKEN` set in the environment — no 1Password
+desktop app or biometric unlock required for the service-account flow used
+here.
+
 ## Security Considerations
 
 ### Current Configuration
