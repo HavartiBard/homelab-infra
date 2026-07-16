@@ -371,7 +371,7 @@ Obsidian Desktop (LiveSync) ←→ CouchDB (192.168.20.14:5984) ←→ Obsidian 
 Use the Obsidian MCP tools (via Director when integration is complete):
 - `obsidian_write_note` - Create or update a service entry
 - `obsidian_read_note` - Read existing service documentation
-- `obsidian_search_notes` - Search across the service catalog
+- `obsidian_search` - Search across the service catalog
 - `obsidian_list_notes` - List all service entries
 
 **Template structure** (`templates/service-catalog.md`):
