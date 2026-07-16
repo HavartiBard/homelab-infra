@@ -1,5 +1,8 @@
 # 1Password → Ansible Vault Migration Plan
 
+**Status**: Superseded — `vault.yml` (created by this plan) was itself decommissioned in favor of
+1Password Environments; see `docs/secrets-management.md`. Kept as historical record.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Migrate all secrets from 1Password (tagged "Ansible") into `ansible/group_vars/all/vault.yml` and remove every `op read` call from the codebase.

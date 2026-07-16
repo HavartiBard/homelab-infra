@@ -10,7 +10,11 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
 
 ## Pre-flight
 - Requirements: `ansible`, `community.docker`, `community.general`; optional `ansible-lint`.
-- Secrets/env to export before runs (from 1Password): `UNRAID_API_KEY`, `ORBI_PASSWORD`, `OP_SERVICE_ACCOUNT_TOKEN`, `PROXMOX_API_TOKEN_SECRET`, `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`. Ensure SSH key at `~/.ssh/id_ed25519_homelab` for targets that use it.
+- Secrets resolve from 1Password via `op run` — see `docs/secrets-management.md` for the full
+  picture. One bootstrap secret must already be in your shell env: `OP_SERVICE_ACCOUNT_TOKEN`.
+  Playbooks that need other secrets are run through `./scripts/run-playbook.sh <slug> <playbook>
+  <args>` instead of bare `ansible-playbook` — see the table below for each playbook's slug.
+- Ensure SSH key at `~/.ssh/id_ed25519_homelab` for targets that use it.
 - Change into the playbook root: `cd ansible`.
 
 ## Standard workflow
@@ -20,7 +24,7 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
 2) Syntax/lint:
    - `ansible-playbook playbooks/<group>/<playbook>.yml --syntax-check`
    - `ansible-lint playbooks/<group>/<playbook>.yml` (if installed)
-3) Dry-run with diffs:  
+3) Dry-run with diffs (prefix with `./scripts/run-playbook.sh <slug>` if the playbook needs secrets):
    `ansible-playbook playbooks/<group>/<playbook>.yml --check --diff --limit <host_or_group>`
 4) Apply:  
    `ansible-playbook playbooks/<group>/<playbook>.yml --diff --limit <host_or_group> -v`
@@ -33,16 +37,16 @@ Agent runbook for linting, dry-running, applying, and verifying Ansible playbook
      - HTTP services: `curl -fsS http://<ansible_host>:<port>/health` (or `/mcp` for MCP servers)
 
 ## Playbook quick reference
-| Playbook | Target (inventory) | Required env/vars | Verify hints |
+| Playbook | Target (inventory) | Secrets slug (`run-playbook.sh <slug>`) | Verify hints |
 | --- | --- | --- | --- |
-| `ansible/playbooks/mcp/deploy-unraid-mcp.yml` | `unraid`/`unraid-server` | `UNRAID_API_KEY` | `wait_for port=6970`, `docker ps` for `unraid-mcp`, `curl http://<host>:6970/mcp` |
-| `ansible/playbooks/mcp/deploy-homelab-mcp.yml` | `unraid`/`unraid-server` | `ORBI_PASSWORD` | `wait_for port=6971`, `docker ps` for `homelab-mcp`, `curl http://<host>:6971/mcp` |
-| `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` | `unraid`/`unraid-server` | `OP_SERVICE_ACCOUNT_TOKEN` | `docker ps` for `onepassword-mcp` and `mcp-proxy`, `curl -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1"}}}' http://<host>:6980/servers/onepassword/mcp` |
-| `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` | `unraid-server` | `group_vars/unraid/vault.yml` values set (Proxmox host/user/token) | `wait_for port=6974`, `docker ps` for `mcp-proxmox` |
-| `ansible/playbooks/platform/deploy-openhands.yml` | `unraid`/`unraid-server` | `.env` with `OPENHANDS_SECRET_KEY`, `OLLAMA_HOST_IP` | `wait_for port=3000`, `docker ps` for `openhands`, `curl http://<host>:3000/health` |
-| `ansible/playbooks/platform/deploy-ollama.yml` | `windows-gpu` hosts | `.env` on target (copied from example) | `curl http://<host>:11434/api/tags`, `docker ps` for `ollama-windows` |
-| `ansible/playbooks/dns/provision-dns-dhcp.yml` | `localhost` (Proxmox API) | `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET` | Check VMs exist with `pvesh`/`qm list` on Proxmox; rerun play in `--check` after changes |
-| `ansible/playbooks/misc/deploy-ssh-keys.yml` | `target_hosts` var (defaults to `unraid`) | SSH public key at `~/.ssh/id_ed25519_homelab.pub` | Confirm login: `ssh -i ~/.ssh/id_ed25519_homelab <user>@<host>` |
+| `ansible/playbooks/mcp/deploy-unraid-mcp.yml` | `unraid`/`unraid-server` | `unraid-mcp` | `wait_for port=6970`, `docker ps` for `unraid-mcp`, `curl http://<host>:6970/mcp` |
+| `ansible/playbooks/mcp/deploy-homelab-mcp.yml` | `unraid`/`unraid-server` | `homelab-mcp` | `wait_for port=6971`, `docker ps` for `homelab-mcp`, `curl http://<host>:6971/mcp` |
+| `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` | `unraid`/`unraid-server` | none — needs `OP_SERVICE_ACCOUNT_TOKEN` directly (it's the bootstrap secret itself) | `docker ps` for `onepassword-mcp` and `mcp-proxy`, `curl -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1"}}}' http://<host>:6980/servers/onepassword/mcp` |
+| `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` | `unraid-server` | `proxmox-mcp` | `wait_for port=6974`, `docker ps` for `mcp-proxmox` |
+| `ansible/playbooks/platform/deploy-openhands.yml` | `unraid`/`unraid-server` | `.env` with `OPENHANDS_SECRET_KEY`, `OLLAMA_HOST_IP` (not yet migrated) | `wait_for port=3000`, `docker ps` for `openhands`, `curl http://<host>:3000/health` |
+| `ansible/playbooks/platform/deploy-ollama.yml` | `windows-gpu` hosts | `.env` on target, copied from example (not yet migrated) | `curl http://<host>:11434/api/tags`, `docker ps` for `ollama-windows` |
+| `ansible/playbooks/dns/provision-dns-dhcp.yml` | `localhost` (Proxmox API) | `dns-dhcp` | Check VMs exist with `pvesh`/`qm list` on Proxmox; rerun play in `--check` after changes |
+| `ansible/playbooks/misc/deploy-ssh-keys.yml` | `target_hosts` var (defaults to `unraid`) | none — SSH public key at `~/.ssh/id_ed25519_homelab.pub` | Confirm login: `ssh -i ~/.ssh/id_ed25519_homelab <user>@<host>` |
 
 ## Logging and rollback
 - Capture `ansible-playbook` output; for containers, `ansible -i inventory/hosts.yml <host> -m shell -a "docker logs --tail 100 <container>"`.

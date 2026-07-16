@@ -78,25 +78,18 @@ Desktop Client <--> CouchDB <--> Obsidian MCP Server <--> AI Agents
 
 ### Prerequisites
 
-1. **Sync secrets from 1Password** - CouchDB credentials must be available:
-   ```bash
-   cd ~/projects/homelab-infra
-   ./scripts/sync-secrets.sh --vault
-   ```
-
-   This syncs these credentials from 1Password "AI Wedge" vault to Ansible vault:
-   - `CouchDB Obsidian Admin` (username + password)
-   - `CouchDB Obsidian Sync User` (username + password)
-
-2. **Verify Ansible vault password** is at `~/.vault-pass`
+Secrets resolve from 1Password at invocation time via `ansible/envs/obsidian.env` (see
+`docs/secrets-management.md`) — no manual sync step needed. Backing items in the "AI Wedge" vault:
+- `CouchDB Obsidian Admin` (username + password)
+- `CouchDB Obsidian Sync User` (username + password)
 
 ### Deploy Complete Stack
 
 ```bash
 cd ~/projects/homelab-infra/ansible
 ansible-playbook playbooks/mcp/deploy-obsidian-stack.yml --syntax-check
-ansible-playbook playbooks/mcp/deploy-obsidian-stack.yml --check --diff --limit unraid-server
-ansible-playbook playbooks/mcp/deploy-obsidian-stack.yml --diff --limit unraid-server -v
+./scripts/run-playbook.sh obsidian playbooks/mcp/deploy-obsidian-stack.yml --check --diff --limit unraid-server
+./scripts/run-playbook.sh obsidian playbooks/mcp/deploy-obsidian-stack.yml --diff --limit unraid-server -v
 ```
 
 This playbook:
@@ -528,7 +521,7 @@ The initial vault was populated from Notion service catalog export. See migratio
 
 1. **CouchDB Credentials:**
    - Admin credentials stored in 1Password "AI Wedge" vault
-   - Synced to Ansible vault via `sync-secrets.sh`
+   - Resolved at invocation time via `ansible/envs/obsidian.env` (see `docs/secrets-management.md`)
    - Never committed to git
 
 2. **Network Exposure:**

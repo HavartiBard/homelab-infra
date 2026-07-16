@@ -21,6 +21,8 @@ This is the third secrets architecture this repo has used:
    `vault.yml`/`~/.vault-pass` entirely. The recurring problem with the first two approaches was
    an undocumented, unautomated way to get a second, non-1Password secret (the vault password)
    onto a new host or agent session. This approach has exactly one such secret instead of two.
+   `vault.yml` and `.gitea/workflows/vault-guard.yml` have since been deleted — every consumer was
+   confirmed migrated first (repo-wide grep for `vault_*` came back empty outside the file itself).
 
 ## The one bootstrap secret: `OP_SERVICE_ACCOUNT_TOKEN`
 
@@ -86,10 +88,38 @@ Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
 
 | Slug | Env file | Used by |
 |------|----------|---------|
+| `adguard` | `ansible/envs/adguard.env` | `playbooks/dns/deploy-adguard-config.yml` |
+| `agent-cp` | `ansible/envs/agent-cp.env` | `playbooks/ai/deploy-agent-cp.yml` |
+| `dns-dhcp` | `ansible/envs/dns-dhcp.env` | `playbooks/dns/provision-dns-dhcp.yml`, `provision-dns-dhcp-services.yml` |
+| `gitea` | `ansible/envs/gitea.env` | `playbooks/platform/deploy-gitea.yml` |
+| `gitea-mcp` | `ansible/envs/gitea-mcp.env` | `playbooks/mcp/deploy-gitea-mcp.yml` |
+| `gitea-runner` | `ansible/envs/gitea-runner.env` | `playbooks/platform/deploy-gitea-runners.yml` |
 | `goudai` | `ansible/envs/goudai.env` | `playbooks/ai/deploy-open-webui.yml --limit goudai` |
+| `homelab-mcp` | `ansible/envs/homelab-mcp.env` | `playbooks/mcp/deploy-homelab-mcp.yml` |
+| `homepage` | `ansible/envs/homepage.env` | `playbooks/services/deploy-homepage.yml` |
+| `immich` | `ansible/envs/immich.env` | `playbooks/platform/deploy-immich.yml` |
+| `litellm` | `ansible/envs/litellm.env` | `playbooks/ai/deploy-litellm.yml` (DB password still a TODO — no 1Password item yet) |
+| `netbox` | `ansible/envs/netbox.env` | `playbooks/platform/deploy-netbox.yml`, `seed-netbox.yml` (DB password/secret key still TODOs) |
+| `npm` | `ansible/envs/npm.env` | `playbooks/platform/deploy-npm.yml`, `services/update-npm-proxy-host.yml` |
+| `observability` | `ansible/envs/observability.env` | `playbooks/observability/deploy-observability.yml` |
+| `obsidian` | `ansible/envs/obsidian.env` | `playbooks/mcp/deploy-obsidian-stack.yml` |
+| `paperless` | `ansible/envs/paperless.env` | `playbooks/services/deploy-paperless.yml` |
+| `paperless-ai` | `ansible/envs/paperless-ai.env` | `playbooks/services/deploy-paperless-ai.yml` |
+| `proxmox-mcp` | `ansible/envs/proxmox-mcp.env` | `playbooks/mcp/deploy-proxmox-mcp.yml` |
+| `restic-backup` | `ansible/envs/restic-backup.env` | `playbooks/platform/deploy-restic-backup.yml` |
+| `soullayer` | `ansible/envs/soullayer.env` | `playbooks/mcp/deploy-soullayer.yml` |
+| `technitium` | `ansible/envs/technitium.env` | `playbooks/dns/configure-technitium-settings.yml` |
+| `unraid-mcp` | `ansible/envs/unraid-mcp.env` | `playbooks/mcp/deploy-unraid-mcp.yml`, `services/deploy-homepage.yml` |
+| `webtrees` | `ansible/envs/webtrees.env` | `playbooks/platform/deploy-webtrees.yml` |
 
-This table grows as more services are migrated off `vault.yml` (see
-`docs/plans/2026-03-01-vault-migration.md` and its successor for migration status).
+`ansible/envs/common.env` isn't in this table since it's merged automatically into every
+invocation (see above), not selected via a slug.
+
+A handful of secrets above are intentionally left unresolved (commented out with a `TODO` in
+their env file) because no 1Password item exists for them yet — `agent-cp` (5 of 8 secrets),
+`litellm` (DB password), `netbox` (DB password, Django secret key). Those services fail closed
+with a clear assert message until the item is created; check the env file itself for the exact
+gap.
 
 ## Running Docker Compose stacks that need secrets
 
@@ -99,6 +129,8 @@ op run --env-file=op.env -- docker compose up -d
 ```
 
 `op.env` (not `.env` — see below) is committed to git and contains only `op://` references.
+`stacks/platform`, `stacks/gpu-worker`, and `docker/dev-environment` each have a couple of secrets
+left as TODOs the same way (no 1Password item yet) — check each `op.env` for specifics.
 
 ### Why `op.env`, not `.env`
 

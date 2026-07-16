@@ -97,7 +97,7 @@ Recent additions:
 
 - **Git as Source of Truth** - All infrastructure defined in this repo
 - **LAN-Only Access** - Management interfaces never exposed publicly
-- **Secrets via env + vault** - Credentials never committed in plaintext; 1Password is source of truth, sync into encrypted vaults or export env vars before runs
+- **Secrets via 1Password Environments** - Credentials never committed in plaintext; 1Password is the sole source of truth, resolved at runtime via `op run` (see `docs/secrets-management.md`)
 
 ## Documentation
 
@@ -109,12 +109,12 @@ Recent additions:
 
 ## Deploy a Stack
 
-Most infrastructure now deploys through Ansible playbooks, with the observability stack living under `ansible/files/observability` and the deployment entrypoint at `ansible/playbooks/platform/deploy-observability.yml`.
+Most infrastructure now deploys through Ansible playbooks, with the observability stack living under `ansible/files/observability` and the deployment entrypoint at `ansible/playbooks/observability/deploy-observability.yml`.
 
 ```bash
 cd ansible
-ansible-playbook playbooks/platform/deploy-observability.yml --syntax-check
-ansible-playbook playbooks/platform/deploy-observability.yml --diff
+ansible-playbook playbooks/observability/deploy-observability.yml --syntax-check
+./scripts/run-playbook.sh observability playbooks/observability/deploy-observability.yml --diff
 ```
 
 For the observability smoke harness, run:
@@ -127,17 +127,9 @@ python scripts/test-observability-alerting.py full --docker-exec
 
 ## Scripts
 
-### Secrets & Vault helper
-- `ansible/scripts/sync-1password-to-vault.py`: Sync Ansible-tagged 1Password items into encrypted vaults (env → vault at runtime; no live `op` calls).
-  - Write to unraid vault with backup + prompt:
-    ```bash
-    ANSIBLE_VAULT_PASSWORD_FILE=ansible/scripts/ansible-vault-password.sh \
-    ansible/scripts/sync-1password-to-vault.py --group unraid
-    ```
-  - Print-only:
-    ```bash
-    ansible/scripts/sync-1password-to-vault.py --group unraid --print-only
-    ```
+### Secrets
+- `ansible/scripts/run-playbook.sh`: wraps `ansible-playbook` with `op run --env-file=ansible/envs/<slug>.env`, resolving secrets from 1Password at invocation time. See `docs/secrets-management.md` for the full picture and the slug → env file mapping.
+- `ansible/scripts/sync-1password-to-vault.py.DEPRECATED`: leftover from a since-reverted Ansible Vault approach — kept for historical reference only, not part of the current workflow.
 
 ```bash
 # Backup Docker volumes
@@ -148,7 +140,7 @@ python scripts/test-observability-alerting.py full --docker-exec
 
 - Docker sockets never exposed publicly
 - Management interfaces accessible only via LAN/VPN
-- Credentials stored in 1Password, loaded via `.env`
+- Credentials stored in 1Password, resolved at runtime via `op run` (see `docs/secrets-management.md`)
 - TLS for production services via NPM
 
 ## License

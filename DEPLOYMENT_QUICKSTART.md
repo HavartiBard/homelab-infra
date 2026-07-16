@@ -72,45 +72,35 @@ N/A - No deployment changes made. This is validation of existing Ollama service.
 **Status:** ✅ Production
 **Hosts:** tt1, tt2 (Technitium), agh1, agh2 (AdGuard Home)
 
+Secrets below resolve from 1Password via `op run` — see `docs/secrets-management.md`. No manual
+`export` needed; use `./scripts/run-playbook.sh <slug> <playbook> <args>` instead of bare
+`ansible-playbook`.
+
 ### Deploy DNS/DHCP LXCs
 
 ```bash
 cd /home/james/projects/homelab-infra/ansible
 
-# Set required env vars
-export PROXMOX_API_HOST="pve-01.klsll.com"
-export PROXMOX_API_USER="root@pam"
-export PROXMOX_API_TOKEN_ID="ansible"
-export PROXMOX_API_TOKEN_SECRET="your-token-secret"
-
 # Syntax check
 ansible-playbook playbooks/dns/provision-dns-dhcp.yml --syntax-check
 
 # Dry-run
-ansible-playbook playbooks/dns/provision-dns-dhcp.yml --check --diff
+./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp.yml --check --diff
 
 # Deploy
-ansible-playbook playbooks/dns/provision-dns-dhcp.yml --diff -v
+./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp.yml --diff -v
 ```
 
 ### Deploy DNS/DHCP Services
 
 ```bash
-# Optional: Set admin password (or will prompt)
-export TECHNITIUM_ADMIN_PASSWORD="your-secure-password"
-
-# Deploy services
-ansible-playbook playbooks/dns/provision-dns-dhcp-services.yml --diff -v
+./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp-services.yml --diff -v
 ```
 
 ### Deploy AdGuard Configuration
 
 ```bash
-# Get admin password from 1Password
-export ADGUARD_ADMIN_PASSWORD=$(op read "op://AI Wedge/AdGuard Admin/password")
-
-# Deploy configuration
-ansible-playbook playbooks/dns/deploy-adguard-config.yml --diff -v
+./scripts/run-playbook.sh adguard playbooks/dns/deploy-adguard-config.yml --diff -v
 ```
 
 ---
@@ -125,22 +115,20 @@ ansible-playbook playbooks/dns/deploy-adguard-config.yml --diff -v
 ```bash
 cd /home/james/projects/homelab-infra/ansible
 
-# Get required credentials
-export UNRAID_API_KEY=$(op read "op://AI Wedge/Unraid GraphQL - Wedge/credential")
-export ORBI_PASSWORD=$(op read "op://AI Wedge/Orbi Admin/password")
-export OP_SERVICE_ACCOUNT_TOKEN=$(op read "op://AI Wedge/1Password Service Account/credential")
+# OP_SERVICE_ACCOUNT_TOKEN must already be in your shell env (see docs/secrets-management.md) -
+# it's the one bootstrap secret, not an op:// reference.
 
 # Deploy Unraid MCP
-ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml --limit unraid-server --diff -v
+./scripts/run-playbook.sh unraid-mcp playbooks/mcp/deploy-unraid-mcp.yml --limit unraid-server --diff -v
 
 # Deploy Homelab MCP
-ansible-playbook playbooks/mcp/deploy-homelab-mcp.yml --limit unraid-server --diff -v
+./scripts/run-playbook.sh homelab-mcp playbooks/mcp/deploy-homelab-mcp.yml --limit unraid-server --diff -v
 
 # Deploy 1Password MCP
 ansible-playbook playbooks/mcp/deploy-onepassword-mcp.yml --limit unraid-server --diff -v
 
 # Deploy Proxmox MCP
-ansible-playbook playbooks/mcp/deploy-proxmox-mcp.yml --limit unraid-server --diff -v
+./scripts/run-playbook.sh proxmox-mcp playbooks/mcp/deploy-proxmox-mcp.yml --limit unraid-server --diff -v
 ```
 
 ### Verify MCP Servers
@@ -165,18 +153,21 @@ ssh -i ~/.ssh/id_ed25519_homelab root@unraid-server "docker logs mcp-proxmox"
 
 ### Deploy via Docker Compose
 
+Secrets resolve from 1Password via `op.env` (committed, `op://` references only) — see
+`docs/secrets-management.md`. `.env` is still copied for non-secret config (ports, TZ).
+
 ```bash
 cd /home/james/projects/homelab-infra/stacks/platform
 
-# Create .env file
+# Create .env file for non-secret config
 cp .env.example .env
-# Edit .env with appropriate values
+# Edit .env with non-secret values
 
 # Validate compose file
-docker compose config
+op run --env-file=op.env -- docker compose config
 
 # Deploy stack
-docker compose up -d
+op run --env-file=op.env -- docker compose up -d
 
 # View logs
 docker compose logs -f
@@ -191,7 +182,7 @@ cd /home/james/projects/homelab-infra/stacks/platform
 docker compose pull
 
 # Recreate containers
-docker compose up -d
+op run --env-file=op.env -- docker compose up -d
 
 # Clean up old images
 docker image prune -f
@@ -206,18 +197,19 @@ docker image prune -f
 
 ### Deploy Ollama + Open WebUI
 
+Secrets resolve from 1Password via `op.env` — see `docs/secrets-management.md`.
+
 ```bash
 cd /home/james/projects/homelab-infra/stacks/gpu-worker
 
-# Create .env file
+# Create .env file for non-secret config
 cp .env.example .env
-# Edit with OPENAI_API_KEY, etc.
 
 # Validate
-docker compose config
+op run --env-file=op.env -- docker compose config
 
 # Deploy
-docker compose up -d
+op run --env-file=op.env -- docker compose up -d
 
 # Check GPU access
 docker exec ollama nvidia-smi
