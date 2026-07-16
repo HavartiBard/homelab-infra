@@ -88,6 +88,9 @@
       retries: 12
       delay: 10
 
+    # Open WebUI's config table moved from a single JSON blob row
+    # (id, data) to per-key rows (key, value, updated_at) — the old
+    # UPDATE-single-row approach silently no-ops on that schema.
     - name: Configure Open WebUI image generation defaults in database
       ansible.builtin.command:
         argv:
@@ -97,30 +100,26 @@
           - python
           - -c
           - |
-            import json, sqlite3
+            import json, sqlite3, time
             conn = sqlite3.connect('/app/backend/data/webui.db')
-            cur = conn.cursor()
-            row = cur.execute('select id, data from config limit 1').fetchone()
-            if not row:
-                raise SystemExit('missing config row')
-            config_id, raw = row
-            data = json.loads(raw or '{}')
+            now = int(time.time())
             desired = json.loads({{ {
-              'ENABLE_IMAGE_GENERATION': true,
-              'IMAGE_GENERATION_ENGINE': open_webui_image_generation_engine,
-              'COMFYUI_BASE_URL': open_webui_comfyui_base_url,
-              'IMAGE_GENERATION_MODEL': open_webui_image_generation_model,
-              'IMAGE_SIZE': open_webui_image_size,
-              'IMAGE_STEPS': open_webui_image_steps,
-              'ENABLE_IMAGE_PROMPT_GENERATION': open_webui_enable_image_prompt_generation,
-              'COMFYUI_WORKFLOW': open_webui_comfyui_workflow,
-              'COMFYUI_WORKFLOW_NODES': open_webui_comfyui_workflow_nodes,
+              'image_generation.enable': true,
+              'image_generation.engine': open_webui_image_generation_engine,
+              'image_generation.comfyui.base_url': open_webui_comfyui_base_url,
+              'image_generation.model': open_webui_image_generation_model,
+              'image_generation.size': open_webui_image_size,
+              'image_generation.steps': open_webui_image_steps,
+              'image_generation.prompt.enable': open_webui_enable_image_prompt_generation,
+              'image_generation.comfyui.workflow': open_webui_comfyui_workflow,
+              'image_generation.comfyui.nodes': open_webui_comfyui_workflow_nodes,
             } | to_json | to_json }})
-            data.update(desired)
-            cur.execute(
-                'update config set data = ?, updated_at = CURRENT_TIMESTAMP where id = ?',
-                (json.dumps(data), config_id),
-            )
+            for key, value in desired.items():
+                conn.execute(
+                    'insert into config(key, value, updated_at) values (?, ?, ?) '
+                    'on conflict(key) do update set value = excluded.value, updated_at = excluded.updated_at',
+                    (key, json.dumps(value), now),
+                )
             conn.commit()
       args:
         chdir: "{{ service_dir }}"
@@ -138,21 +137,30 @@
           - |
             import json, sqlite3, sys
             conn = sqlite3.connect('/app/backend/data/webui.db')
-            data = json.loads(conn.cursor().execute('select data from config limit 1').fetchone()[0])
+            cur = conn.cursor()
+            def get(key):
+                row = cur.execute('select value from config where key = ?', (key,)).fetchone()
+                if row is None:
+                    return None
+                value = row[0]
+                # SQLite's NUMERIC column affinity silently coerces
+                # numeric-looking JSON text (e.g. steps="4") into a native
+                # int/float, so it's not always a string to re-decode.
+                return json.loads(value) if isinstance(value, str) else value
             expected = json.loads({{ {
-              'ENABLE_IMAGE_GENERATION': true,
-              'IMAGE_GENERATION_ENGINE': open_webui_image_generation_engine,
-              'COMFYUI_BASE_URL': open_webui_comfyui_base_url,
-              'IMAGE_GENERATION_MODEL': open_webui_image_generation_model,
-              'IMAGE_SIZE': open_webui_image_size,
-              'IMAGE_STEPS': open_webui_image_steps,
-              'ENABLE_IMAGE_PROMPT_GENERATION': open_webui_enable_image_prompt_generation,
+              'image_generation.enable': true,
+              'image_generation.engine': open_webui_image_generation_engine,
+              'image_generation.comfyui.base_url': open_webui_comfyui_base_url,
+              'image_generation.model': open_webui_image_generation_model,
+              'image_generation.size': open_webui_image_size,
+              'image_generation.steps': open_webui_image_steps,
+              'image_generation.prompt.enable': open_webui_enable_image_prompt_generation,
             } | to_json | to_json }})
-            mismatches = {k: {'expected': v, 'actual': data.get(k)} for k, v in expected.items() if data.get(k) != v}
-            if not data.get('COMFYUI_WORKFLOW'):
-                mismatches['COMFYUI_WORKFLOW'] = {'expected': 'non-empty', 'actual': 'empty'}
-            if not data.get('COMFYUI_WORKFLOW_NODES'):
-                mismatches['COMFYUI_WORKFLOW_NODES'] = {'expected': 'non-empty', 'actual': 'empty'}
+            mismatches = {k: {'expected': v, 'actual': get(k)} for k, v in expected.items() if get(k) != v}
+            if not get('image_generation.comfyui.workflow'):
+                mismatches['image_generation.comfyui.workflow'] = {'expected': 'non-empty', 'actual': 'empty'}
+            if not get('image_generation.comfyui.nodes'):
+                mismatches['image_generation.comfyui.nodes'] = {'expected': 'non-empty', 'actual': 'empty'}
             if mismatches:
                 print(json.dumps(mismatches, indent=2))
                 sys.exit(1)

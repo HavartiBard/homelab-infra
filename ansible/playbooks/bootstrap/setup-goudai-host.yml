@@ -161,6 +161,19 @@
         filename: rocm
         state: present
 
+    # Ubuntu noble's universe repo ships its own rocminfo (5.7.1) at the same
+    # apt priority (500) as ROCm's repo, which apt cannot reliably break the
+    # tie on — rocm-hip-runtime needs the exact ROCm-repo version. Pin the
+    # ROCm repo higher so its packages always win.
+    - name: Pin ROCm apt repository above Ubuntu universe
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/rocm
+        content: |
+          Package: *
+          Pin: release o=repo.radeon.com
+          Pin-Priority: 600
+        mode: '0644'
+
     - name: Install ROCm host packages
       ansible.builtin.apt:
         name:
@@ -277,6 +290,21 @@
         path: "{{ ai_models_mount }}/lmstudio"
         state: directory
         mode: '0755'
+      become: false
+
+    - name: Check if LM Studio has bootstrapped its data directory
+      ansible.builtin.stat:
+        path: "/home/{{ host_user }}/.lmstudio/settings.json"
+      register: lms_settings_file
+      become: false
+
+    # settings.json (and the rest of ~/.lmstudio's app data) is only created
+    # once the server/app has run at least once — installing the CLI alone
+    # does not bootstrap it.
+    - name: Bootstrap LM Studio data directory (first run only)
+      ansible.builtin.shell:
+        cmd: "{{ lmstudio_bin }} server start && {{ lmstudio_bin }} server stop"
+      when: not lms_settings_file.stat.exists
       become: false
 
     - name: Read LM Studio settings
