@@ -1,4 +1,12 @@
 ---
+# Deploy SoulLayer MCP Server on Unraid
+#
+# Usage:
+#   ./scripts/run-playbook.sh soullayer playbooks/mcp/deploy-soullayer.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/soullayer.env (see
+# docs/secrets-management.md).
+
 - name: Deploy SoulLayer MCP Server on Unraid
   hosts: unraid
   become: true
@@ -16,7 +24,14 @@
     compose_download_url: >-
       https://github.com/docker/compose/releases/download/{{
       compose_version }}/docker-compose-linux-x86_64
+    ai_agents_ssh_private_key: "{{ lookup('ansible.builtin.env', 'AI_AGENTS_SSH_PRIVATE_KEY') | default('', true) }}"
   tasks:
+    - name: Assert AI-Agents SSH private key is provided
+      ansible.builtin.assert:
+        that:
+          - ai_agents_ssh_private_key | length > 0
+        fail_msg: "Set AI_AGENTS_SSH_PRIVATE_KEY env var (from 1Password 'ai-agents-gitea-ssh'), e.g. via ansible/envs/soullayer.env"
+
     - name: Create SoulLayer directories
       ansible.builtin.file:
         path: "{{ item }}"
@@ -34,7 +49,7 @@
 
     - name: Deploy SSH private key to Unraid
       ansible.builtin.copy:
-        content: "{{ vault_ai_agents_ssh_private_key }}"
+        content: "{{ ai_agents_ssh_private_key }}"
         dest: "{{ ssh_key_path }}"
         mode: "0600"
         owner: root

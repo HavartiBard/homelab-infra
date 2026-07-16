@@ -2,11 +2,11 @@ model_list:
   - model_name: claude-sonnet-4-6
     litellm_params:
       model: anthropic/claude-sonnet-4-6
-      api_key: "{{ vault_litellm_anthropic_api_key }}"
+      api_key: "{{ litellm_anthropic_api_key }}"
   - model_name: gpt-4o
     litellm_params:
       model: openai/gpt-4o
-      api_key: "{{ vault_litellm_openai_api_key }}"
+      api_key: "{{ litellm_openai_api_key }}"
   - model_name: ollama/llama3.1
     litellm_params:
       model: ollama/llama3.1:8b
@@ -43,4 +43,4 @@ model_list:
       api_key: "llama.cpp"
 
 general_settings:
-  master_key: "{{ vault_litellm_master_key }}"
+  master_key: "{{ litellm_master_key }}"

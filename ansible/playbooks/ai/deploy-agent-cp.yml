@@ -6,7 +6,6 @@
 # The backend is internal-only; web nginx handles the API proxy to backend.
 #
 # Prerequisites:
-#   - vault.yml contains vault_agent_cp_* entries
 #   - Images pushed to code.klsll.com/havartibard/
 #   - br0 macvlan network exists on Unraid (docker network ls | grep br0)
 #
@@ -16,7 +15,12 @@
 #   Web UI (proxied):   https://agent-cp.klsll.com
 #
 # Usage:
-#   ansible-playbook playbooks/ai/deploy-agent-cp.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
+#   ./scripts/run-playbook.sh agent-cp playbooks/ai/deploy-agent-cp.yml --diff --limit unraid -v
+#
+# Secrets resolved from 1Password via ansible/envs/agent-cp.env (see
+# docs/secrets-management.md) — NOTE: postgres_password, raclette_session_token,
+# slack_bot_token, slack_app_token, and secret_encryption_key have no
+# 1Password item yet, see the TODOs in that file.
 
 - name: Deploy agent-control-plane
   hosts: unraid
@@ -26,16 +30,43 @@
     agent_cp_dir: /mnt/user/appdata/agent-cp
     agent_cp_ip: "192.168.21.2"
     npm_url: "https://npm.klsll.com"
-    npm_email: "{{ vault_npm_admin_username }}"
-    npm_password: "{{ vault_npm_admin_password }}"
+    npm_email: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_EMAIL') | default('', true) }}"
+    npm_password: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_PASSWORD') | default('', true) }}"
     technitium_url: "http://192.168.20.2:5380"
-    technitium_token: "{{ vault_technitium_api_token }}"
+    technitium_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
     dns_zone: "klsll.com"
     dns_domain: "agent-cp.klsll.com"
     # DNS A record points to NPM so HTTPS termination works
     dns_target: "192.168.20.50"
+    agent_cp_postgres_password: "{{ lookup('ansible.builtin.env', 'AGENT_CP_POSTGRES_PASSWORD') | default('', true) }}"
+    agent_cp_raclette_session_token: "{{ lookup('ansible.builtin.env', 'AGENT_CP_RACLETTE_SESSION_TOKEN') | default('', true) }}"
+    agent_cp_slack_bot_token: "{{ lookup('ansible.builtin.env', 'AGENT_CP_SLACK_BOT_TOKEN') | default('', true) }}"
+    agent_cp_slack_app_token: "{{ lookup('ansible.builtin.env', 'AGENT_CP_SLACK_APP_TOKEN') | default('', true) }}"
+    agent_cp_secret_encryption_key: "{{ lookup('ansible.builtin.env', 'AGENT_CP_SECRET_ENCRYPTION_KEY') | default('', true) }}"
+    litellm_anthropic_api_key: "{{ lookup('ansible.builtin.env', 'LITELLM_ANTHROPIC_API_KEY') | default('', true) }}"
+    litellm_openai_api_key: "{{ lookup('ansible.builtin.env', 'LITELLM_OPENAI_API_KEY') | default('', true) }}"
+    gitea_mcp_token: >-
+      {{ lookup('ansible.builtin.env', 'GITEA_MCP_TOKEN')
+         | default(lookup('ansible.builtin.env', 'GITEA_TOKEN'), true) }}
 
   tasks:
+    - name: Assert agent-cp credentials are provided
+      ansible.builtin.assert:
+        that:
+          - agent_cp_postgres_password | length > 0
+          - agent_cp_raclette_session_token | length > 0
+          - agent_cp_slack_bot_token | length > 0
+          - agent_cp_slack_app_token | length > 0
+          - agent_cp_secret_encryption_key | length > 0
+          - litellm_anthropic_api_key | length > 0
+          - litellm_openai_api_key | length > 0
+          - gitea_mcp_token | length > 0
+        fail_msg: >-
+          Missing one or more agent-cp env vars. AGENT_CP_POSTGRES_PASSWORD,
+          AGENT_CP_RACLETTE_SESSION_TOKEN, AGENT_CP_SLACK_BOT_TOKEN,
+          AGENT_CP_SLACK_APP_TOKEN, and AGENT_CP_SECRET_ENCRYPTION_KEY have no
+          1Password item yet — see the TODOs in ansible/envs/agent-cp.env.
+
     - name: Create appdata directory
       raw: mkdir -p {{ agent_cp_dir }}/workspace
 
@@ -47,19 +78,19 @@
     - name: Write .env file
       copy:
         content: |
-          POSTGRES_PASSWORD={{ vault_agent_cp_postgres_password }}
+          POSTGRES_PASSWORD={{ agent_cp_postgres_password }}
           LANGGRAPH_API_URL=http://192.168.20.14:8000
           RACLETTE_API_URL=http://192.168.20.169:9119
-          RACLETTE_SESSION_TOKEN={{ vault_agent_cp_raclette_session_token }}
-          SLACK_BOT_TOKEN={{ vault_agent_cp_slack_bot_token }}
-          SLACK_APP_TOKEN={{ vault_agent_cp_slack_app_token }}
+          RACLETTE_SESSION_TOKEN={{ agent_cp_raclette_session_token }}
+          SLACK_BOT_TOKEN={{ agent_cp_slack_bot_token }}
+          SLACK_APP_TOKEN={{ agent_cp_slack_app_token }}
           SLACK_CHANNEL_ID=C0AU0620ATX
-          SECRET_ENCRYPTION_KEY={{ vault_agent_cp_secret_encryption_key }}
-          ANTHROPIC_API_KEY={{ vault_litellm_anthropic_api_key }}
-          OPENAI_API_KEY={{ vault_litellm_openai_api_key }}
+          SECRET_ENCRYPTION_KEY={{ agent_cp_secret_encryption_key }}
+          ANTHROPIC_API_KEY={{ litellm_anthropic_api_key }}
+          OPENAI_API_KEY={{ litellm_openai_api_key }}
           AGENT_REPO_ROOT=/workspace/repo
           AGENT_WORKTREE_ROOT=/workspace/agents
-          GITEA_TOKEN={{ vault_gitea_mcp_token }}
+          GITEA_TOKEN={{ gitea_mcp_token }}
           AGENT_CP_IP={{ agent_cp_ip }}
         dest: "{{ agent_cp_dir }}/.env"
         mode: '0600'

@@ -3,16 +3,16 @@
 #
 # LiteLLM provides an OpenAI-compatible endpoint that unifies Claude, OpenAI, and Ollama.
 #
-# Prerequisites:
-#   - vault.yml contains vault_litellm_* entries (update CHANGEME_ placeholders first)
-#   - Replace CHANGEME_ values in vault.yml before running
+# Usage:
+#   ./scripts/run-playbook.sh litellm playbooks/ai/deploy-litellm.yml --diff --limit unraid -v
+#
+# Secrets resolved from 1Password via ansible/envs/litellm.env (see
+# docs/secrets-management.md) — NOTE: litellm_db_password has no 1Password
+# item yet, see the TODO in that file.
 #
 # After deployment:
 #   LiteLLM:  http://192.168.20.14:4000/health
 #   Models:   http://192.168.20.14:4000/models
-#
-# Usage:
-#   ansible-playbook playbooks/misc/deploy-litellm.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
 
 - name: Deploy LiteLLM on Unraid
   hosts: unraid
@@ -20,8 +20,23 @@
 
   vars:
     litellm_dir: /mnt/user/appdata/litellm
+    litellm_anthropic_api_key: "{{ lookup('ansible.builtin.env', 'LITELLM_ANTHROPIC_API_KEY') | default('', true) }}"
+    litellm_openai_api_key: "{{ lookup('ansible.builtin.env', 'LITELLM_OPENAI_API_KEY') | default('', true) }}"
+    litellm_master_key: "{{ lookup('ansible.builtin.env', 'LITELLM_MASTER_KEY') | default('', true) }}"
+    litellm_db_password: "{{ lookup('ansible.builtin.env', 'LITELLM_DB_PASSWORD') | default('', true) }}"
 
   tasks:
+    - name: Assert LiteLLM credentials are provided
+      ansible.builtin.assert:
+        that:
+          - litellm_anthropic_api_key | length > 0
+          - litellm_openai_api_key | length > 0
+          - litellm_master_key | length > 0
+          - litellm_db_password | length > 0
+        fail_msg: >-
+          Missing one or more LiteLLM env vars, e.g. via ansible/envs/litellm.env.
+          LITELLM_DB_PASSWORD has no 1Password item yet — see the TODO in that file.
+
     - name: Create LiteLLM appdata directory
       raw: mkdir -p {{ litellm_dir }}
 
