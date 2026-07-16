@@ -11,8 +11,11 @@ These standards apply to every service regardless of class.
 - Idempotence gate: rerun `--check --diff` after apply, expect `changed=0`
 
 ## Secrets
-- Never hardcode secrets — use `op read "op://AI Wedge/<item>/<field>"` in `defaults/main.yml`
-- No plaintext secrets in repo; placeholders use `CHANGEME_*`
+- Never hardcode secrets — roles read them via `lookup('ansible.builtin.env', 'VAR_NAME')` (no
+  fallback), resolved at invocation time from `ansible/envs/<name>.env` via `op run`. See
+  `docs/secrets-management.md`.
+- No plaintext secrets in repo; committed env files hold only `KEY=op://vault/item/field`
+  references, enforced by CI (`env-guard`)
 
 ## Container configuration
 - Set `TZ: America/Phoenix` in compose env for all containers

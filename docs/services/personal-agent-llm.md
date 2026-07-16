@@ -39,7 +39,7 @@ Re-run LiteLLM after deployment if clients should discover the model through the
 
 ```bash
 cd ansible
-ansible-playbook playbooks/ai/deploy-litellm.yml --diff --limit unraid -v --vault-password-file ~/.vault-pass
+./scripts/run-playbook.sh litellm playbooks/ai/deploy-litellm.yml --diff --limit unraid -v
 ```
 
 ## Health Check

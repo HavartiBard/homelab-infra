@@ -14,46 +14,33 @@ ansible-galaxy collection install community.docker community.general
 
 ## Credential Management
 
-This repository uses a 1Password Service Account for automated credential access. No vault files or manual `op signin` required.
+This repository uses **1Password Environments** — see `../docs/secrets-management.md` for the full
+picture. Short version:
 
-### One-time Setup
-
-1. Ensure `OP_SERVICE_ACCOUNT_TOKEN` is exported in your `~/.bashrc`:
+1. One-time setup — export the bootstrap secret in your shell profile:
    ```bash
    echo 'export OP_SERVICE_ACCOUNT_TOKEN="ops-YOUR-TOKEN-HERE"' >> ~/.bashrc
    source ~/.bashrc
+   op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"  # smoke test
    ```
 
-2. Verify the service account works:
+2. Run playbooks that need secrets through the wrapper script instead of `ansible-playbook`
+   directly:
    ```bash
-   op read "op://AI Wedge/Unraid GraphQL - Wedge/credential"
-   # Should output the token without prompting for signin
+   ./scripts/run-playbook.sh unraid-mcp playbooks/mcp/deploy-unraid-mcp.yml
+   ```
+   `unraid-mcp` here is a slug mapping to `ansible/envs/unraid-mcp.env` — see
+   `../docs/secrets-management.md` for the full slug table. Playbooks with no secrets are
+   unaffected and keep running via plain `ansible-playbook ...`.
+
+3. Override a resolved secret for testing:
+   ```bash
+   UNRAID_API_KEY="test-key" ./scripts/run-playbook.sh unraid-mcp playbooks/mcp/deploy-unraid-mcp.yml
    ```
 
-### Usage
-
-All playbooks automatically read credentials from 1Password. Just run them:
-
-```bash
-# Credentials are automatically fetched from 1Password
-ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
-```
-
-### Override Credentials for Testing
-
-```bash
-# Override a specific credential via environment variable
-UNRAID_API_KEY="test-key" ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
-```
-
-### How It Works
-
-Roles use a two-tier fallback pattern:
-1. **Environment variable** (e.g., `UNRAID_API_KEY`) - highest priority
-2. **Direct 1Password lookup** via `op read` - automatic via service account
-3. **Empty fallback** - role fails with clear error if credential missing
-
-No vault files, no sync script, no manual credential export needed.
+Roles read credentials via `lookup('ansible.builtin.env', 'VAR_NAME')` with no fallback — a
+missing/misnamed 1Password reference fails the role's assert immediately instead of deploying with
+an empty secret.
 
 ## Agent runbook
 
@@ -110,8 +97,7 @@ See `docs/windows-ssh-setup.md` for detailed setup and troubleshooting.
 Deploys the Homelab MCP server (Orbi, NPM, Pi-hole tools).
 
 ```bash
-export ORBI_PASSWORD='<from 1Password: Orbi Login>'
-ansible-playbook playbooks/mcp/deploy-homelab-mcp.yml
+./scripts/run-playbook.sh homelab-mcp playbooks/mcp/deploy-homelab-mcp.yml
 ```
 
 ### deploy-onepassword-mcp.yml
@@ -128,20 +114,19 @@ ansible-playbook playbooks/mcp/deploy-onepassword-mcp.yml
 Deploys the Unraid MCP server (GraphQL-based Unraid management).
 
 ```bash
-export UNRAID_API_KEY='<from 1Password: Unraid GraphQL - Wedge → credential>'
-ansible-playbook playbooks/mcp/deploy-unraid-mcp.yml
+./scripts/run-playbook.sh unraid-mcp playbooks/mcp/deploy-unraid-mcp.yml
 ```
 
 **Target:** 192.168.20.14:6970
 **Image:** ghcr.io/havartibard/unraid-mcp:latest
 **Last Updated:** 2026-01-06 (Tag: 1c13de8)
 
-### deploy-npm-unraid.yml
+### deploy-npm.yml
 
 Deploys Nginx Proxy Manager on Unraid with a dedicated macvlan/ipvlan IP and optional ACME issuer. The playbook creates required directories, templated `docker-compose.yml`, pulls images, and performs a health check via the dedicated IP/port.
 
 ```bash
-ansible-playbook playbooks/platform/deploy-npm-unraid.yml
+./scripts/run-playbook.sh npm playbooks/platform/deploy-npm.yml
 ```
 
 **Notes:** Update `ansible/group_vars/unraid.yml` with the desired `npm_*` variables before running. The playbook relies on the `unraid` host group and expects SSH access as configured in `inventory/hosts.yml`. If the Unraid host lacks `docker compose`, the role will download a pinned `docker-compose` binary to `{{ compose_bin_path }}`. Optional: enable `npm_manage_proxies` / `npm_manage_dns` and place per-service configs in `ansible/files/npm/services/` to create proxy hosts and Technitium DNS records using the NPM API.
@@ -153,10 +138,10 @@ ansible-playbook playbooks/platform/deploy-npm-unraid.yml
 Deploys Gitea on Unraid using a Postgres backend plus the built-in container registry. The service runs on the same macvlan segment as NPM, so keep `gitea_ip` and `gitea_network_*` aligned with the VLAN20 plan and route TLS through Nginx Proxy Manager.
 
 ```bash
-ansible-playbook playbooks/platform/deploy-gitea.yml
+./scripts/run-playbook.sh gitea playbooks/platform/deploy-gitea.yml
 ```
 
-**Notes:** Supply secrets via the new `Gitea Service Credentials` 1Password item (fields `db_password` and `admin_password`) or set `GITEA_DB_PASSWORD`/`GITEA_ADMIN_PASSWORD` in the shell before running. Update `ansible/group_vars/unraid/unraid.yml` if you need to change the dedicated IP/domain. See `docs/services/gitea.md` for full architecture, DNS, and registry guidance.
+**Notes:** Secrets (`GITEA_DB_PASSWORD` from `Gitea DB Credentials`, `GITEA_ADMIN_PASSWORD` from `Gitea Service Credentials`) resolve from 1Password via `ansible/envs/gitea.env` — see `../docs/secrets-management.md`. Update `ansible/group_vars/unraid/unraid.yml` if you need to change the dedicated IP/domain. See `docs/services/gitea.md` for full architecture, DNS, and registry guidance.
 After deploying Gitea, run `ansible-playbook playbooks/services/update-gitea-proxy.yml` so the `code.klsll.com` and `registry.klsll.com` proxy hosts + DNS records are created via the npm role. Re-run the playbook whenever the endpoints or IPs change.
 
 ### deploy-sprite-smith.yml
@@ -213,53 +198,20 @@ ansible-playbook playbooks/ai/deploy-lm-eval-harness.yml --limit unraid -v
 
 **Runner:** `docker exec -it lm-eval-harness bash`
 
-### 1Password item naming (avoid breakage)
+### 1Password item naming
 
-Playbooks and roles assume stable 1Password item names but only consume them via env or pre-populated vault values. Keep these items consistent so the sync helper can populate vault vars:
-- `Nginx Proxy Manager Admin` (fields: `username`, `password`)
-- `DNS Automation Credential` (Technitium API token; field: `credential`/`password` token)
-- `Cloudflare DNS Token` (field: `credential`/API token)
-- `AdGuard Admin` (fields: `username`, `password`)
-- `Orbi Login` (fields: `username`, `password`)
-- `OP_SERVICE_ACCOUNT_TOKEN` (field: `credential`)
-- `Proxmox MCP Token` (fields: `host`, `port`, `username`, `token_name`, `credential`, `allow_elevated`)
-- `Unraid GraphQL - Wedge` (field: `credential`)
-
-When adding a new service, pick a clear, purpose-specific item name, tag it `Ansible`, and add it to the sync helper map so vault vars can be refreshed from 1Password.
-
-## Credential map (1Password)
-
-| Env/var | 1Password item | Field(s) used | Playbooks/roles |
-| --- | --- | --- | --- |
-| `ORBI_PASSWORD` | Orbi Login | password | `ansible/playbooks/mcp/deploy-homelab-mcp.yml` (homelab-mcp role) |
-| `OP_SERVICE_ACCOUNT_TOKEN` | OP_SERVICE_ACCOUNT_TOKEN | credential | `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` |
-| `UNRAID_API_KEY` | Unraid GraphQL - Wedge | credential | `ansible/playbooks/mcp/deploy-unraid-mcp.yml` |
-| `NPM_ADMIN_EMAIL`/`NPM_ADMIN_PASSWORD` | Nginx Proxy Manager Admin | username, password | `ansible/playbooks/platform/deploy-npm-unraid.yml` (npm role) |
-| `TECHNITIUM_API_TOKEN` / `TECHNITIUM_ADMIN_PASSWORD` | DNS Automation Credential | credential (token) and/or password | `deploy-npm-unraid.yml` (npm role, Technitium DNS) |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare DNS Token | credential | `deploy-npm-unraid.yml` (npm role, cert DNS challenge) |
-| `PROXMOX_MCP_*` (HOST/PORT/USER/TOKEN_NAME/TOKEN_VALUE/ALLOW_ELEVATED) | Proxmox MCP Token | host, port, username, token_name, credential, allow_elevated | `deploy-proxmox-mcp.yml` |
-| `PROXMOX_API_TOKEN_SECRET` (+ host/user/id envs) | Proxmox API (root@pam) | secret/token field | `provision-dns-dhcp.yml`, `provision-dns-dhcp-services.yml` |
-| `ADGUARD_ADMIN_USER` / `ADGUARD_ADMIN_PASSWORD` | AdGuard Admin | username, password | `deploy-adguard-config.yml` |
-| `ORBI_USERNAME` / `ORBI_PASSWORD` | Orbi Login | username, password | `deploy-homelab-mcp.yml` (read from 1Password item fields) |
-| `UNRAID_API_KEY` | Unraid GraphQL - Wedge | credential | `deploy-unraid-mcp.yml` |
-
-Notes:
-- Keep item names aligned with `*_op_item` in `group_vars`/defaults. If you rename an item, update the var and rerun the playbook.
-- Some roles allow either a token (preferred) or a password login; provide the token when possible.
+When adding a new service, pick a clear, purpose-specific 1Password item name, tag it `Ansible`,
+and add a matching `ansible/envs/<service>.env` (see the pattern in any existing role's
+`defaults/main.yml`). See `../docs/secrets-management.md` for the complete, current slug → env
+file → item mapping — don't duplicate that table here, it goes stale fast.
 
 ### provision-dns-dhcp.yml
 
 Provisions the four DNS/DHCP VMs (tt1/tt2/agh1/agh2) on Proxmox using the IP plan in `group_vars/all/dns_dhcp.yml`.
 
 ```bash
-# Set Proxmox API values (from 1Password; token secret not in git)
-export PROXMOX_API_HOST=192.168.20.100
-export PROXMOX_API_USER='root@pam'
-export PROXMOX_API_TOKEN_ID='root@pam!ansible'
-export PROXMOX_API_TOKEN_SECRET='<from 1Password>'
-
 # Optional: toggle guest VLAN NICs for AdGuard in group_vars/all/dns_dhcp.yml
-ansible-playbook playbooks/dns/provision-dns-dhcp.yml
+./scripts/run-playbook.sh dns-dhcp playbooks/dns/provision-dns-dhcp.yml
 ```
 
 Assumptions: cloud-init Debian template VMID is set (`dns_dhcp_vm_defaults.template_vmid`), VLAN-aware bridge is `vmbr0`, and VLAN tags 1/20/30 (and optional 40) are trunked to pve-01/pve-02.

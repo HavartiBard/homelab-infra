@@ -8,7 +8,7 @@ Unraid has no Python — always use `ansible.builtin.raw` for file system operat
 ```
 ansible/roles/<name>/
 ├── defaults/
-│   └── main.yml    # All config vars with defaults; credential lookups via op read
+│   └── main.yml    # All config vars with defaults; credentials via lookup('env', ...)
 └── tasks/
     └── main.yml    # Compose deploy + container lifecycle
 ```
@@ -25,10 +25,23 @@ Handlers are optional — use only if restart-on-change semantics are needed.
 <name>_appdata: "/mnt/user/appdata/<name>"
 <name>_compose_dir: "/opt/docker/<name>"
 
-# Credentials — ENV var override first, then 1Password lookup
-# Never hardcode values; never commit secrets to git
-<name>_api_key: "{{ lookup('env', 'SERVICE_API_KEY') or
-  lookup('pipe', 'op read \"op://AI Wedge/<Item>/credential\"') }}"
+# Credentials resolve from 1Password via `op run` at invocation time — see
+# docs/secrets-management.md. No fallback: a missing/misnamed reference
+# should fail loudly, not deploy with an empty secret.
+<name>_api_key: "{{ lookup('ansible.builtin.env', 'SERVICE_API_KEY') | default('', true) }}"
+```
+
+Add a matching `ansible/envs/<name>.env` with the `op://` reference(s) this role needs:
+```
+SERVICE_API_KEY=op://AI Wedge/<Item>/credential
+```
+and a fail-closed assert in `tasks/main.yml`:
+```yaml
+- name: Assert <name> credentials are provided
+  ansible.builtin.assert:
+    that:
+      - <name>_api_key | length > 0
+    fail_msg: "Set SERVICE_API_KEY env var (from 1Password), e.g. via ansible/envs/<name>.env"
 ```
 
 ## tasks/main.yml pattern
@@ -103,7 +116,9 @@ services:
     - role: <name>
 ```
 
-Keep playbooks thin — all logic belongs in the role.
+Keep playbooks thin — all logic belongs in the role. Run with
+`./scripts/run-playbook.sh <name> playbooks/<group>/deploy-<name>.yml` so secrets resolve from
+`ansible/envs/<name>.env`.
 
 ## Unraid-specific notes
 

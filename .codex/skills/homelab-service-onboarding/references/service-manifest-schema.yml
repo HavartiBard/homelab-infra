@@ -54,7 +54,8 @@ container:
 #   homepage_card: true
 #   homepage_group: "<Group>"            # e.g. "Media", "Infrastructure", "AI"
 
-# Document credentials this service needs — implement via op read in defaults/main.yml.
+# Document credentials this service needs — implement via lookup('ansible.builtin.env', ...) in
+# defaults/main.yml, backed by a matching ansible/envs/<name>.env (see docs/secrets-management.md).
 # Never put values here; this is a reference only.
 # credentials:
 #   - name: API_KEY

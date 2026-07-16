@@ -20,25 +20,22 @@ Gitea is our lightweight Git host with a built-in container registry and simple 
 4. Run `ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/services/update-gitea-proxy.yml` to publish the proxy hosts and DNS records via the npm role; re-run whenever the host, IP, or domains change.
 
 ## Secrets
-Store the following fields in a 1Password item named **Gitea Service Credentials** (tag `Ansible`):
-- `db_password` – Postgres service password (exported to `GITEA_DB_PASSWORD`).
-- `admin_password` – initial Gitea administrator password (exported to `GITEA_ADMIN_PASSWORD`).
-
-Run the sync helper to update `ansible/group_vars/unraid/vault.yml` with those values, or export them as env vars before running the playbook. The role defaults look for `GITEA_DB_PASSWORD`/`GITEA_ADMIN_PASSWORD` first and fall back to the `op` commands.
+Resolved from 1Password at invocation time via `ansible/envs/gitea.env` (see
+`docs/secrets-management.md`):
+- `GITEA_DB_PASSWORD` — Postgres service password, from the **Gitea DB Credentials** item.
+- `GITEA_ADMIN_PASSWORD` — initial Gitea administrator password, from the **Gitea Service
+  Credentials** item.
 
 ## Deploy / Run
-1. `eval "$(op signin <subdomain>.1password.com <email>)"` (if needed for vault access).
-2. `source ansible/scripts/setup-vault-helper-env.sh` to surface `ANSIBLE_VAULT_PASSWORD_FILE`.
-3. From the repo root:
+1. From the `ansible/` directory:
    ```bash
-   export ANSIBLE_ROLES_PATH=./ansible/roles
-   ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/platform/deploy-gitea.yml
+   ./scripts/run-playbook.sh gitea playbooks/platform/deploy-gitea.yml
    ```
-4. Sync proxies/DNS:
+2. Sync proxies/DNS:
    ```bash
-   ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/services/update-gitea-proxy.yml
+   ansible-playbook playbooks/services/update-gitea-proxy.yml
    ```
-5. Once finished, configure Nginx Proxy Manager to cover the `code.klsll.com` and `registry.klsll.com` hostnames so TLS is guaranteed.
+3. Once finished, configure Nginx Proxy Manager to cover the `code.klsll.com` and `registry.klsll.com` hostnames so TLS is guaranteed.
 
 ## Verify
 - `curl -fsSL https://code.klsll.com/` should return the login page HTML (or a `200` response).

@@ -1,7 +1,10 @@
 # Migration: Vault Files → 1Password Service Account
 
 **Date**: January 24, 2026
-**Status**: Completed
+**Status**: Superseded — see `docs/secrets-management.md`. This repo went Vault files → this
+approach → back to Ansible Vault (`docs/plans/2026-03-01-vault-migration.md`) → 1Password
+Environments (current). Kept as historical record; the workflow described below is no longer
+current.
 
 ## What Changed
 

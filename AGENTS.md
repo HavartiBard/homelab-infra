@@ -200,18 +200,23 @@ ansible-playbook playbooks/<group>/<playbook>.yml --diff --limit <host> -v
 ansible-playbook playbooks/<group>/<playbook>.yml --check --diff --limit <host>
 ```
 
-Common playbooks and their required env vars:
+Playbooks that need secrets are run through `./scripts/run-playbook.sh <slug> <playbook> <args>`
+instead of bare `ansible-playbook` — secrets resolve from 1Password via `ansible/envs/<slug>.env`.
+See `docs/secrets-management.md` for the complete slug table and the one bootstrap secret
+(`OP_SERVICE_ACCOUNT_TOKEN`) every host/session needs.
+
+Common playbooks and their secrets slug:
 
 **DNS Infrastructure:**
-- `ansible/playbooks/dns/provision-dns-dhcp.yml` → `PROXMOX_API_HOST`, `PROXMOX_API_USER`, `PROXMOX_API_TOKEN_ID`, `PROXMOX_API_TOKEN_SECRET`
-- `ansible/playbooks/dns/provision-dns-dhcp-services.yml` → Same Proxmox vars + optional `TECHNITIUM_ADMIN_PASSWORD`
-- `ansible/playbooks/dns/deploy-adguard-config.yml` → `ADGUARD_ADMIN_PASSWORD` (or via `op read`)
+- `ansible/playbooks/dns/provision-dns-dhcp.yml` → `dns-dhcp`
+- `ansible/playbooks/dns/provision-dns-dhcp-services.yml` → `dns-dhcp`
+- `ansible/playbooks/dns/deploy-adguard-config.yml` → `adguard`
 
 **MCP Servers:**
-- `ansible/playbooks/mcp/deploy-unraid-mcp.yml` → `UNRAID_API_KEY`
-- `ansible/playbooks/mcp/deploy-homelab-mcp.yml` → `ORBI_PASSWORD`
-- `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` → `OP_SERVICE_ACCOUNT_TOKEN`
-- `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` → Uses `group_vars/unraid/vault.yml`
+- `ansible/playbooks/mcp/deploy-unraid-mcp.yml` → `unraid-mcp`
+- `ansible/playbooks/mcp/deploy-homelab-mcp.yml` → `homelab-mcp`
+- `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` → none — needs `OP_SERVICE_ACCOUNT_TOKEN` directly (it's the bootstrap secret itself)
+- `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` → `proxmox-mcp`
 
 
 
@@ -283,24 +288,7 @@ Docker Desktop on WSL2 behaves differently from Linux Docker — don't assume `h
 
 ### Credential Access for AI Agents
 
-Claude Code and AI agents can read credentials directly from 1Password using the service account:
-
-```bash
-# Read a credential via op read
-op read "op://AI Wedge/CouchDB Admin/credential"
-
-# Example in Python
-import subprocess
-result = subprocess.run(
-    ['op', 'read', 'op://AI Wedge/Unraid GraphQL - Wedge/credential'],
-    capture_output=True, text=True, check=True
-)
-api_key = result.stdout.strip()
-```
-
-**Available credentials**: All items in the "AI Wedge" vault tagged "Ansible" are accessible. See `ansible/scripts/sync-1password-to-vault.py.DEPRECATED` for the complete mapping.
-
-**Note**: AI agents have read-only access to 1Password via the service account (`OP_SERVICE_ACCOUNT_TOKEN`). To create new credentials, manually add them to 1Password and tag them "Ansible" or "Generated".
+See `docs/secrets-management.md` for the full picture: the one bootstrap secret (`OP_SERVICE_ACCOUNT_TOKEN`), how it reaches agent sessions, running playbooks/stacks via `ansible/scripts/run-playbook.sh`, and ad hoc lookups (`op read "op://AI Wedge/<item>/<field>"`).
 
 ### Ansible Notes
 
