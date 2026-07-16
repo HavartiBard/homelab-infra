@@ -4,12 +4,11 @@
 # Provides homelab-specific tools (Orbi router management, etc.)
 # Transport: streamable-http on port 6971.
 #
-# Prerequisites:
-#   - vault.yml contains vault_orbi_username and vault_orbi_password
-#
 # Usage:
-#   ansible-playbook playbooks/mcp/deploy-homelab-mcp.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#   ./scripts/run-playbook.sh homelab-mcp playbooks/mcp/deploy-homelab-mcp.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/homelab-mcp.env (see
+# docs/secrets-management.md).
 
 - name: Deploy Homelab MCP to Unraid
   hosts: unraid

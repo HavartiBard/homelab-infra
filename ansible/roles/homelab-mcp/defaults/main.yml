@@ -21,8 +21,8 @@ homelab_mcp_transport: "streamable-http"
 # Orbi settings (override in playbook or vars file)
 orbi_enabled: true
 orbi_host: "192.168.1.1"
-orbi_username: "{{ vault_orbi_username }}"
-orbi_password: "{{ vault_orbi_password }}"
+orbi_username: "{{ lookup('ansible.builtin.env', 'ORBI_USERNAME') | default('', true) }}"
+orbi_password: "{{ lookup('ansible.builtin.env', 'ORBI_PASSWORD') | default('', true) }}"
 orbi_port: 80
 orbi_ssl: false
 

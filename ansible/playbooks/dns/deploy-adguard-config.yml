@@ -2,12 +2,11 @@
 # Deploy AdGuard Home configuration to agh1/agh2
 #
 # Usage:
-#   export ADGUARD_ADMIN_PASSWORD=$(op read "op://Personal/AdGuard Admin/password")
-#   ansible-playbook -i inventory/hosts.yml playbooks/dns/deploy-adguard-config.yml
+#   ./scripts/run-playbook.sh adguard playbooks/dns/deploy-adguard-config.yml
 #
-# Or with inline 1Password lookup:
-#   ADGUARD_ADMIN_PASSWORD=$(op read "op://Personal/AdGuard Admin/password") \
-#   ansible-playbook -i inventory/hosts.yml playbooks/dns/deploy-adguard-config.yml
+# Secrets resolved from 1Password via ansible/envs/adguard.env (see
+# docs/secrets-management.md). Both admin username and password live in the
+# "AdGuard Admin" item in the "AI Wedge" vault.
 
 - name: Deploy AdGuard Home configuration
   hosts: agh

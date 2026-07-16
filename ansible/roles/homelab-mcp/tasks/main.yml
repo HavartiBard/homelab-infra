@@ -1,6 +1,14 @@
 ---
 # Using raw/shell commands since Unraid lacks Python
 
+- name: Assert Orbi credentials are provided
+  ansible.builtin.assert:
+    that:
+      - orbi_username | length > 0
+      - orbi_password | length > 0
+    fail_msg: "Set ORBI_USERNAME/ORBI_PASSWORD env vars (from 1Password 'Orbi Login'), e.g. via ansible/envs/homelab-mcp.env"
+  when: orbi_enabled
+
 - name: Create appdata directory
   ansible.builtin.raw: mkdir -p {{ homelab_mcp_appdata_dir }}
   changed_when: false
