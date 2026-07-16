@@ -28,15 +28,23 @@ npm_proxy_config_dir: "{{ playbook_dir | dirname }}/../files/npm/services"
 npm_proxy_config_paths: []
 npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
 
-# NPM / DNS credentials (from Ansible vault)
-npm_admin_email: "{{ vault_npm_admin_username }}"
-npm_admin_password: "{{ vault_npm_admin_password }}"
+# NPM / DNS credentials
+# Migrated to 1Password Environments (ansible/envs/npm.env) — kept here (not
+# just in the npm role defaults) because deploy-homepage.yml reads these at
+# the play level without including the npm role.
+npm_admin_email: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_EMAIL') | default('', true) }}"
+npm_admin_password: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_PASSWORD') | default('', true) }}"
 technitium_api_url: "http://192.168.20.2:5380"
 technitium_zone: klsll.com
 technitium_admin_user: dns-automation
-technitium_api_token: "{{ vault_technitium_api_token }}"
-technitium_admin_password: "{{ vault_technitium_api_token }}"
-cloudflare_dns_token: "{{ vault_cloudflare_dns_token }}"
+technitium_api_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
+# NOTE: reuses the API token value as the admin password, same as before this
+# migration — this looks like a pre-existing bug (copy-paste from whenever
+# vault_technitium_api_token was introduced), not something this migration
+# should silently change. Flagged for confirmation of the correct 1Password
+# field; unchanged in behavior for now.
+technitium_admin_password: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
+cloudflare_dns_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_DNS_TOKEN') | default('', true) }}"
 
 # Optional external ACME issuer
 # Set to true to enable the lego/acme.sh helper container.
@@ -49,26 +57,18 @@ acme_base_domain: klsll.com
 acme_wildcard_domain: "*.klsll.com"
 acme_dns_env: {}
 
-# MCP credentials
-# unraid_api_key / orbi_username / orbi_password migrated to 1Password
-# Environments (ansible/envs/unraid-mcp.env, ansible/envs/homelab-mcp.env).
-# Kept here (not just in the role defaults) because deploy-homepage.yml reads
-# them at the play level without including the unraid-mcp/homelab-mcp roles.
+# MCP credentials needed by deploy-homepage.yml, which reads these at the
+# play level without including the owning role (unraid-mcp, homelab-mcp is
+# NOT needed here since deploy-homepage.yml doesn't read orbi_*, proxmox-mcp,
+# adguard). All other vault_*-sourced vars that used to live here were
+# deleted outright once confirmed unused outside their own role's defaults
+# (see git history / docs/plans if you need the full list that was removed).
 unraid_api_key: "{{ lookup('ansible.builtin.env', 'UNRAID_API_KEY') | default('', true) }}"
-orbi_username: "{{ lookup('ansible.builtin.env', 'ORBI_USERNAME') | default('', true) }}"
-orbi_password: "{{ lookup('ansible.builtin.env', 'ORBI_PASSWORD') | default('', true) }}"
-op_service_account_token: "{{ vault_op_service_account_token }}"
-proxmox_host: "{{ vault_proxmox_mcp_host }}"
-proxmox_port: "{{ vault_proxmox_mcp_port }}"
-proxmox_user: "{{ vault_proxmox_mcp_user }}"
-proxmox_token_name: "{{ vault_proxmox_mcp_token_name }}"
-proxmox_token_value: "{{ vault_proxmox_mcp_token_value }}"
-proxmox_allow_elevated: "{{ vault_proxmox_mcp_allow_elevated }}"
-adguard_admin_user: "{{ vault_adguard_admin_username }}"
-adguard_admin_password: "{{ vault_adguard_admin_password }}"
-gitea_db_password: "{{ vault_gitea_db_password }}"
-gitea_admin_password: "{{ vault_gitea_service_password }}"
-gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
+proxmox_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USER') | default('', true) }}"
+proxmox_token_name: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_NAME') | default('', true) }}"
+proxmox_token_value: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_VALUE') | default('', true) }}"
+adguard_admin_user: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_USERNAME') | default('', true) }}"
+adguard_admin_password: "{{ lookup('ansible.builtin.env', 'ADGUARD_ADMIN_PASSWORD') | default('', true) }}"
 
 # Promtail: Unraid has no systemd journal — Docker socket logs only
 promtail_unraid_mode: true

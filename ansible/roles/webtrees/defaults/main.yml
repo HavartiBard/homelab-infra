@@ -9,3 +9,6 @@ webtrees_db_user: webtrees
 webtrees_admin_user: james
 webtrees_admin_email: james@klsll.com
 webtrees_admin_name: James
+
+webtrees_db_password: "{{ lookup('ansible.builtin.env', 'WEBTREES_DB_PASSWORD') | default('', true) }}"
+webtrees_admin_password: "{{ lookup('ansible.builtin.env', 'WEBTREES_ADMIN_PASSWORD') | default('', true) }}"

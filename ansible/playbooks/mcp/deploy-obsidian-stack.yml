@@ -8,17 +8,31 @@
 # Vault path: /mnt/user/appdata/obsidian/vaults/homelab
 #
 # Prerequisites:
-#   - vault.yml contains vault_couchdb_* entries
 #   - Obsidian MCP Docker image built from docker/obsidian-mcp-server/
 #     (the role builds it automatically)
 #
 # Usage:
-#   ansible-playbook playbooks/mcp/deploy-obsidian-stack.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#   ./scripts/run-playbook.sh obsidian playbooks/mcp/deploy-obsidian-stack.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/obsidian.env (see
+# docs/secrets-management.md).
 
 - name: Deploy Obsidian Stack (CouchDB + MCP Server)
   hosts: unraid
   gather_facts: false
+
+  pre_tasks:
+    - name: Assert CouchDB credentials are provided
+      ansible.builtin.assert:
+        that:
+          - couchdb_admin_user | length > 0
+          - couchdb_admin_password | length > 0
+          - couchdb_sync_user | length > 0
+          - couchdb_sync_password | length > 0
+        fail_msg: >-
+          Set COUCHDB_ADMIN_USERNAME/PASSWORD and COUCHDB_SYNC_USERNAME/PASSWORD
+          env vars (from 1Password 'CouchDB Obsidian Admin'/'CouchDB Obsidian
+          Sync User'), e.g. via ansible/envs/obsidian.env
 
   tasks:
     - name: Deploy CouchDB

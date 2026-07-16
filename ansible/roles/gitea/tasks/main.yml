@@ -1,4 +1,11 @@
 ---
+- name: Assert Gitea credentials are provided
+  ansible.builtin.assert:
+    that:
+      - gitea_db_password | length > 0
+      - gitea_admin_password | length > 0
+    fail_msg: "Set GITEA_DB_PASSWORD/GITEA_ADMIN_PASSWORD env vars (from 1Password 'Gitea DB Credentials'/'Gitea Service Credentials'), e.g. via ansible/envs/gitea.env"
+
 - name: Ensure appdata and stack directories exist
   ansible.builtin.raw: |
     mkdir -p {{ gitea_appdata_root }} \

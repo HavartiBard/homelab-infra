@@ -31,3 +31,7 @@ paperless_db_user: paperless
 # Unraid labels
 paperless_icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless-ngx.png
 paperless_image_tag: "2.14.7"
+
+paperless_secret_key: "{{ lookup('ansible.builtin.env', 'PAPERLESS_SECRET_KEY') | default('', true) }}"
+paperless_db_password: "{{ lookup('ansible.builtin.env', 'PAPERLESS_DB_PASSWORD') | default('', true) }}"
+paperless_admin_password: "{{ lookup('ansible.builtin.env', 'PAPERLESS_ADMIN_PASSWORD') | default('', true) }}"

@@ -1,6 +1,11 @@
 ---
 # Deploy paperless-ai to Unraid (alongside paperless-ngx)
-# Requires: vault_paperless_ai_api_token, vault_ironclaw_lmstudio_api_key
+#
+# Usage:
+#   ./scripts/run-playbook.sh paperless-ai playbooks/services/deploy-paperless-ai.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/paperless-ai.env (see
+# docs/secrets-management.md).
 
 - name: Deploy paperless-ai
   hosts: unraid

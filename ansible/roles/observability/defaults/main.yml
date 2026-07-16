@@ -7,3 +7,6 @@ observability_port_syslog: 5514
 # Persistent data (TSDB, grafana.db, alertmanager state) — on the user share,
 # never on the docker overlay loop (issue #129)
 observability_data_dir: /mnt/user/appdata/observability/data
+
+grafana_admin_password: "{{ lookup('ansible.builtin.env', 'GRAFANA_ADMIN_PASSWORD') | default('', true) }}"
+alertmanager_slack_webhook_url: "{{ lookup('ansible.builtin.env', 'ALERTMANAGER_SLACK_WEBHOOK_URL') | default('', true) }}"

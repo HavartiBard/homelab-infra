@@ -13,3 +13,9 @@ paperless_ai_model: "qwen/qwen3-14b"
 # paperless-ngx connection (localhost since same host)
 paperless_ai_paperless_url: "http://192.168.20.14:8000"
 paperless_ai_paperless_username: "paperless-ai"
+
+paperless_ai_api_token: "{{ lookup('ansible.builtin.env', 'PAPERLESS_AI_API_TOKEN') | default('', true) }}"
+# Shared with the ironclaw role's own env file (ansible/envs/ironclaw.env,
+# Phase 2c) — duplicated here rather than cross-referenced so this env file
+# stays self-contained.
+ironclaw_lmstudio_api_key: "{{ lookup('ansible.builtin.env', 'IRONCLAW_LMSTUDIO_API_KEY') | default('', true) }}"

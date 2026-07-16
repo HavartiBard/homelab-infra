@@ -1,14 +1,19 @@
 ---
 # Deploy Paperless-NGX document management on Unraid
 #
+# Usage:
+#   ./scripts/run-playbook.sh paperless playbooks/services/deploy-paperless.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/paperless.env (see
+# docs/secrets-management.md).
+#
 # Prerequisites:
-#   - vault.yml contains vault_paperless_* entries (see Task 2)
 #   - /mnt/user/paperless share exists on Unraid
 #
 # After deployment:
 #   Web UI:    http://192.168.20.14:8000    (direct)
 #              https://paperless.klsll.com  (via NPM)
-#   Login:     admin / vault_paperless_admin_password
+#   Login:     admin / <PAPERLESS_ADMIN_PASSWORD>
 #   Consume:   Drop files into /mnt/user/paperless/consume/
 #   Email:     Configure IMAP in Admin → Mail Accounts
 
@@ -33,7 +38,7 @@
           Paperless-NGX deployed successfully!
           Web UI:     http://{{ ansible_host }}:{{ paperless_port }}
           NPM proxy:  https://paperless.klsll.com (configure NPM separately)
-          Login:      {{ paperless_admin_user }} / <vault_paperless_admin_password>
+          Login:      {{ paperless_admin_user }} / <PAPERLESS_ADMIN_PASSWORD>
           Consume:    {{ paperless_appdata_dir }}/consume/
           Logs:       docker logs paperless-web -f
           Restart:    cd {{ paperless_compose_dir }} && docker compose restart

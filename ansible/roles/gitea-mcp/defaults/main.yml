@@ -13,8 +13,10 @@ gitea_mcp_webui_url: >-
 # Gitea instance settings
 gitea_mcp_host: "https://code.klsll.com"
 
-# Credentials (env var with 1Password fallback)
-gitea_mcp_token: "{{ vault_gitea_mcp_token }}"
+# Credentials — GITEA_MCP_TOKEN takes priority, falls back to GITEA_TOKEN
+gitea_mcp_token: >-
+  {{ lookup('ansible.builtin.env', 'GITEA_MCP_TOKEN')
+     | default(lookup('ansible.builtin.env', 'GITEA_TOKEN'), true) }}
 
 # Timezone
 timezone: "America/Phoenix"

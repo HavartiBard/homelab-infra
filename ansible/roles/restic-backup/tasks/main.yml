@@ -1,6 +1,14 @@
 ---
 # restic-backup — Unraid raw-only deployment (no Python on Unraid)
 
+- name: Assert restic/B2 credentials are provided
+  ansible.builtin.assert:
+    that:
+      - restic_repo_password | length > 0
+      - b2_account_id | length > 0
+      - b2_account_key | length > 0
+    fail_msg: "Set RESTIC_REPO_PASSWORD/B2_ACCOUNT_ID/B2_ACCOUNT_KEY env vars (from 1Password 'Backblaze B2 - Homelab Backups'), e.g. via ansible/envs/restic-backup.env"
+
 - name: Render templates
   ansible.builtin.set_fact:
     _restic_env: "{{ lookup('template', 'restic.env.j2') }}"

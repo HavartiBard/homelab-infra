@@ -2,7 +2,7 @@
 manage_netbox: true
 
 netbox_url: "http://192.168.20.14:8001"
-netbox_token: "{{ vault_netbox_api_token | default(lookup('env', 'NETBOX_TOKEN'), true) }}"
+netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') | default('', true) }}"
 
 netbox_service_site: Homelab
 netbox_service_cluster: unraid-docker

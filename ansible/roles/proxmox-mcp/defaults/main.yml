@@ -12,12 +12,12 @@ proxmox_mcp_env_file: "{{ proxmox_mcp_appdata_dir }}/.env"
 proxmox_mcp_port: "6974"
 proxmox_mcp_container_port: "6971"
 
-proxmox_host: "{{ vault_proxmox_mcp_host }}"
-proxmox_port: "{{ vault_proxmox_mcp_port }}"
-proxmox_user: "{{ vault_proxmox_mcp_user }}"
-proxmox_token_name: "{{ vault_proxmox_mcp_token_name }}"
-proxmox_token_value: "{{ vault_proxmox_mcp_token_value }}"
-proxmox_allow_elevated: "{{ vault_proxmox_mcp_allow_elevated }}"
+proxmox_host: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST') | default('', true) }}"
+proxmox_port: "{{ lookup('ansible.builtin.env', 'PROXMOX_PORT') | default('', true) }}"
+proxmox_user: "{{ lookup('ansible.builtin.env', 'PROXMOX_USER') | default('', true) }}"
+proxmox_token_name: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_NAME') | default('', true) }}"
+proxmox_token_value: "{{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_VALUE') | default('', true) }}"
+proxmox_allow_elevated: "{{ lookup('ansible.builtin.env', 'PROXMOX_ALLOW_ELEVATED') | default('', true) }}"
 
 # Timezone
 timezone: "America/Phoenix"

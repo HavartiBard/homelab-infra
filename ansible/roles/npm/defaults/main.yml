@@ -38,10 +38,10 @@ npm_manage_dns: false
 npm_proxy_config_dir: ""
 npm_proxy_config_paths: []
 npm_api_base_url: "http://{{ npm_ip }}:{{ npm_ui_port }}/api"
-npm_admin_email: "{{ vault_npm_admin_username }}"
-npm_admin_password: "{{ vault_npm_admin_password }}"
+npm_admin_email: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_EMAIL') | default('', true) }}"
+npm_admin_password: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_PASSWORD') | default('', true) }}"
 technitium_api_url: ""
 technitium_zone: klsll.com
 technitium_admin_user: dns-automation
-technitium_api_token: "{{ vault_technitium_api_token }}"
-cloudflare_dns_token: "{{ vault_cloudflare_dns_token }}"
+technitium_api_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
+cloudflare_dns_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_DNS_TOKEN') | default('', true) }}"

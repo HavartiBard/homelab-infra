@@ -15,9 +15,9 @@
 #   dns_zone          Authoritative zone (default: klsll.com)
 #   dns_ttl           A record TTL in seconds (default: 3600)
 #
-# Run:
-#   ansible-playbook playbooks/platform/update-npm-proxy-host.yml \
-#     --vault-password-file ~/.vault-pass \
+# Run (secrets resolved from 1Password via ansible/envs/npm.env, see
+# docs/secrets-management.md):
+#   ./scripts/run-playbook.sh npm playbooks/platform/update-npm-proxy-host.yml \
 #     -e npm_domain=chat.klsll.com \
 #     -e npm_forward_host=192.168.20.150 \
 #     -e npm_forward_port=8080
@@ -30,14 +30,14 @@
 
   vars:
     npm_url: "https://npm.klsll.com"
-    npm_email: "{{ vault_npm_admin_username }}"
-    npm_password: "{{ vault_npm_admin_password }}"
+    npm_email: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_EMAIL') | default('', true) }}"
+    npm_password: "{{ lookup('ansible.builtin.env', 'NPM_ADMIN_PASSWORD') | default('', true) }}"
     # NPM platform VM — all *.klsll.com DNS records point here
     npm_dns_target: "192.168.20.50"
     dns_zone: "klsll.com"
     dns_ttl: 3600
     technitium_url: "http://192.168.20.2:5380"
-    technitium_token: "{{ vault_technitium_api_token }}"
+    technitium_token: "{{ lookup('ansible.builtin.env', 'TECHNITIUM_API_TOKEN') | default('', true) }}"
 
   tasks:
 

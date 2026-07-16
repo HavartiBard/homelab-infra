@@ -1,4 +1,11 @@
 ---
+- name: Assert Webtrees credentials are provided
+  ansible.builtin.assert:
+    that:
+      - webtrees_db_password | length > 0
+      - webtrees_admin_password | length > 0
+    fail_msg: "Set WEBTREES_DB_PASSWORD/WEBTREES_ADMIN_PASSWORD env vars (from 1Password), e.g. via ansible/envs/webtrees.env"
+
 - name: Create webtrees directories
   raw: mkdir -p {{ webtrees_base_dir }}/data {{ webtrees_base_dir }}/db
 

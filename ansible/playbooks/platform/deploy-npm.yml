@@ -1,4 +1,13 @@
 ---
+# Deploy Nginx Proxy Manager on Unraid
+#
+# Usage:
+#   ./scripts/run-playbook.sh npm playbooks/platform/deploy-npm.yml --limit unraid
+#
+# Secrets (admin creds, Technitium/Cloudflare DNS tokens if npm_manage_proxies/
+# npm_manage_dns are enabled) resolved from 1Password via ansible/envs/npm.env
+# (see docs/secrets-management.md).
+
 - name: Deploy Nginx Proxy Manager on Unraid
   hosts: unraid
   gather_facts: false

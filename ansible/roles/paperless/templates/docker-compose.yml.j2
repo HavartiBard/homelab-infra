@@ -18,7 +18,7 @@ services:
     environment:
       POSTGRES_DB: {{ paperless_db_name }}
       POSTGRES_USER: {{ paperless_db_user }}
-      POSTGRES_PASSWORD: "{{ vault_paperless_db_password }}"
+      POSTGRES_PASSWORD: "{{ paperless_db_password }}"
       TZ: {{ paperless_time_zone }}
     volumes:
       - {{ paperless_appdata_dir }}/pgdata:/var/lib/postgresql/data

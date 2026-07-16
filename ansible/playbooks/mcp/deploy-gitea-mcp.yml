@@ -2,11 +2,11 @@
 # Deploy Gitea MCP Server to Unraid
 #
 # Usage:
-#   export GITEA_TOKEN='<Gitea API token>'
-#   ansible-playbook playbooks/mcp/deploy-gitea-mcp.yml --limit unraid
+#   ./scripts/run-playbook.sh gitea-mcp playbooks/mcp/deploy-gitea-mcp.yml --limit unraid
 #
-# Or with 1Password (requires OP_SERVICE_ACCOUNT_TOKEN):
-#   ansible-playbook playbooks/mcp/deploy-gitea-mcp.yml --limit unraid
+# Secrets resolved from 1Password via ansible/envs/gitea-mcp.env (see
+# docs/secrets-management.md). GITEA_MCP_TOKEN or GITEA_TOKEN can still be
+# overridden directly in the environment for testing.
 
 - name: Deploy Gitea MCP to Unraid
   hosts: unraid

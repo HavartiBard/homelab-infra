@@ -16,10 +16,12 @@ onepassword_mcp_icon: >-
 onepassword_mcp_dockerfile_dir: "{{ playbook_dir }}/../../../docker/onepassword-mcp"
 
 # 1Password settings
+# OP_SERVICE_ACCOUNT_TOKEN is the one bootstrap secret that is never an
+# op:// reference to itself - it must already be a plain env var in the
+# host/session's shell (see docs/secrets-management.md), so there's no
+# ansible/envs/onepassword-mcp.env for it.
 op_vault: "AI Wedge"
-op_service_account_token: >-
-  {{ lookup('ansible.builtin.env', 'OP_SERVICE_ACCOUNT_TOKEN')
-     | default(vault_op_service_account_token | default(''), true) }}
+op_service_account_token: "{{ lookup('ansible.builtin.env', 'OP_SERVICE_ACCOUNT_TOKEN') | default('', true) }}"
 
 # Timezone
 timezone: "America/Phoenix"

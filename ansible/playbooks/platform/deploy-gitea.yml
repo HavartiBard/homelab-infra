@@ -1,4 +1,12 @@
 ---
+# Deploy Gitea on Unraid
+#
+# Usage:
+#   ./scripts/run-playbook.sh gitea playbooks/platform/deploy-gitea.yml --limit unraid
+#
+# Secrets resolved from 1Password via ansible/envs/gitea.env (see
+# docs/secrets-management.md).
+
 - name: Deploy Gitea on Unraid
   hosts: unraid
   gather_facts: false

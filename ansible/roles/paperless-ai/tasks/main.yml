@@ -2,6 +2,13 @@
 # paperless-ai — runs on Unraid alongside paperless-ngx
 # Uses raw throughout for Unraid compatibility
 
+- name: Assert paperless-ai credentials are provided
+  ansible.builtin.assert:
+    that:
+      - paperless_ai_api_token | length > 0
+      - ironclaw_lmstudio_api_key | length > 0
+    fail_msg: "Set PAPERLESS_AI_API_TOKEN/IRONCLAW_LMSTUDIO_API_KEY env vars (from 1Password), e.g. via ansible/envs/paperless-ai.env"
+
 - name: Create paperless-ai compose dir
   ansible.builtin.raw: |
     mkdir -p {{ paperless_ai_compose_dir }}

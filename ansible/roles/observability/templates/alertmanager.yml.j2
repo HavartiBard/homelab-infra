@@ -11,7 +11,7 @@ route:
 receivers:
   - name: slack
     slack_configs:
-      - api_url: '{{ vault_alertmanager_slack_webhook_url }}'
+      - api_url: '{{ alertmanager_slack_webhook_url }}'
         channel: '#homelab-alerts'
         send_resolved: true
         title: '{{ "{{" }} .GroupLabels.alertname {{ "}}" }}'

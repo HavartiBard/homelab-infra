@@ -17,6 +17,7 @@ slug="$1"
 shift
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+common_env_file="${script_dir}/../envs/common.env"
 env_file="${script_dir}/../envs/${slug}.env"
 
 if [[ ! -f "$env_file" ]]; then
@@ -29,4 +30,7 @@ if ! command -v op &> /dev/null; then
   exit 1
 fi
 
-exec op run --env-file="$env_file" -- ansible-playbook "$@"
+# common.env (cross-cutting secrets like NETBOX_TOKEN, needed by roles that
+# many other playbooks include) is merged in on every invocation, in addition
+# to the slug-specific file.
+exec op run --env-file="$common_env_file" --env-file="$env_file" -- ansible-playbook "$@"

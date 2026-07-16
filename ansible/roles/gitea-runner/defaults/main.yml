@@ -48,7 +48,7 @@ registry_host: registry.klsll.com
 registry_protocol: https
 registry_username: >-
   {{ lookup('env', 'REGISTRY_USERNAME') | default('', true) }}
-registry_password: "{{ vault_gitea_registry_password }}"
+registry_password: "{{ lookup('ansible.builtin.env', 'REGISTRY_PASSWORD') | default('', true) }}"
 
 # GitHub Actions compatibility (for some workflows)
 github_token: >-
