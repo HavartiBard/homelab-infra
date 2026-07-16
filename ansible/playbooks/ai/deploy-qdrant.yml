@@ -6,7 +6,7 @@
 #
 # Run:
 #   ansible-playbook playbooks/platform/deploy-qdrant.yml \
-#     --vault-password-file ~/.vault-pass --limit goudai
+#     --limit goudai
 # =============================================================================
 
 - name: Deploy Qdrant

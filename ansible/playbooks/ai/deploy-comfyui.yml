@@ -7,7 +7,7 @@
 #
 # Run:
 #   ansible-playbook playbooks/ai/deploy-comfyui.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid,spraycheese
+#     --limit unraid,spraycheese
 # =============================================================================
 
 - name: Prepare ComfyUI share permissions on Unraid

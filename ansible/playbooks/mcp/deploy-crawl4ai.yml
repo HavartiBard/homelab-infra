@@ -7,7 +7,7 @@
 #
 # Usage:
 #   ansible-playbook playbooks/mcp/deploy-crawl4ai.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#     --limit unraid
 
 - name: Deploy Crawl4AI on Unraid
   hosts: unraid

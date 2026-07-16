@@ -383,16 +383,6 @@
         group: "{{ bootstrap_user }}"
         mode: '0644'
 
-    # ── .vault-pass ───────────────────────────────────────────────────────────
-
-    - name: Deploy .vault-pass from controller
-      ansible.builtin.copy:
-        content: "{{ lookup('file', lookup('env', 'HOME') + '/.vault-pass') }}"
-        dest: "{{ bootstrap_user_home }}/.vault-pass"
-        owner: "{{ bootstrap_user }}"
-        group: "{{ bootstrap_user }}"
-        mode: '0600'
-
     # ── Homelab SSH key ───────────────────────────────────────────────────────
 
     - name: Deploy homelab SSH private key from controller

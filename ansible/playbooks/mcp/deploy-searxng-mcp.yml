@@ -7,7 +7,7 @@
 #
 # Usage:
 #   ansible-playbook playbooks/mcp/deploy-searxng-mcp.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#     --limit unraid
 
 - name: Deploy SearXNG MCP to Unraid
   hosts: unraid

@@ -17,7 +17,7 @@
 #
 # Run:
 #   ansible-playbook playbooks/bootstrap/setup-goudai-host.yml \
-#     --vault-password-file ~/.vault-pass --limit goudai
+#     --limit goudai
 #
 # Force llama.cpp rebuild:
 #   ... -e llama_cpp_force_rebuild=true

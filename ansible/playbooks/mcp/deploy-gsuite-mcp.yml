@@ -18,7 +18,7 @@
 #
 # Usage:
 #   ansible-playbook playbooks/mcp/deploy-gsuite-mcp.yml \
-#     --vault-password-file ~/.vault-pass --limit unraid
+#     --limit unraid
 
 - name: Deploy gsuite-mcp to Unraid
   hosts: unraid
