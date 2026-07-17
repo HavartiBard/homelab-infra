@@ -30,6 +30,42 @@ scrape_configs:
       - drop:
           expression: '\n'
           drop_counter_reason: multiline_docker_entry
+      # ComfyUI-specific labels. job_status/level are low-cardinality (a
+      # handful of values) so they're safe as indexed Loki labels. prompt_id
+      # is deliberately NOT extracted here - it's unique per job and would
+      # fragment the stream index; it's available instead via the
+      # comfyui_exporter Prometheus metrics (ansible/files/comfyui-exporter).
+      # The exact ComfyUI log strings below are best-effort from ComfyUI's
+      # known source and unverified against live output - adjust if they
+      # don't match what `docker logs comfyui` actually prints.
+      - match:
+          selector: '{container="comfyui"} |= "got prompt"'
+          stages:
+            - static_labels:
+                job_status: started
+      - match:
+          selector: '{container="comfyui"} |= "Prompt executed in"'
+          stages:
+            - static_labels:
+                job_status: completed
+      - match:
+          selector: '{container="comfyui"} |= "Exception during processing"'
+          stages:
+            - static_labels:
+                job_status: error
+      - match:
+          selector: '{container="comfyui"}'
+          stages:
+            - static_labels:
+                service: comfyui
+            - regex:
+                expression: '(?i)(?P<level>debug|info|warning|error|critical)'
+            - template:
+                source: level
+                template: >-
+                  {% raw %}{{ if .level }}{{ .level | lower }}{{ else }}info{{ end }}{% endraw %}
+            - labels:
+                level:
 
 {% if not promtail_unraid_mode and promtail_scrape_journal %}
   # Systemd journal (all Linux hosts except Unraid)

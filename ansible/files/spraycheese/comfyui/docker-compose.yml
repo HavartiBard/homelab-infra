@@ -33,6 +33,81 @@ services:
     networks:
       - comfyui
 
+  comfyui-exporter:
+    image: python:3.12-alpine
+    container_name: comfyui-exporter
+    restart: unless-stopped
+    command: ["python3", "/app/comfyui_exporter.py"]
+    environment:
+      COMFYUI_URL: "http://comfyui:8188"
+    ports:
+      - "9840:9840"
+    volumes:
+      - "{{ (service_dir ~ '\\comfyui_exporter.py') | replace('\\', '/') }}:/app/comfyui_exporter.py:ro"
+    networks:
+      - comfyui
+    depends_on:
+      - comfyui
+
+{% if comfyui_accelerator == 'nvidia' %}
+  nvidia-gpu-exporter:
+    image: "utkuozdemir/nvidia_gpu_exporter:{{ nvidia_gpu_exporter_version }}"
+    container_name: nvidia-gpu-exporter
+    restart: unless-stopped
+    gpus: all
+    ports:
+      - "9835:9835"
+{% endif %}
+
+  # Observability agents below mirror the roles already deployed to every
+  # Linux host (ansible/roles/node_exporter, cadvisor, promtail) - reimplemented
+  # here as plain compose services because those roles use `raw`+`become`,
+  # which don't work over the Windows/PowerShell SSH connection this host uses.
+  # Docker Desktop's engine is a Linux VM (WSL2), so the containers themselves
+  # are unchanged; only `network_mode: host` is dropped (unsupported on Docker
+  # Desktop) in favor of explicit port publishing. Host CPU/RAM/disk numbers
+  # reflect that VM, not raw Windows perfmon counters - see docs/comfyui-observability.md.
+  node_exporter:
+    image: "prom/node-exporter:{{ node_exporter_version }}"
+    container_name: node_exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+
+  cadvisor:
+    image: "gcr.io/cadvisor/cadvisor:{{ cadvisor_version }}"
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  promtail:
+    image: "grafana/promtail:{{ promtail_version }}"
+    container_name: promtail
+    restart: unless-stopped
+    ports:
+      - "9080:9080"
+    volumes:
+      - "{{ (service_dir ~ '\\promtail-config.yml') | replace('\\', '/') }}:/etc/promtail/config.yml:ro"
+      - "{{ (service_dir ~ '\\promtail-positions') | replace('\\', '/') }}:/positions"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+
 networks:
   comfyui:
     name: comfyui

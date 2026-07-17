@@ -49,6 +49,25 @@ services:
     networks:
       - comfyui
 
+  comfyui-exporter:
+    image: python:3.12-alpine
+    container_name: comfyui-exporter
+    restart: unless-stopped
+    command: ["python3", "/app/comfyui_exporter.py"]
+    environment:
+      COMFYUI_URL: "http://comfyui:8188"
+    ports:
+      - "9840:9840"
+    volumes:
+      - "/opt/comfyui/comfyui_exporter.py:/app/comfyui_exporter.py:ro"
+      # Read-only, no devices/privileged needed - just the amdgpu sysfs
+      # attributes (gpu_busy_percent, mem_info_vram_*, hwmon temp/power).
+      - "/sys:/sys:ro"
+    networks:
+      - comfyui
+    depends_on:
+      - comfyui
+
 networks:
   comfyui:
     name: comfyui
