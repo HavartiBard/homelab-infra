@@ -4,8 +4,13 @@ services:
     container_name: {{ raclette_container_name }}
     restart: unless-stopped
     user: "0"
-    entrypoint: ["/bin/sh", "-c", "(command -v ssh >/dev/null 2>&1 && command -v docker >/dev/null 2>&1) || (apt-get update -qq && apt-get install -y --no-install-recommends openssh-client docker-cli); chmod 666 /var/run/docker.sock 2>/dev/null || true; chown -R {{ raclette_uid }}:{{ raclette_gid }} /home/node/.hermes; mkdir -p /opt/data/.ssh && cp /home/node/.hermes/ssh/id_ed25519_homelab /opt/data/.ssh/ 2>/dev/null; cp /home/node/.hermes/ssh/config /opt/data/.ssh/ 2>/dev/null; cp /opt/data/.ssh/id_ed25519_homelab /opt/data/.ssh/id_ed25519 2>/dev/null; chown -R {{ raclette_uid }}:{{ raclette_gid }} /opt/data/.ssh; chmod 700 /opt/data/.ssh; chmod 600 /opt/data/.ssh/id_ed25519_homelab /opt/data/.ssh/id_ed25519 2>/dev/null; gosu {{ raclette_uid }} ssh-agent -a /home/node/.hermes/agent.sock 2>/dev/null || true; chmod 666 /home/node/.hermes/agent.sock 2>/dev/null || true; SSH_AUTH_SOCK=/home/node/.hermes/agent.sock; export SSH_AUTH_SOCK; gosu {{ raclette_uid }} env SSH_AUTH_SOCK=$$SSH_AUTH_SOCK ssh-add /opt/data/.ssh/id_ed25519 2>/dev/null; /opt/hermes/docker/entrypoint.sh dashboard --port {{ raclette_dashboard_port }} --host 0.0.0.0 --insecure & exec /opt/hermes/docker/entrypoint.sh gateway run"]
-    command: []
+    # No custom entrypoint: the image is s6-overlay based (ENTRYPOINT
+    # [/init, main-wrapper.sh]) — the gateway and dashboard run as
+    # s6-supervised services, not as something we exec ourselves.
+    # CMD just idles the container's "main program" slot; see
+    # docs/plans/2026-05-07-s6-overlay-dynamic-subagent-gateways.md
+    # (upstream hermes-agent repo) for the architecture.
+    command: ["sleep", "infinity"]
     network_mode: host
     stdin_open: true
     tty: true
@@ -13,6 +18,7 @@ services:
       - {{ raclette_state_dir }}:/home/node/.hermes
       - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
       - /var/run/docker.sock:/var/run/docker.sock
+      - {{ raclette_deploy_dir }}/ssh-agent-init.sh:/etc/cont-init.d/03-ssh-agent-setup.sh:ro
     env_file:
       - {{ raclette_env_file }}
     environment:
@@ -20,3 +26,8 @@ services:
       - HERMES_UID={{ raclette_uid }}
       - HERMES_GID={{ raclette_gid }}
       - HERMES_DASHBOARD_PORT={{ raclette_dashboard_port }}
+      - HERMES_DASHBOARD=true
+      - API_SERVER_ENABLED=true
+      - API_SERVER_PORT={{ raclette_gateway_port }}
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY={{ raclette_env.API_SERVER_KEY }}

@@ -8,6 +8,9 @@
 #   RACLETTE_SLACK_BOT_TOKEN     - xoxb- bot token from Slack app
 #   RACLETTE_SLACK_APP_TOKEN     - xapp- Socket Mode token from Slack app
 #   RACLETTE_SLACK_ALLOWED_USERS - comma-separated Slack member IDs
+#   RACLETTE_DASHBOARD_USER      - dashboard basic auth username
+#   RACLETTE_DASHBOARD_PASSWORD  - dashboard basic auth password
+#   RACLETTE_API_SERVER_KEY      - bearer token for the OpenAI-compatible API server (port 8642)
 #
 # Usage:
 #   source ~/.env_container

@@ -1,5 +1,6 @@
 ---
-# Raclette (Hermes Agent) — Slack tokens sourced from RACLETTE_* env vars on the controller
+# Raclette (Hermes Agent) — Slack tokens + dashboard auth + API server key
+# sourced from RACLETTE_* env vars on the controller
 raclette_env:
   OBSIDIAN_VAULT_PATH: /vault
   SLACK_BOT_TOKEN: >-
@@ -8,3 +9,9 @@ raclette_env:
     {{ lookup('env', 'RACLETTE_SLACK_APP_TOKEN') | default('CHANGEME_RACLETTE_SLACK_APP_TOKEN', true) }}
   SLACK_ALLOWED_USERS: >-
     {{ lookup('env', 'RACLETTE_SLACK_ALLOWED_USERS') | default('CHANGEME_SLACK_MEMBER_IDS', true) }}
+  HERMES_DASHBOARD_BASIC_AUTH_USERNAME: >-
+    {{ lookup('env', 'RACLETTE_DASHBOARD_USER') | default('CHANGEME_RACLETTE_DASHBOARD_USER', true) }}
+  HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: >-
+    {{ lookup('env', 'RACLETTE_DASHBOARD_PASSWORD') | default('CHANGEME_RACLETTE_DASHBOARD_PASSWORD', true) }}
+  API_SERVER_KEY: >-
+    {{ lookup('env', 'RACLETTE_API_SERVER_KEY') | default('CHANGEME_RACLETTE_API_SERVER_KEY', true) }}
