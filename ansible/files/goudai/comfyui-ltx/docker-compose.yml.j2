@@ -4,8 +4,11 @@ name: comfyui
 # Base image bundles ROCm 7.2 + PyTorch 2.9.1 + flash-attention (native gfx1151).
 # Derived image (comfyui-gfx1151-ltx:local, built from docker/comfyui-gfx1151)
 # adds the LTX2_SM python deps and bakes ComfyUI into /opt/ComfyUI. Models, custom
-# node, output and workflows come from the Unraid NFS share so the model library
-# is shared with the rest of the homelab.
+# nodes, output and workflows come from the Unraid NFS share so the model library
+# is shared with the rest of the homelab. The whole custom-nodes directory is
+# mounted (matching spraycheese) so node packs added to the share show up here
+# without editing this template; some CUDA-only packs (e.g. Nvidia_RTX_Nodes)
+# will fail to import on ROCm — ComfyUI logs and skips those, it doesn't crash.
 services:
   comfyui:
     image: comfyui-gfx1151-ltx:local
@@ -29,12 +32,9 @@ services:
       - --disable-mmap
     volumes:
       - "/mnt/ai-models/comfyui/models:/opt/ComfyUI/models"
+      - "/mnt/ai-models/comfyui/input:/opt/ComfyUI/input"
       - "/mnt/ai-models/comfyui/output:/opt/ComfyUI/output"
-      - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI_LTX2_SM:/opt/ComfyUI/custom_nodes/ComfyUI_LTX2_SM"
-      - "/mnt/ai-models/comfyui/custom-nodes/ComfyUI-Frame-Interpolation:/opt/ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation"
-      # SwarmUI remote-backend node packs (synced to the share by deploy-swarmui.yml)
-      - "/mnt/ai-models/comfyui/custom-nodes/SwarmComfyCommon:/opt/ComfyUI/custom_nodes/SwarmComfyCommon"
-      - "/mnt/ai-models/comfyui/custom-nodes/SwarmComfyExtra:/opt/ComfyUI/custom_nodes/SwarmComfyExtra"
+      - "/mnt/ai-models/comfyui/custom-nodes:/opt/ComfyUI/custom_nodes"
       - "/mnt/ai-models/comfyui/workflows:/opt/ComfyUI/user/default/workflows"
     devices:
       - /dev/kfd
@@ -59,7 +59,7 @@ services:
     ports:
       - "9840:9840"
     volumes:
-      - "/opt/comfyui/comfyui_exporter.py:/app/comfyui_exporter.py:ro"
+      - "{{ comfyui_service_dir }}/comfyui_exporter.py:/app/comfyui_exporter.py:ro"
       # Read-only, no devices/privileged needed - just the amdgpu sysfs
       # attributes (gpu_busy_percent, mem_info_vram_*, hwmon temp/power).
       - "/sys:/sys:ro"
