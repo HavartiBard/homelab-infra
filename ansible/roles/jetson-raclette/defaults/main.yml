@@ -48,7 +48,18 @@ raclette_model_base_url: "http://192.168.20.150:8010/v1"
 # Extra entries for the config.yaml `providers:` section — custom
 # OpenAI-compatible endpoints keyed by provider name (referenced by
 # raclette_model_provider above).
+#
+# api_key is a harmless dummy value, not a real secret — llama-swap has no
+# auth and ignores it. Hermes hardcodes every named custom/local provider's
+# runtime identity to "custom" and falls back to a "no-key-required"
+# placeholder api_key when none is configured; that placeholder trips a
+# dashboard/log warning ("No API key configured for provider 'custom'.
+# First message will fail.") on every session even though the request
+# actually succeeds. Any non-empty value >=4 chars that isn't one of
+# Hermes's known placeholder strings (see hermes_cli/auth.py
+# has_usable_secret / _PLACEHOLDER_SECRET_VALUES) clears that check.
 raclette_providers:
   goudai-llama-swap:
     base_url: "{{ raclette_model_base_url }}"
     transport: openai_chat
+    api_key: "local-no-auth-required"
