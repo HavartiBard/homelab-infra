@@ -26,8 +26,16 @@ raclette_docker_compose_command: "docker compose"
 raclette_uid: 1000
 raclette_gid: 1000
 
-# Director playbook URL for this agent
-raclette_director_url: "https://director.klsll.com/raclette/mcp"
+# MCP servers for the config.yaml `mcp_servers:` section. Obsidian and Gitea
+# are hosted on Unraid (192.168.20.14). Note: earlier revisions of this role
+# also declared a `director` entry (https://director.klsll.com/raclette/mcp)
+# but it was never actually applied to the live agent — dropped rather than
+# resurrected during the 2026-07-18 template/live-config reconciliation.
+raclette_mcp_servers:
+  Gitea:
+    url: "http://192.168.20.14:6976/mcp"
+  Obsidian:
+    url: "http://192.168.20.14:6977/mcp"
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
