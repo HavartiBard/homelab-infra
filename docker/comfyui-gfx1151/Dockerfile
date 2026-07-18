@@ -27,6 +27,19 @@
 #      Gemma3Config.text_config.rope_local_base_freq, which exists in
 #      transformers 4.5x (the node requires >=4.52) but was removed/restructured
 #      in transformers 5.x (the base image ships 5.2.0).
+#   6. Adds deps for other node packs on the shared custom-nodes share (see
+#      docker-compose.yml.j2) that otherwise fail to import: scikit-image +
+#      piexif + blend_modes + segment-anything (Impact-Pack), timm (PuLID,
+#      LayerStyle), insightface + facexlib + onnxruntime (PuLID, InstantID,
+#      the lyra_* nodes — CPU onnxruntime, not -gpu: goudai has no CUDA and
+#      insightface's ONNX inference works fine on CPU), soundfile (CRT-Nodes),
+#      reportlab (ListHelper), rotary-embedding-torch (MelBandRoFormer), ftfy
+#      (WanVideo/WanVideoWrapper), ltx-core + ltx-pipelines (ID-LoRA-LTX2.3).
+#      opencv-contrib-python-headless replaces plain opencv-python-headless —
+#      LayerStyle needs the ximgproc contrib module (guidedFilter), and having
+#      both the base and contrib cv2 packages installed side by side conflicts
+#      (both provide the `cv2` import). Nvidia_RTX_Nodes needs NVIDIA's
+#      proprietary nvvfx SDK and can never load on this AMD box.
 #
 # Build (on goudai):
 #   docker build -t comfyui-gfx1151-ltx:local docker/comfyui-gfx1151
@@ -44,5 +57,8 @@ RUN cp -a /opt/ComfyUI-pre-cloned /opt/ComfyUI \
  && pip3 install --no-cache-dir \
       "transformers>=4.52,<5" \
       diffusers accelerate gguf omegaconf peft \
-      opencv-python-headless einops av imageio imageio-ffmpeg scipy \
+      opencv-contrib-python-headless einops av imageio imageio-ffmpeg scipy \
+      scikit-image piexif blend_modes segment-anything timm \
+      insightface facexlib onnxruntime \
+      soundfile reportlab rotary-embedding-torch ftfy ltx-core ltx-pipelines \
  && mkdir -p /opt/ComfyUI/user/default/workflows /opt/ComfyUI/models/gguf
