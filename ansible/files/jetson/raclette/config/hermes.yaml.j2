@@ -2,8 +2,13 @@ model:
   provider: {{ raclette_model_provider }}
   default: {{ raclette_model_default }}
   context_length: {{ raclette_model_context_length }}
-  base_url: https://chatgpt.com/backend-api/codex
-providers: {}
+  base_url: {{ raclette_model_base_url }}
+providers:
+{% if raclette_providers %}
+{{ raclette_providers | to_nice_yaml(indent=2) | indent(2, first=True) }}
+{% else %}
+  {}
+{% endif %}
 fallback_providers: []
 credential_pool_strategies: {}
 toolsets:
