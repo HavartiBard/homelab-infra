@@ -96,3 +96,65 @@ groups:
         annotations:
           summary: "Weekly restic repository check is stale"
           description: "Last successful 'restic check' was more than 8 days ago. Run backup.sh check manually on Unraid and inspect /var/log/restic-backup.log."
+
+  - name: comfyui.rules
+    # All non-critical (severity: warning) by design - this is a homelab
+    # image/video pipeline, not paged infrastructure. See docs/comfyui-observability.md.
+    rules:
+      - alert: ComfyUIDown
+        expr: comfyui_up == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ComfyUI on {{ $labels.host }} is unreachable"
+          description: "The ComfyUI exporter on {{ $labels.host }} has not been able to reach ComfyUI's HTTP API for 2+ minutes."
+
+      - alert: ComfyUIQueueStuck
+        expr: >-
+          comfyui_queue_pending > 0
+          and (rate(comfyui_prompts_completed_total[15m]) + rate(comfyui_prompts_errored_total[15m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ComfyUI queue on {{ $labels.host }} is stuck"
+          description: "{{ $labels.host }} has prompts pending but none have completed or errored in 15+ minutes."
+
+      - alert: ComfyUIGpuVramHigh
+        # nvidia_smi_memory_{used,total}_bytes are utkuozdemir/nvidia_gpu_exporter's
+        # documented metric names - verify against the exporter's actual
+        # /metrics output during rollout in case the installed version differs.
+        expr: >-
+          (100 * (1 - (comfyui_vram_free_bytes / comfyui_vram_total_bytes))) > 95
+          or (100 * comfyui_amd_gpu_vram_used_bytes / comfyui_amd_gpu_vram_total_bytes) > 95
+          or (100 * nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) > 95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU VRAM on {{ $labels.host }} is above 95%"
+          description: "GPU VRAM usage on {{ $labels.host }} has been above 95% for 5+ minutes - generations may start failing with OOM."
+
+      - alert: ComfyUIRepeatedFailures
+        expr: increase(comfyui_prompts_errored_total[15m]) > 3
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Repeated ComfyUI generation failures on {{ $labels.host }}"
+          description: "{{ $labels.host }} has had more than 3 failed prompts in the last 15 minutes ({{ $labels.workflow_type }})."
+
+      - alert: ComfyUIDiskSpaceLow
+        # The generic DiskSpaceLow rule fires at <20%/<25GiB; this is the
+        # explicitly-requested <15% threshold, scoped to the ComfyUI hosts by
+        # instance (node_exporter doesn't carry a "host" label, only "instance").
+        expr: >-
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs", instance=~"spraycheese.*|192.168.20.150.*"}
+          / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs", instance=~"spraycheese.*|192.168.20.150.*"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is below 15% free - model/output storage for ComfyUI may fill up."
