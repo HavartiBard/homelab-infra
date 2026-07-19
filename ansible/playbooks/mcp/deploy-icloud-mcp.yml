@@ -1,0 +1,33 @@
+---
+# Deploy icloud-mcp on Unraid — MCP bridge exposing iCloud Mail, Calendar,
+# and Contacts via IMAP/CalDAV/CardDAV (mike-tih/icloud-mcp, pinned commit).
+#
+# LAN-only — do NOT register an NPM proxy host. This server holds
+# read/write access to a personal Apple ID mailbox/calendar/contacts via an
+# app-specific password; only trusted LAN clients should reach it.
+#
+# Usage:
+#   ansible/scripts/run-playbook.sh icloud-mcp playbooks/mcp/deploy-icloud-mcp.yml \
+#     --limit unraid
+
+- name: Deploy icloud-mcp on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: icloud-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: icloud-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "iCloud Mail/Calendar/Contacts MCP bridge (LAN-only) — http://{{ ansible_host }}:{{ icloud_mcp_port }}/mcp"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          icloud-mcp deployed.
+          MCP endpoint: http://{{ ansible_host }}:{{ icloud_mcp_port }}/mcp (LAN-only, no NPM proxy)
+          Tools: Mail (IMAP/SMTP), Calendar (CalDAV), Contacts (CardDAV)
