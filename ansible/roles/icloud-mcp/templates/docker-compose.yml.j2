@@ -9,7 +9,7 @@ services:
     env_file:
       - {{ icloud_mcp_env_file }}
     environment:
-      TZ: America/Phoenix
+      TZ: "{{ timezone }}"
       PORT: "8000"
     ports:
       - "{{ icloud_mcp_port }}:8000"
