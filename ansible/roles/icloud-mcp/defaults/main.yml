@@ -1,0 +1,22 @@
+---
+# icloud-mcp: mike-tih/icloud-mcp, built from a pinned upstream commit
+# (no tagged releases exist). Bump icloud_mcp_source_commit deliberately —
+# re-check the upstream Dockerfile/README for auth or transport changes
+# before doing so.
+
+icloud_mcp_source_commit: "3ed41bd0e6928d190b6bd99b1d2a4a936ad3ae60"
+icloud_mcp_image: "local/icloud-mcp:{{ icloud_mcp_source_commit[:12] }}"
+icloud_mcp_container_name: icloud-mcp
+icloud_mcp_port: 6983
+icloud_mcp_appdata_dir: /mnt/user/appdata/icloud-mcp
+icloud_mcp_build_dir: /tmp/icloud-mcp-build
+icloud_mcp_env_file: "{{ icloud_mcp_appdata_dir }}/icloud-mcp.env"
+
+# Pinned subnet: Docker's auto-allocation pools are exhausted on Unraid
+# (issue #79). .10=hister .11=crawl4ai .12=research-mcp .13=icloud-mcp
+icloud_mcp_net_subnet: "172.16.13.0/24"
+
+icloud_email: "{{ lookup('ansible.builtin.env', 'ICLOUD_EMAIL') }}"
+icloud_app_specific_password: "{{ lookup('ansible.builtin.env', 'ICLOUD_APP_SPECIFIC_PASSWORD') }}"
+
+timezone: "America/Phoenix"
