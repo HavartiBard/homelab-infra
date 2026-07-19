@@ -1,0 +1,77 @@
+---
+# Deploy mike-tih/icloud-mcp (pinned commit) on Unraid — LAN-only MCP
+# bridge for iCloud Mail/Calendar/Contacts via IMAP/CalDAV/CardDAV.
+# Uses raw commands throughout — Unraid has no Python.
+
+- name: Assert iCloud credentials are provided
+  ansible.builtin.assert:
+    that:
+      - icloud_email | length > 0
+      - icloud_app_specific_password | length > 0
+    fail_msg: >-
+      Set ICLOUD_EMAIL/ICLOUD_APP_SPECIFIC_PASSWORD (from 1Password "icloud-mcp"
+      item) via ansible/envs/icloud-mcp.env. The password must be an
+      app-specific password generated at appleid.apple.com, never the real
+      Apple ID password.
+
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ icloud_mcp_appdata_dir }}
+  changed_when: false
+
+- name: Write icloud-mcp .env file
+  ansible.builtin.raw: |
+    cat > {{ icloud_mcp_env_file }} << 'EOFENV'
+    ICLOUD_EMAIL={{ icloud_email }}
+    ICLOUD_APP_SPECIFIC_PASSWORD={{ icloud_app_specific_password }}
+    EOFENV
+    chmod 600 {{ icloud_mcp_env_file }}
+  changed_when: true
+  no_log: true
+
+- name: Create build directory
+  ansible.builtin.raw: |
+    rm -rf {{ icloud_mcp_build_dir }} && mkdir -p {{ icloud_mcp_build_dir }}
+  changed_when: false
+
+- name: Fetch pinned icloud-mcp source
+  ansible.builtin.raw: |
+    curl -fsSL https://codeload.github.com/mike-tih/icloud-mcp/tar.gz/{{ icloud_mcp_source_commit }} \
+      | tar xz -C {{ icloud_mcp_build_dir }} --strip-components=1
+  changed_when: false
+
+- name: Build icloud-mcp image
+  ansible.builtin.raw: |
+    cd {{ icloud_mcp_build_dir }} && docker build -t {{ icloud_mcp_image }} .
+  register: icloud_mcp_build
+  changed_when: icloud_mcp_build.rc == 0
+
+- name: Copy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ icloud_mcp_appdata_dir }}/docker-compose.yml"
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ icloud_mcp_appdata_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Wait for icloud-mcp MCP endpoint
+  ansible.builtin.raw: |
+    for i in $(seq 1 12); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:{{ icloud_mcp_port }}/mcp \
+        -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"1.0"}}}')
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for icloud-mcp" >&2; exit 1
+  changed_when: false
+
+- name: Show icloud-mcp logs
+  ansible.builtin.raw: docker logs --tail 20 {{ icloud_mcp_container_name }} 2>&1
+  register: icloud_mcp_logs
+  changed_when: false
+
+- name: Display icloud-mcp logs
+  ansible.builtin.debug:
+    msg: "{{ icloud_mcp_logs.stdout_lines }}"
