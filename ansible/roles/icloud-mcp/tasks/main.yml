@@ -71,7 +71,9 @@
   ansible.builtin.raw: docker logs --tail 20 {{ icloud_mcp_container_name }} 2>&1
   register: icloud_mcp_logs
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Display icloud-mcp logs
   ansible.builtin.debug:
     msg: "{{ icloud_mcp_logs.stdout_lines }}"
+  when: not ansible_check_mode
