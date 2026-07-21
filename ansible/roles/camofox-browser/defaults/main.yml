@@ -1,0 +1,24 @@
+---
+# camofox-browser: jo-inc/camofox-browser, built from a pinned upstream
+# commit (no tagged releases used here). Bump camofox_browser_source_commit
+# deliberately — re-check the upstream Dockerfile for auth/build changes
+# before doing so.
+camofox_browser_source_commit: "8b5b0959adfadadae38ecce9d7eed706ab102bf1"
+
+camofox_browser_image: "local/camofox-browser:{{ camofox_browser_source_commit[:12] }}"
+camofox_browser_container_name: camofox-browser
+camofox_browser_port: 9377
+
+# ARM64 build for Jetson (aarch64). daijro/camoufox publishes an "arm64"
+# release asset name for this — confirmed via the upstream Dockerfile's
+# camoufox-${VERSION}-${RELEASE}-lin.${ARCH}.zip download URL.
+camofox_browser_build_arch: arm64
+
+camofox_browser_deploy_dir: /home/james/docker/camofox-browser
+camofox_browser_build_dir: "{{ camofox_browser_deploy_dir }}/src"
+camofox_browser_compose_file: "{{ camofox_browser_deploy_dir }}/docker-compose.yml"
+camofox_browser_env_file: "{{ camofox_browser_deploy_dir }}/.env"
+
+camofox_browser_docker_compose_command: "docker compose"
+
+camofox_access_key: "{{ lookup('ansible.builtin.env', 'CAMOFOX_ACCESS_KEY') }}"

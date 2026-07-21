@@ -90,6 +90,7 @@ Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
 |------|----------|---------|
 | `adguard` | `ansible/envs/adguard.env` | `playbooks/dns/deploy-adguard-config.yml` |
 | `agent-cp` | `ansible/envs/agent-cp.env` | `playbooks/ai/deploy-agent-cp.yml` |
+| `camofox-browser` | `ansible/envs/camofox-browser.env` | `playbooks/jetson/deploy-camofox-browser.yml` |
 | `dns-dhcp` | `ansible/envs/dns-dhcp.env` | `playbooks/dns/provision-dns-dhcp.yml`, `provision-dns-dhcp-services.yml` |
 | `gitea` | `ansible/envs/gitea.env` | `playbooks/platform/deploy-gitea.yml` |
 | `gitea-mcp` | `ansible/envs/gitea-mcp.env` | `playbooks/mcp/deploy-gitea-mcp.yml` |
@@ -97,6 +98,7 @@ Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
 | `goudai` | `ansible/envs/goudai.env` | `playbooks/ai/deploy-open-webui.yml --limit goudai` |
 | `homelab-mcp` | `ansible/envs/homelab-mcp.env` | `playbooks/mcp/deploy-homelab-mcp.yml` |
 | `homepage` | `ansible/envs/homepage.env` | `playbooks/services/deploy-homepage.yml` |
+| `icloud-mcp` | `ansible/envs/icloud-mcp.env` | `playbooks/mcp/deploy-icloud-mcp.yml` |
 | `immich` | `ansible/envs/immich.env` | `playbooks/platform/deploy-immich.yml` |
 | `litellm` | `ansible/envs/litellm.env` | `playbooks/ai/deploy-litellm.yml` (DB password still a TODO — no 1Password item yet) |
 | `netbox` | `ansible/envs/netbox.env` | `playbooks/platform/deploy-netbox.yml`, `seed-netbox.yml` (DB password/secret key still TODOs) |

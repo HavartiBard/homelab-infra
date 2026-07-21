@@ -116,6 +116,7 @@ Dependency map: `services/homelab-dependency-map.md`.
 | SearXNG MCP | 6978 | Web search via SearXNG |
 | GSuite MCP | 8092 | Google Workspace tools |
 | 1Password MCP | internal | Secret retrieval (read-only) |
+| iCloud MCP | 6983 | LAN-only — Mail/Calendar/Contacts, app-specific password |
 
 ### Observability (Unraid)
 
@@ -138,6 +139,7 @@ Dependency map: `services/homelab-dependency-map.md`.
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
 | Raclette | Jetson (192.168.20.169) | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |
 | Lyra (isolated profile dashboard) | Jetson (192.168.20.169) | 9120 | `lyra.klsll.com` | `curl http://192.168.20.169:9120/` |
+| Camofox Browser | Jetson (192.168.20.169) | 9377 | — (LAN-only) | `curl http://192.168.20.169:9377/health` |
 
 ### DNS Infrastructure (Proxmox LXCs)
 
@@ -218,6 +220,7 @@ Common playbooks and their secrets slug:
 - `ansible/playbooks/mcp/deploy-homelab-mcp.yml` → `homelab-mcp`
 - `ansible/playbooks/mcp/deploy-onepassword-mcp.yml` → none — needs `OP_SERVICE_ACCOUNT_TOKEN` directly (it's the bootstrap secret itself)
 - `ansible/playbooks/mcp/deploy-proxmox-mcp.yml` → `proxmox-mcp`
+- `ansible/playbooks/mcp/deploy-icloud-mcp.yml` → `icloud-mcp`
 
 
 

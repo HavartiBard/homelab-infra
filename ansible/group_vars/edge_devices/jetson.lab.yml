@@ -15,3 +15,13 @@ raclette_env:
     {{ lookup('env', 'RACLETTE_DASHBOARD_PASSWORD') | default('CHANGEME_RACLETTE_DASHBOARD_PASSWORD', true) }}
   API_SERVER_KEY: >-
     {{ lookup('env', 'RACLETTE_API_SERVER_KEY') | default('CHANGEME_RACLETTE_API_SERVER_KEY', true) }}
+  # Camofox browser backend (jo-inc/camofox-browser, deployed alongside
+  # Raclette on this same host via ansible/roles/camofox-browser). Hermes'
+  # browser tool reads these as env vars, not config.yaml fields — see
+  # tools/browser_camofox.py's get_camofox_url()/_auth_headers(). Note the
+  # name mismatch: Camofox's own server-side bearer auth is CAMOFOX_ACCESS_KEY,
+  # but Hermes' client sends whatever's in CAMOFOX_API_KEY as the bearer
+  # token — both must hold the same 1Password "camofox-browser" credential.
+  CAMOFOX_URL: "http://192.168.20.169:9377"
+  CAMOFOX_API_KEY: >-
+    {{ lookup('env', 'RACLETTE_CAMOFOX_API_KEY') | default('CHANGEME_RACLETTE_CAMOFOX_API_KEY', true) }}
