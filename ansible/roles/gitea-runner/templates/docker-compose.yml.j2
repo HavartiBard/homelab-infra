@@ -42,7 +42,8 @@ services:
       net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gitea.png"
       com.gitea.runner.index: "{{ i }}"
     networks:
-      - {{ gitea_network_name }}
+      {{ gitea_network_name }}:
+        ipv4_address: "{{ gitea_runner_static_ips[i - 1] }}"
 
 {% endfor %}
 

@@ -59,6 +59,19 @@ timezone: America/Phoenix
 gitea_network_name: br0  # Must match Gitea's network (macvlan)
 gitea_network_driver: macvlan
 
+# Static br0 IPs, one per runner (index 0 = runner 1, etc.) — must cover at
+# least gitea_runner_count entries. Without an explicit ipv4_address, Docker
+# auto-assigns from br0's IPRange (192.168.21.0/24), which is unreachable
+# from the rest of VLAN 20 (still /23 pending the console re-mask — see
+# Obsidian projects/homelab-infra/vlan20-slash24-migration-runbook.md) and
+# breaks outbound DNS/internet access entirely. .61/.62 chosen as the next
+# free static addresses after the existing br0 allocations (.50 npm, .51
+# npm-db, .52 gitea, .53 gitea-db, .55 homepage, .57 research-dashboard, .60
+# dev-environment); .56 intentionally skipped (stale ironclaw reservation).
+gitea_runner_static_ips:
+  - 192.168.20.61
+  - 192.168.20.62
+
 # Docker socket mounting (for containerized builds)
 gitea_runner_docker_socket_path: /var/run/docker.sock
 gitea_runner_docker_host: "unix:///var/run/docker.sock"

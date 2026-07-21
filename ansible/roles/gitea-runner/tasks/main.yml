@@ -11,6 +11,16 @@
     - not gitea_runner_token or gitea_runner_token == ''
     - not gitea_instance_url or gitea_instance_url == ''
 
+- name: Assert enough static IPs for the configured runner count
+  ansible.builtin.assert:
+    that:
+      - gitea_runner_static_ips | length >= gitea_runner_count | int
+    fail_msg: >-
+      gitea_runner_static_ips has {{ gitea_runner_static_ips | length }}
+      entries but gitea_runner_count is {{ gitea_runner_count }} — add more
+      static IPs (see the role defaults' comment on avoiding br0's
+      auto-assigned 192.168.21.x range).
+
 - name: Ensure runner directories exist
   ansible.builtin.raw: |
     mkdir -p {{ gitea_runner_stack_root }} \
