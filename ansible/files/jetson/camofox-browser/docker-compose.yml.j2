@@ -1,0 +1,18 @@
+services:
+  camofox-browser:
+    build:
+      context: "{{ camofox_browser_build_dir }}"
+      args:
+        ARCH: "{{ camofox_browser_build_arch }}"
+    image: "{{ camofox_browser_image }}"
+    container_name: {{ camofox_browser_container_name }}
+    restart: unless-stopped
+    shm_size: 2gb
+    env_file:
+      - {{ camofox_browser_env_file }}
+    ports:
+      - "{{ camofox_browser_port }}:9377"
+    deploy:
+      resources:
+        limits:
+          memory: 2g
