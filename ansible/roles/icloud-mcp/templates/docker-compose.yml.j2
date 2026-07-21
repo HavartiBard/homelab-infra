@@ -1,0 +1,29 @@
+services:
+  icloud-mcp:
+    image: "{{ icloud_mcp_image }}"
+    container_name: {{ icloud_mcp_container_name }}
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/icloud.png"
+      net.unraid.docker.webui: "http://192.168.20.14:{{ icloud_mcp_port }}/mcp"
+    env_file:
+      - {{ icloud_mcp_env_file }}
+    environment:
+      TZ: "{{ timezone }}"
+      PORT: "8000"
+    ports:
+      - "{{ icloud_mcp_port }}:8000"
+    networks:
+      - icloud-mcp-net
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+networks:
+  icloud-mcp-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ icloud_mcp_net_subnet }}

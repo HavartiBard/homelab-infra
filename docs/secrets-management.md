@@ -97,6 +97,7 @@ Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
 | `goudai` | `ansible/envs/goudai.env` | `playbooks/ai/deploy-open-webui.yml --limit goudai` |
 | `homelab-mcp` | `ansible/envs/homelab-mcp.env` | `playbooks/mcp/deploy-homelab-mcp.yml` |
 | `homepage` | `ansible/envs/homepage.env` | `playbooks/services/deploy-homepage.yml` |
+| `icloud-mcp` | `ansible/envs/icloud-mcp.env` | `playbooks/mcp/deploy-icloud-mcp.yml` |
 | `immich` | `ansible/envs/immich.env` | `playbooks/platform/deploy-immich.yml` |
 | `litellm` | `ansible/envs/litellm.env` | `playbooks/ai/deploy-litellm.yml` (DB password still a TODO — no 1Password item yet) |
 | `netbox` | `ansible/envs/netbox.env` | `playbooks/platform/deploy-netbox.yml`, `seed-netbox.yml` (DB password/secret key still TODOs) |
