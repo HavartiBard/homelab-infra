@@ -1,0 +1,37 @@
+---
+# Deploy Camofox Browser to jetson.lab
+#
+# Camofox (jo-inc/camofox-browser) is a stealth headless browser REST API
+# (Camoufox — a Firefox fork with anti-fingerprinting) built from a pinned
+# upstream commit. Intended as hermes' browser-automation backend
+# (config.yaml's browser.camofox block), replacing/complementing its
+# built-in Playwright browser.
+#
+# Usage:
+#   ansible/scripts/run-playbook.sh camofox-browser playbooks/jetson/deploy-camofox-browser.yml \
+#     --limit jetson.lab
+#
+# Verify:
+#   curl -H "Authorization: Bearer <CAMOFOX_ACCESS_KEY>" http://192.168.20.169:9377/health
+
+- name: Deploy Camofox Browser to jetson.lab
+  hosts: jetson.lab
+  gather_facts: false
+  become: false
+
+  roles:
+    - role: camofox-browser
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: camofox-browser
+            cluster: jetson-docker
+            role: Application
+            comments: "Stealth headless browser REST API for hermes — http://{{ ansible_host }}:{{ camofox_browser_port }}"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          camofox-browser deployed.
+          Endpoint: http://{{ ansible_host }}:{{ camofox_browser_port }} (bearer auth required, see CAMOFOX_ACCESS_KEY)

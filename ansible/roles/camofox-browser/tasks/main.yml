@@ -1,0 +1,88 @@
+---
+# Deploy jo-inc/camofox-browser (pinned commit) on jetson.lab — stealth
+# headless browser REST API for hermes' browser tool. jetson.lab has a full
+# Python interpreter, so this uses normal Ansible modules (unlike the raw
+# commands required for Unraid roles).
+
+- name: Assert Camofox access key is provided
+  ansible.builtin.assert:
+    that:
+      - camofox_access_key | length > 0
+    fail_msg: >-
+      Set CAMOFOX_ACCESS_KEY (from 1Password "camofox-browser" item) via
+      ansible/envs/camofox-browser.env.
+
+- name: Ensure Camofox deploy directory exists
+  ansible.builtin.file:
+    path: "{{ camofox_browser_deploy_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Remove stale build source
+  ansible.builtin.file:
+    path: "{{ camofox_browser_build_dir }}"
+    state: absent
+
+- name: Ensure Camofox build directory exists
+  ansible.builtin.file:
+    path: "{{ camofox_browser_build_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Fetch pinned camofox-browser source
+  ansible.builtin.unarchive:
+    src: "https://codeload.github.com/jo-inc/camofox-browser/tar.gz/{{ camofox_browser_source_commit }}"
+    dest: "{{ camofox_browser_build_dir }}"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+
+- name: Render .env for Camofox container
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/camofox-browser/.env.j2"
+    dest: "{{ camofox_browser_env_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Render Docker Compose definition
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/camofox-browser/docker-compose.yml.j2"
+    dest: "{{ camofox_browser_compose_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Build + deploy Camofox stack with Docker Compose
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ camofox_browser_deploy_dir }}"
+    {{ camofox_browser_docker_compose_command }} build
+    {{ camofox_browser_docker_compose_command }} up -d
+  register: camofox_browser_deploy
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Validate Camofox container is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker inspect -f {{ '{{.State.Running}}' }} {{ camofox_browser_container_name }}
+  register: camofox_browser_running
+  failed_when: camofox_browser_running.stdout | trim != 'true'
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Wait for Camofox health endpoint
+  ansible.builtin.uri:
+    url: "http://localhost:{{ camofox_browser_port }}/health"
+    status_code: 200
+  register: camofox_browser_health
+  retries: 24
+  delay: 10
+  until: camofox_browser_health.status == 200
