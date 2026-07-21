@@ -50,7 +50,9 @@ raclette_mcp_servers:
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
 # https://chatgpt.com/backend-api/codex, default gpt-5.4-mini, context 65536.
 raclette_model_provider: goudai-llama-swap
-raclette_model_default: "qwen/qwen3.6-35b-a3b-mtp"
+# Kept resident indefinitely on goudai (ttl: 0 in ansible/roles/llama-swap
+# defaults) — the default model for both the default and lyra profiles.
+raclette_model_default: "qwen/qwen3.6-35b-uncensored"
 raclette_model_context_length: 131072
 raclette_model_base_url: "http://192.168.20.150:8010/v1"
 
