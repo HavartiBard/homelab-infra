@@ -15,6 +15,13 @@ raclette_container_name: raclette
 raclette_dashboard_port: 9119
 raclette_gateway_port: 8642
 
+# Isolated dashboard for the "lyra" profile — see lyra-dashboard-init.sh.j2.
+# The default profile's dashboard always reports itself as "default" via
+# /profile regardless of how many other profiles exist (multiplex_profiles
+# is off), so Lyra needs its own dashboard process on a separate port to be
+# reachable from a web UI at all.
+raclette_lyra_dashboard_port: 9120
+
 # File paths (derived)
 raclette_compose_file: "{{ raclette_deploy_dir }}/docker-compose.yml"
 raclette_env_file: "{{ raclette_deploy_dir }}/.env"

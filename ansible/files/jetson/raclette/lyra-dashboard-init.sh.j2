@@ -1,0 +1,28 @@
+#!/command/with-contenv sh
+# Homelab-specific cont-init.d addition (not part of the upstream hermes-agent
+# image): launches a dedicated, isolated web dashboard for the "lyra" profile
+# so it's reachable independently of the default profile's dashboard (which
+# owns port {{ raclette_dashboard_port }} and only ever reports itself as
+# "default" via /profile — see gateway/slash_commands.py's
+# _handle_profile_command). Backgrounded here (not s6-supervised) the same
+# way 03-ssh-agent-setup.sh backgrounds ssh-agent — cont-init.d scripts run
+# once at container start, before services start, and are expected to leave
+# any long-running process detached.
+#
+# Runs after ssh-agent setup, as /etc/cont-init.d/04-lyra-dashboard.sh.
+set -eu
+
+HERMES_HOME="${HERMES_HOME:-/opt/data}"
+
+if [ ! -d "$HERMES_HOME/profiles/lyra" ]; then
+    echo "[lyra-dashboard] no lyra profile at $HERMES_HOME/profiles/lyra, skipping"
+    exit 0
+fi
+
+mkdir -p "$HERMES_HOME/logs"
+s6-setuidgid hermes env HOME="$HERMES_HOME" \
+    /opt/hermes/.venv/bin/hermes -p lyra dashboard --isolated \
+        --host 0.0.0.0 --port {{ raclette_lyra_dashboard_port }} --no-open --skip-build \
+        >>"$HERMES_HOME/logs/lyra-dashboard.log" 2>&1 &
+
+echo "[lyra-dashboard] isolated dashboard starting on :{{ raclette_lyra_dashboard_port }}"
