@@ -137,6 +137,7 @@ Dependency map: `services/homelab-dependency-map.md`.
 | Ollama | spraycheese | 11434 | `ollama.klsll.com` | `curl http://spraycheese:11434/api/tags` |
 | Open WebUI | spraycheese | 8080 | `chat.klsll.com` | `curl http://localhost:8080/health` |
 | Raclette | Jetson (192.168.20.169) | 9119 | `raclette.klsll.com` | `curl http://192.168.20.169:9119/` |
+| Lyra (isolated profile dashboard) | Jetson (192.168.20.169) | 9120 | `lyra.klsll.com` | `curl http://192.168.20.169:9120/` |
 
 ### DNS Infrastructure (Proxmox LXCs)
 

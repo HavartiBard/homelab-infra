@@ -116,6 +116,14 @@
     group: "{{ ansible_user }}"
     mode: '0755'
 
+- name: Render Lyra dashboard cont-init script for Raclette
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/lyra-dashboard-init.sh.j2"
+    dest: "{{ raclette_deploy_dir }}/lyra-dashboard-init.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
 - name: Render Docker Compose definition
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/raclette/docker-compose.yml.j2"

@@ -19,6 +19,7 @@ services:
       - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ raclette_deploy_dir }}/ssh-agent-init.sh:/etc/cont-init.d/03-ssh-agent-setup.sh:ro
+      - {{ raclette_deploy_dir }}/lyra-dashboard-init.sh:/etc/cont-init.d/04-lyra-dashboard.sh:ro
     env_file:
       - {{ raclette_env_file }}
     environment:
