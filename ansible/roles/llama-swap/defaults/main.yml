@@ -162,7 +162,10 @@ llama_swap_models:
       - "--ctx-checkpoints 10"
       - "--cache-type-k q8_0"
       - "--cache-type-v q8_0"
-    ttl: 600
+    # ttl: 0 = never automatically unload (llama-swap semantics — this is
+    # the default model for both hermes profiles, so keep it resident
+    # rather than paying a cold-load on every idle gap).
+    ttl: 0
 
   # ── 35B-A3B MTP reasoning ───────────────────────────────────────────────
   # Keep this warm with the agent-stack so it stays resident for repeated
