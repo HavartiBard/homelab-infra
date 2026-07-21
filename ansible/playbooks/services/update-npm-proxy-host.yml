@@ -139,6 +139,16 @@
       register: dns_check
       no_log: true
 
+    - name: Fail loudly on a Technitium auth/API error (not just a missing record)
+      ansible.builtin.fail:
+        msg: >-
+          Technitium API error: {{ dns_check.json.errorMessage | default('unknown error') }}
+          (status={{ dns_check.json.status | default('?') }}) — check
+          TECHNITIUM_API_TOKEN/TECHNITIUM_ADMIN_PASSWORD in ansible/envs/npm.env.
+          A 200 HTTP status alone does NOT mean success; Technitium reports
+          auth failures as {"status":"invalid-token"} with HTTP 200.
+      when: dns_check.json.status is defined and dns_check.json.status != 'ok'
+
     - name: Parse existing A record
       ansible.builtin.set_fact:
         dns_record_ip: >-
@@ -168,6 +178,14 @@
       register: dns_create
       no_log: true
 
+    - name: Fail if DNS A record creation didn't actually succeed
+      ansible.builtin.fail:
+        msg: >-
+          Technitium API error creating {{ npm_domain }}:
+          {{ dns_create.json.errorMessage | default('unknown error') }}
+          (status={{ dns_create.json.status | default('?') }})
+      when: dns_create is not skipped and (dns_create.json.status | default('')) != 'ok'
+
     - name: Update DNS A record (wrong IP)
       ansible.builtin.uri:
         url: "{{ technitium_url }}/api/zones/records/update"
@@ -185,6 +203,14 @@
       when: dns_record_ip is not none and dns_record_ip != npm_dns_target
       register: dns_update
       no_log: true
+
+    - name: Fail if DNS A record update didn't actually succeed
+      ansible.builtin.fail:
+        msg: >-
+          Technitium API error updating {{ npm_domain }}:
+          {{ dns_update.json.errorMessage | default('unknown error') }}
+          (status={{ dns_update.json.status | default('?') }})
+      when: dns_update is not skipped and (dns_update.json.status | default('')) != 'ok'
 
     # ── Summary ────────────────────────────────────────────────────────────────
 
