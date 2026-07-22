@@ -1,0 +1,78 @@
+---
+# Deploy a second, isolated GSuite MCP instance for the raclette "lyra"
+# Hermes profile (Gmail + Calendar + Drive under its own Google identity).
+#
+# Mirrors playbooks/mcp/deploy-gsuite-mcp.yml but on a separate port/appdata
+# dir/OAuth callback host so lyra's Google account never shares state with
+# the default profile's gsuite-mcp instance. Previously deployed by hand
+# (container gsuite-mcp-lyra:latest existed with no matching role/playbook)
+# — this brings it under Ansible management.
+#
+# Prerequisites:
+#   - /mnt/user/appdata/gsuite-mcp-lyra/gauth.json must exist on Unraid
+#     (Web Application OAuth client JSON from Google Cloud Console — can be
+#     the same OAuth client as the default gsuite-mcp instance, or a
+#     separate one; either works as long as the redirect URI below is
+#     registered on whichever client's gauth.json is used)
+#   - The OAuth client must have
+#     https://gsuite-auth-lyra.klsll.com/oauth2callback registered as an
+#     authorized redirect URI
+#   - Run playbooks/services/deploy-gsuite-auth-lyra-proxy.yml first so that
+#     hostname actually resolves/proxies to this container
+#
+# After deployment, complete OAuth once:
+#   1. Call the start_google_auth MCP tool (profile: lyra) to get an
+#      authorization URL
+#   2. Open the URL in a browser and authorize
+#   3. Google redirects to https://gsuite-auth-lyra.klsll.com/oauth2callback
+#   Tokens are stored in /mnt/user/appdata/gsuite-mcp-lyra/store_creds/
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-gsuite-mcp-lyra.yml \
+#     --limit unraid
+
+- name: Deploy gsuite-mcp (lyra instance) to Unraid
+  hosts: unraid
+  gather_facts: false
+  vars:
+    gsuite_mcp_container_name: "gsuite-mcp-lyra"
+    gsuite_mcp_image: "gsuite-mcp-lyra:latest"
+    gsuite_mcp_port: 8093
+    gsuite_mcp_appdata_dir: "/mnt/user/appdata/gsuite-mcp-lyra"
+    gsuite_mcp_user_email: "lyra@gmail.com"
+    gsuite_mcp_external_url: "https://gsuite-auth-lyra.klsll.com"
+
+  pre_tasks:
+    - name: Verify gauth.json exists on Unraid
+      ansible.builtin.raw: test -f {{ gsuite_mcp_appdata_dir }}/gauth.json
+      changed_when: false
+      failed_when: false
+      register: gauth_check
+
+    - name: Fail when gauth.json is missing
+      ansible.builtin.fail:
+        msg: >-
+          {{ gsuite_mcp_appdata_dir }}/gauth.json not found on Unraid.
+          Download the Web Application OAuth client JSON from Google Cloud Console
+          (with https://gsuite-auth-lyra.klsll.com/oauth2callback as an authorized
+          redirect URI) and place it there before running this playbook.
+      when: gauth_check.rc != 0
+
+  roles:
+    - gsuite-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: gsuite-mcp-lyra
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "Google Workspace MCP (lyra profile) — http://{{ ansible_host }}:{{ gsuite_mcp_port }}/mcp"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          GSuite MCP (lyra) deployed successfully!
+          Endpoint:  http://{{ ansible_host }}:{{ gsuite_mcp_port }}/mcp
+          Logs:      docker logs {{ gsuite_mcp_container_name }} -f
+          OAuth:     call start_google_auth tool (profile: lyra) to complete authorization

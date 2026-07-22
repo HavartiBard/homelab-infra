@@ -33,11 +33,15 @@ raclette_docker_compose_command: "docker compose"
 raclette_uid: 1000
 raclette_gid: 1000
 
-# MCP servers for the config.yaml `mcp_servers:` section. Obsidian and Gitea
-# are hosted on Unraid (192.168.20.14). Note: earlier revisions of this role
-# also declared a `director` entry (https://director.klsll.com/raclette/mcp)
-# but it was never actually applied to the live agent — dropped rather than
-# resurrected during the 2026-07-18 template/live-config reconciliation.
+# MCP servers for the config.yaml `mcp_servers:` section. All hosted on
+# Unraid (192.168.20.14). Note: earlier revisions of this role declared a
+# `director` entry (https://director.klsll.com/raclette/mcp) but it was
+# never actually applied to the live agent — dropped during the 2026-07-18
+# template/live-config reconciliation. SearXNG and 1Password below replace
+# that aggregated access with direct endpoints (2026-07-22) — Director is
+# not involved: SearXNG has its own HTTP MCP server, and 1Password's MCP is
+# a stdio server bridged to HTTP by mcp-proxy (also used for SoulLayer; see
+# ansible/roles/mcp-proxy). This does not affect Director's other clients.
 raclette_mcp_servers:
   Gitea:
     url: "http://192.168.20.14:6976/mcp"
@@ -45,6 +49,10 @@ raclette_mcp_servers:
     url: "http://192.168.20.14:6977/mcp"
   iCloud:
     url: "http://192.168.20.14:6983/mcp"
+  SearXNG:
+    url: "http://192.168.20.14:6978/mcp"
+  OnePassword:
+    url: "http://192.168.20.14:6980/servers/onepassword/sse"
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
