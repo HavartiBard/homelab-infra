@@ -7,6 +7,8 @@ You connect directly to homelab MCP servers (no Director aggregator — that int
 - `mcp__Gitea__*` — homelab Git server (`code.klsll.com`). Covers repos, issues, PRs, branches, comments, labels, file/directory reads (`list_repos`, `create_issue`, `edit_issue`, `create_pull_request`, `merge_pull_request`, `list_branches`, `create_branch`, `delete_branch`, `get_file_content`, `get_directory_content`, `get_user_info`, etc.). There is **no user/admin-management tool** in this set.
 - `mcp__Obsidian__*` — read/write/search the homelab Obsidian vault (`obsidian_list_notes`, `obsidian_read_note`, `obsidian_search`, `obsidian_write_note`).
 - `mcp__iCloud__*` — Mail/Calendar/Contacts (only enabled when configured; may show as disabled).
+- `mcp__SearXNG__*` — homelab SearXNG web search, direct endpoint (no Director).
+- `mcp__OnePassword__*` — 1Password secret retrieval, read from the "AI Wedge" vault. Bridged through `mcp-proxy` (a stdio→HTTP bridge, not Director) — direct endpoint, no aggregator involved.
 
 Do not reference `mcp_director_*`, Gmail, or Google Drive tools — they are not connected to this agent. If a tool isn't in your live tool list, it isn't available; don't guess a prefix.
 

@@ -1,0 +1,19 @@
+---
+proxy_hosts:
+  - name: gsuite-auth-lyra
+    domains:
+      - gsuite-auth-lyra.klsll.com
+    forward_host: 192.168.20.14
+    forward_port: 8093
+    scheme: http
+    websocket: false
+    certificate: klsll-wildcard
+    ssl_forced: false
+    hsts: false
+    http2: false
+
+dns_records:
+  - name: gsuite-auth-lyra.klsll.com
+    type: A
+    value: 192.168.20.50
+    ttl: 3600
