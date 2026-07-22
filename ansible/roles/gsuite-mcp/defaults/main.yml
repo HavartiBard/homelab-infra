@@ -27,5 +27,13 @@ gsuite_mcp_external_url: "https://gsuite-auth.klsll.com"
 # Must match an authorized redirect URI in Google Cloud Console
 gsuite_mcp_oauth_redirect_uri: "{{ gsuite_mcp_external_url }}/oauth2callback"
 
+# Upstream google_workspace_mcp's legacy streamable-http mode now defaults
+# to binding 127.0.0.1 unless this is set explicitly (a change picked up by
+# rebuilding from GitHub HEAD — this role has no pinned version). Without
+# it, Docker's -p port publish can't reach the process at all: the port
+# looks open but every connection just times out from outside the
+# container. Must be 0.0.0.0 for the LAN-published port to work.
+gsuite_mcp_host: "0.0.0.0"
+
 # Timezone
 timezone: "America/Phoenix"
