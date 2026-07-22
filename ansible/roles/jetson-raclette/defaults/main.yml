@@ -53,6 +53,7 @@ raclette_mcp_servers:
     url: "http://192.168.20.14:6978/mcp"
   OnePassword:
     url: "http://192.168.20.14:6980/servers/onepassword/sse"
+    transport: sse
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
