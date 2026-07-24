@@ -5,6 +5,8 @@ couchdb_admin_password: "{{ lookup('ansible.builtin.env', 'COUCHDB_ADMIN_PASSWOR
 couchdb_sync_user: "{{ lookup('ansible.builtin.env', 'COUCHDB_SYNC_USERNAME') | default('', true) }}"
 couchdb_sync_password: "{{ lookup('ansible.builtin.env', 'COUCHDB_SYNC_PASSWORD') | default('', true) }}"
 
-obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
+# Migrated from /mnt/user/appdata/obsidian/vaults/homelab to the dedicated
+# /mnt/user/obsidian share on 2026-07-23 — matches the container's live mount.
+obsidian_vault_path: "/mnt/user/obsidian/homelab"
 obsidian_mcp_port: 6977
 obsidian_mcp_container_name: "obsidian-mcp"

@@ -5,10 +5,6 @@
 raclette_deploy_dir: /home/james/docker/raclette
 raclette_state_dir: /home/james/.raclette
 
-# Obsidian vault mount (NFS-mounted from Unraid on Jetson)
-raclette_obsidian_host_dir: /mnt/user/appdata/obsidian/vaults
-raclette_obsidian_container_dir: /vault
-
 # Container settings
 raclette_image: nousresearch/hermes-agent:latest
 raclette_container_name: raclette
@@ -54,6 +50,12 @@ raclette_mcp_servers:
   OnePassword:
     url: "http://192.168.20.14:6980/servers/onepassword/sse"
     transport: sse
+  # Hand-added directly on jetson.lab (never tracked in git) — brought under
+  # IaC on 2026-07-24. Main GSuite MCP instance (port 8092, see AGENTS.md
+  # service table), distinct from gsuite-mcp-lyra (the lyra profile's
+  # separate isolated instance managed by its own role).
+  gsuite-jma8chz:
+    url: "192.168.20.14:8092/mcp"
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url

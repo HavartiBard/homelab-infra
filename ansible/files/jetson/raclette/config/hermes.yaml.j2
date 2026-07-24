@@ -63,7 +63,6 @@ terminal:
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
   docker_forward_env: []
   docker_env:
-    OBSIDIAN_VAULT_PATH: {{ raclette_obsidian_container_dir }}
     SSH_AUTH_SOCK: /tmp/ssh-agent.sock
   singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
   modal_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -73,7 +72,6 @@ terminal:
   container_disk: 51200
   container_persistent: true
   docker_volumes:
-    - {{ raclette_obsidian_host_dir }}:{{ raclette_obsidian_container_dir }}:rw
     - {{ raclette_state_dir }}/agent.sock:/tmp/ssh-agent.sock
   docker_mount_cwd_to_workspace: false
   persistent_shell: true

@@ -78,7 +78,7 @@ Client → AdGuard (.4/.5) ─┬─ klsll.com zones ──→ Technitium (.2/.3
 
 ## Key Services
 
-Full service inventory with Obsidian docs at `/mnt/user/appdata/obsidian/vaults/homelab/services/`.
+Full service inventory with Obsidian docs at `/mnt/user/obsidian/homelab/services/`.
 Dependency map: `services/homelab-dependency-map.md`.
 
 ### Platform / Infrastructure (Unraid: 192.168.20.14)
@@ -352,7 +352,7 @@ Obsidian Desktop (LiveSync) ←→ CouchDB (192.168.20.14:5984) ←→ Obsidian 
 
 ### Vault Location
 
-- Path: `/mnt/user/appdata/obsidian/vaults/homelab/`
+- Path: `/mnt/user/obsidian/homelab/`
 - Service docs: `services/*.md` (one file per service)
 - Templates: `templates/service-catalog.md`
 
