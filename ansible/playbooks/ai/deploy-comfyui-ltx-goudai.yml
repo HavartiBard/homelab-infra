@@ -8,6 +8,12 @@
 # model library, ensures the gemma gguf symlink the LTX2_SM node expects, and
 # validates that the LTX2_SM node family loads.
 #
+# comfyui-mcp (artokun/comfyui-mcp) is built and deployed as a sidecar in the
+# same compose stack — see docker/comfyui-mcp and
+# ansible/files/goudai/comfyui-ltx/docker-compose.yml.j2. Secrets (CivitAI/
+# HuggingFace tokens, optional) come from the `comfyui-mcp` env slug:
+#   ansible/scripts/run-playbook.sh comfyui-mcp playbooks/ai/deploy-comfyui-ltx-goudai.yml --limit goudai
+#
 # Run:
 #   cd ansible
 #   ansible-playbook playbooks/ai/deploy-comfyui-ltx-goudai.yml --limit goudai
@@ -25,6 +31,21 @@
     comfyui_models_dir: /mnt/ai-models/comfyui/models
     comfyui_custom_node_dir: /mnt/ai-models/comfyui/custom-nodes/ComfyUI_LTX2_SM
     comfyui_force_rebuild: false
+    comfyui_mcp_build_dir: /opt/comfyui/mcp-build
+    comfyui_mcp_image: "local/comfyui-mcp:0.47.0"
+    comfyui_mcp_port: 9101
+    comfyui_mcp_civitai_token: "{{ lookup('ansible.builtin.env', 'CIVITAI_API_TOKEN') | default('') }}"
+    comfyui_mcp_huggingface_token: "{{ lookup('ansible.builtin.env', 'HUGGINGFACE_TOKEN') | default('') }}"
+
+  roles:
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: comfyui-mcp
+            cluster: goudai-docker
+            role: MCP Server
+            comments: "artokun/comfyui-mcp sidecar (LAN-only, no NPM proxy) — http://{{ ansible_host }}:{{ comfyui_mcp_port }}/mcp"
+
   tasks:
 
     - name: Ensure service and build directories exist
@@ -103,6 +124,34 @@
       register: node_patch
       changed_when: "'CHANGED' in node_patch.stdout"
 
+    - name: Ensure comfyui-mcp build directory exists
+      ansible.builtin.file:
+        path: "{{ comfyui_mcp_build_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy Dockerfile for comfyui-mcp
+      ansible.builtin.copy:
+        src: ../../../docker/comfyui-mcp/Dockerfile
+        dest: "{{ comfyui_mcp_build_dir }}/Dockerfile"
+        mode: "0644"
+      register: comfyui_mcp_dockerfile_copy
+
+    - name: Check whether the comfyui-mcp image already exists
+      ansible.builtin.command: "docker image inspect {{ comfyui_mcp_image }}"
+      register: comfyui_mcp_image_present
+      changed_when: false
+      failed_when: false
+
+    - name: Build the comfyui-mcp image
+      ansible.builtin.command: "docker build -t {{ comfyui_mcp_image }} ."
+      args:
+        chdir: "{{ comfyui_mcp_build_dir }}"
+      when: >-
+        comfyui_force_rebuild or comfyui_mcp_dockerfile_copy.changed
+        or comfyui_mcp_image_present.rc != 0
+      changed_when: true
+
     - name: Copy ComfyUI Prometheus exporter script
       ansible.builtin.copy:
         src: ../../files/comfyui-exporter/comfyui_exporter.py
@@ -159,10 +208,24 @@
       delay: 5
       until: exporter_health.status is defined and exporter_health.status == 200
 
+    - name: Wait for comfyui-mcp to respond
+      # Streamable-HTTP MCP endpoints reject a plain GET (expects a proper MCP
+      # initialize handshake) — a 4xx here still proves the port is up and the
+      # server is listening, same convention used for the other MCP servers.
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ comfyui_mcp_port }}/mcp"
+        method: GET
+        status_code: [200, 400, 404, 406]
+      register: comfyui_mcp_health
+      retries: 20
+      delay: 3
+      until: comfyui_mcp_health.status is defined
+
     - name: Report
       ansible.builtin.debug:
         msg: >-
           ComfyUI (LTX2_SM) is up at http://{{ ansible_host }}:{{ comfyui_port }} —
           GPU: {{ health.json.devices[0].name | default('unknown') }},
           torch {{ health.json.system.pytorch_version | default('?') }}.
-          Exporter metrics at http://{{ ansible_host }}:9840/metrics
+          Exporter metrics at http://{{ ansible_host }}:9840/metrics.
+          comfyui-mcp reachable at http://{{ ansible_host }}:{{ comfyui_mcp_port }}/mcp

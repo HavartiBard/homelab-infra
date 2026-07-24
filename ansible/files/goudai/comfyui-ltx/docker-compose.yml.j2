@@ -9,6 +9,12 @@ name: comfyui
 # mounted (matching spraycheese) so node packs added to the share show up here
 # without editing this template; some CUDA-only packs (e.g. Nvidia_RTX_Nodes)
 # will fail to import on ROCm — ComfyUI logs and skips those, it doesn't crash.
+#
+# comfyui-mcp (artokun/comfyui-mcp, docker/comfyui-mcp) runs as a sidecar on
+# this same network so it gets both the HTTP/WebSocket API and local
+# filesystem access (models/workflows) — full 174-tool surface for Hermes on
+# jetson.lab, registered LAN-only, no NPM proxy. See raclette_mcp_servers in
+# ansible/roles/jetson-raclette/defaults/main.yml.
 services:
   comfyui:
     image: comfyui-gfx1151-ltx:local
@@ -63,6 +69,37 @@ services:
       # Read-only, no devices/privileged needed - just the amdgpu sysfs
       # attributes (gpu_busy_percent, mem_info_vram_*, hwmon temp/power).
       - "/sys:/sys:ro"
+    networks:
+      - comfyui
+    depends_on:
+      - comfyui
+
+  comfyui-mcp:
+    image: local/comfyui-mcp:0.47.0
+    container_name: comfyui-mcp
+    restart: unless-stopped
+    environment:
+      COMFYUI_URL: "http://comfyui:8188"
+      COMFYUI_PATH: "/opt/ComfyUI"  # matches the comfyui service's mount root, for local-filesystem tools
+      MCP_PORT: "9101"  # 9100 is node_exporter on every host, incl. goudai
+      # comfyui-mcp refuses to bind non-loopback without an auth token by
+      # default. We deliberately opt into the open (no-token) endpoint here —
+      # security comes from LAN-only network isolation (port not proxied
+      # through NPM, no WAN exposure), matching every other MCP server in
+      # this repo (Gitea/Obsidian/iCloud/SearXNG all trust network isolation
+      # alone, no bearer tokens). A token would also need Hermes-side header
+      # support that raclette_mcp_servers doesn't currently have.
+      COMFYUI_MCP_ALLOW_UNAUTH: "1"
+      CIVITAI_API_TOKEN: "{{ comfyui_mcp_civitai_token | default('') }}"
+      HUGGINGFACE_TOKEN: "{{ comfyui_mcp_huggingface_token | default('') }}"
+    ports:
+      - "9101:9101"
+    volumes:
+      - "/mnt/ai-models/comfyui/models:/opt/ComfyUI/models"
+      - "/mnt/ai-models/comfyui/input:/opt/ComfyUI/input"
+      - "/mnt/ai-models/comfyui/output:/opt/ComfyUI/output"
+      - "/mnt/ai-models/comfyui/custom-nodes:/opt/ComfyUI/custom_nodes"
+      - "/mnt/ai-models/comfyui/workflows:/opt/ComfyUI/user/default/workflows"
     networks:
       - comfyui
     depends_on:

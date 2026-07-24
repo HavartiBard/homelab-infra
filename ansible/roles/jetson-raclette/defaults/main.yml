@@ -50,6 +50,14 @@ raclette_mcp_servers:
   OnePassword:
     url: "http://192.168.20.14:6980/servers/onepassword/sse"
     transport: sse
+  # artokun/comfyui-mcp sidecar on goudai (ansible/files/goudai/comfyui-ltx/
+  # docker-compose.yml.j2) — full 174-tool surface (generation, workflow
+  # authoring, model management, process control) for end-to-end image/video
+  # content creation. goudai only for now; spraycheese gets its own sidecar
+  # later. LAN-only, no bearer token — network isolation is the access
+  # control, matching the other entries above.
+  ComfyUI:
+    url: "http://192.168.20.150:9101/mcp"
   # Hand-added directly on jetson.lab (never tracked in git) — brought under
   # IaC on 2026-07-24. Main GSuite MCP instance (port 8092, see AGENTS.md
   # service table), distinct from gsuite-mcp-lyra (the lyra profile's
