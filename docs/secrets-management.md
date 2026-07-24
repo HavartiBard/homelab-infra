@@ -105,6 +105,7 @@ Don't duplicate `common.env`'s contents into individual `<slug>.env` files.
 | `npm` | `ansible/envs/npm.env` | `playbooks/platform/deploy-npm.yml`, `services/update-npm-proxy-host.yml` |
 | `observability` | `ansible/envs/observability.env` | `playbooks/observability/deploy-observability.yml` |
 | `obsidian` | `ansible/envs/obsidian.env` | `playbooks/mcp/deploy-obsidian-stack.yml` |
+| `onepassword-mcp-lyra` | `ansible/envs/onepassword-mcp-lyra.env` | `playbooks/mcp/deploy-onepassword-mcp-lyra.yml` |
 | `paperless` | `ansible/envs/paperless.env` | `playbooks/services/deploy-paperless.yml` |
 | `paperless-ai` | `ansible/envs/paperless-ai.env` | `playbooks/services/deploy-paperless-ai.yml` |
 | `proxmox-mcp` | `ansible/envs/proxmox-mcp.env` | `playbooks/mcp/deploy-proxmox-mcp.yml` |
