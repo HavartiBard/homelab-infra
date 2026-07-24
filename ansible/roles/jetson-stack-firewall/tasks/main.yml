@@ -1,0 +1,70 @@
+---
+- name: Fail when firewall subnets are not both supplied
+  ansible.builtin.assert:
+    that:
+      - firewall_trusted_subnet is defined
+      - firewall_restricted_subnet is defined
+    fail_msg: "jetson-stack-firewall requires both firewall_trusted_subnet and firewall_restricted_subnet"
+
+# --- One-directional carve-out (only applied when firewall_allow_port is set) ---
+
+- name: Allow return traffic from restricted subnet for trusted-initiated connections
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    action: append
+    comment: "hermes-stack-isolation: allow return traffic {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }}"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Allow trusted subnet to reach the restricted subnet's allowed port
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    destination_port: "{{ firewall_allow_port }}"
+    protocol: tcp
+    jump: ACCEPT
+    action: append
+    comment: "hermes-stack-isolation: allow {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}:{{ firewall_allow_port }}"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+# --- Catch-all blocks (always applied; the ACCEPT rules above, being earlier
+# in the chain, take precedence for the one carved-out path) ---
+
+- name: Block all other traffic from restricted subnet to trusted subnet
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    jump: DROP
+    action: append
+    comment: "hermes-stack-isolation: block {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }}"
+    state: present
+  become: true
+
+- name: Block all other traffic from trusted subnet to restricted subnet
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    jump: DROP
+    action: append
+    comment: "hermes-stack-isolation: block {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}"
+    state: present
+  become: true
+
+- name: Ensure DOCKER-USER rules end with a RETURN (don't block unrelated traffic)
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    jump: RETURN
+    action: append
+    comment: "hermes-stack-isolation: fallthrough"
+    state: present
+  become: true
