@@ -1,0 +1,74 @@
+---
+# Defaults for the isolated Lyra Hermes stack (public-facing AI influencer
+# profile), split out from the shared raclette stack per the Phase 1
+# multi-profile isolation plan.
+
+lyra_deploy_dir: /home/james/docker/hermes-lyra
+lyra_state_dir: /home/james/.hermes-lyra
+
+lyra_image: nousresearch/hermes-agent:latest
+lyra_container_name: hermes-lyra
+lyra_dashboard_port: 9130
+lyra_gateway_port: 8643
+
+lyra_compose_file: "{{ lyra_deploy_dir }}/docker-compose.yml"
+lyra_env_file: "{{ lyra_deploy_dir }}/.env"
+
+lyra_docker_compose_command: "docker compose"
+
+lyra_uid: 1000
+lyra_gid: 1000
+
+# Lyra's own MCP instance plus a content/research subset copied verbatim
+# from raclette_mcp_servers (ansible/roles/jetson-raclette/defaults/main.yml)
+# — chosen 2026-07-24 because these are content-creation/research tools, not
+# homelab-admin tools, so they fit a public-facing persona. Isolated
+# instance keys use the <service>-mcp-lyra naming convention (matching
+# gsuite-mcp-lyra) rather than reusing core's plain key names, since those
+# point at different vaults entirely. Never add Gitea/hister-archive-mcp/
+# SSH-homelab here — those stay core-only.
+lyra_mcp_servers:
+  gsuite-mcp-lyra:
+    url: "http://192.168.20.14:8093/mcp"
+  SearXNG:
+    url: "http://192.168.20.14:6978/mcp"
+  ComfyUI:
+    url: "http://192.168.20.150:9101/mcp"
+  # Read-only search over the personal search index — NOT
+  # hister-archive-mcp (the write-bridge), which stays core-only.
+  hister:
+    url: "http://192.168.20.14:4433/mcp"
+    headers:
+      Origin: "hister://"
+  Crawl4AI:
+    url: "http://192.168.20.14:6981/mcp/sse"
+    transport: sse
+  # Her own isolated Obsidian vault (/mnt/user/obsidian/lyra) — see Task 10.
+  # Never the homelab vault (core's obsidian-mcp, port 6977). Key name
+  # matches gsuite-mcp-lyra's convention (service-lyra), not core's plain
+  # "Obsidian" key, since this points at a different vault entirely.
+  obsidian-mcp-lyra:
+    url: "http://192.168.20.14:6984/mcp"
+  # Her own isolated 1Password vault (Blume, via a dedicated Service
+  # Account token) — see Task 11. Never AI Wedge (core's onepassword-mcp).
+  # Key name matches gsuite-mcp-lyra's convention, not core's plain
+  # "OnePassword" key, since this points at a different vault entirely.
+  onepassword-mcp-lyra:
+    url: "http://192.168.20.14:6980/servers/onepassword-lyra/sse"
+    transport: sse
+
+lyra_model_provider: goudai-llama-swap
+lyra_model_default: "qwen/qwen3.6-35b-uncensored"
+lyra_model_context_length: 131072
+lyra_model_base_url: "http://192.168.20.150:8010/v1"
+
+lyra_providers:
+  goudai-llama-swap:
+    base_url: "{{ lyra_model_base_url }}"
+    transport: openai_chat
+    api_key: "local-no-auth-required"
+
+# Source of the one-time profile-data migration (Step 6 below) — the
+# raclette role's own state dir, where the "lyra" profile currently lives
+# under HERMES_HOME/profiles/lyra.
+lyra_migration_source_dir: /home/james/.raclette/profiles/lyra
