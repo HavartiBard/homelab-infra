@@ -42,6 +42,7 @@
     set -euo pipefail
     iptables -L DOCKER-USER --line-numbers -n | grep -c 'hermes-stack-isolation: allow' || true
   register: carveout_rule_count
+  become: true
   changed_when: false
   when: firewall_allow_port is none
 
