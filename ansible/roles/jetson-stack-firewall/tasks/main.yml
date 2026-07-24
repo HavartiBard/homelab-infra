@@ -54,6 +54,14 @@
 # already expressed in DOCKER-USER above. An ACCEPT verdict in a raw-table
 # chain terminates raw-table processing for that packet, so it proceeds to
 # routing/FORWARD/DOCKER-USER as normal instead of hitting Docker's DROP.
+#
+# Note: the two `insert rule_num: 1` tasks below may land in either
+# relative order to each other (each insert pushes the chain's current
+# top rule down by one) — this is expected, not a bug, since the two
+# rules have non-overlapping match criteria (opposite source/destination
+# direction; one keyed on ctstate, the other on destination_port). What
+# matters is that both stay above Docker's own anti-spoof DROP rules,
+# which they do regardless of their order relative to each other.
 
 - name: Allow return traffic from restricted subnet for trusted-initiated connections (raw table)
   ansible.builtin.iptables:
