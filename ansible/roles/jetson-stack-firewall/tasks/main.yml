@@ -35,6 +35,79 @@
   become: true
   when: firewall_allow_port is not none
 
+# --- raw-table carve-out (required in addition to the DOCKER-USER/filter
+# rules above) ---
+#
+# Docker inserts its own anti-spoof rules into the raw table's PREROUTING
+# chain for every container that publishes at least one port to the host:
+# "DROP anything destined for <container-IP> that did not arrive via
+# <that container's own bridge interface>". This runs before routing and
+# before the filter table's FORWARD/DOCKER-USER chain is ever consulted,
+# so it silently drops legitimate routed cross-bridge traffic regardless
+# of what DOCKER-USER allows — confirmed 2026-07-24 while verifying this
+# exact carve-out: raclette's dashboard/gateway and Lyra's dashboard are
+# all published to the host, so Docker's anti-spoof rule exists for both
+# container IPs and blocked the one-directional path in both directions.
+# The fix is to insert our own ACCEPT rules at the very top of raw
+# PREROUTING (position 1, so they precede Docker's own rules regardless of
+# where Docker appends them) for exactly the same one-directional carve-out
+# already expressed in DOCKER-USER above. An ACCEPT verdict in a raw-table
+# chain terminates raw-table processing for that packet, so it proceeds to
+# routing/FORWARD/DOCKER-USER as normal instead of hitting Docker's DROP.
+
+- name: Allow return traffic from restricted subnet for trusted-initiated connections (raw table)
+  ansible.builtin.iptables:
+    table: raw
+    chain: PREROUTING
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    action: insert
+    rule_num: 1
+    comment: "hermes-stack-isolation: allow return traffic {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }} (raw)"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Allow trusted subnet to reach the restricted subnet's allowed port (raw table)
+  ansible.builtin.iptables:
+    table: raw
+    chain: PREROUTING
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    destination_port: "{{ firewall_allow_port }}"
+    protocol: tcp
+    jump: ACCEPT
+    action: insert
+    rule_num: 1
+    comment: "hermes-stack-isolation: allow {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}:{{ firewall_allow_port }} (raw)"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Check for previously-applied raw-table carve-out rules
+  ansible.builtin.shell: |
+    set -euo pipefail
+    iptables -t raw -L PREROUTING --line-numbers -n | grep -c 'hermes-stack-isolation: allow.*(raw)' || true
+  register: raw_carveout_rule_count
+  become: true
+  changed_when: false
+  when: firewall_allow_port is none
+
+- name: Remove previously-applied raw-table carve-out rules (revert to full isolation)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    while iptables -t raw -L PREROUTING --line-numbers -n | grep -q 'hermes-stack-isolation: allow.*(raw)'; do
+      line=$(iptables -t raw -L PREROUTING --line-numbers -n | grep 'hermes-stack-isolation: allow.*(raw)' | head -1 | awk '{print $1}')
+      iptables -t raw -D PREROUTING "$line"
+    done
+  become: true
+  when:
+    - firewall_allow_port is none
+    - raw_carveout_rule_count.stdout | default('0') | trim != '0'
+  changed_when: true
+
 # --- Cleanup of previously-applied carve-outs (only if reverting to full isolation) ---
 
 - name: Check for previously-applied one-directional carve-out rules
