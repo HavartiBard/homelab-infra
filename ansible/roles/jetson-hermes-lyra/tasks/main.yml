@@ -1,0 +1,103 @@
+---
+- name: Fail when Lyra dashboard auth is not configured
+  ansible.builtin.fail:
+    msg: |
+      Dashboard auth not set for Lyra (required — the s6-overlay image refuses to
+      start the dashboard on a non-loopback bind without an auth provider).
+      Export LYRA_DASHBOARD_USER and LYRA_DASHBOARD_PASSWORD before running.
+  when: >
+    lyra_env.HERMES_DASHBOARD_BASIC_AUTH_USERNAME == 'CHANGEME_LYRA_DASHBOARD_USER' or
+    lyra_env.HERMES_DASHBOARD_BASIC_AUTH_PASSWORD == 'CHANGEME_LYRA_DASHBOARD_PASSWORD'
+
+- name: Fail when Lyra API server key is not configured
+  ansible.builtin.fail:
+    msg: |
+      API server key not set for Lyra (required — the API server gives full
+      toolset access and refuses to run without a bearer key even on a
+      loopback bind; this deployment binds it LAN-wide).
+      Export LYRA_API_SERVER_KEY before running.
+  when: lyra_env.API_SERVER_KEY == 'CHANGEME_LYRA_API_SERVER_KEY'
+
+- name: Ensure Lyra deploy directory exists
+  ansible.builtin.file:
+    path: "{{ lyra_deploy_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Ensure Lyra state directory exists
+  ansible.builtin.file:
+    path: "{{ lyra_state_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+- name: Check whether Lyra profile data has already been migrated
+  ansible.builtin.stat:
+    path: "{{ lyra_state_dir }}/profiles/lyra"
+  register: lyra_profile_migrated
+
+- name: Check whether a source Lyra profile exists under the core stack
+  ansible.builtin.stat:
+    path: "{{ lyra_migration_source_dir }}"
+  register: lyra_profile_source
+
+- name: One-time migration of Lyra profile data from hermes-core
+  ansible.builtin.shell: |
+    set -euo pipefail
+    mkdir -p "{{ lyra_state_dir }}/profiles"
+    cp -a "{{ lyra_migration_source_dir }}" "{{ lyra_state_dir }}/profiles/lyra"
+  args:
+    executable: /bin/bash
+  when:
+    - not lyra_profile_migrated.stat.exists
+    - lyra_profile_source.stat.exists
+  register: lyra_migration
+  changed_when: true
+
+- name: Render .env for Lyra container
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/.env.j2"
+    dest: "{{ lyra_env_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Render Lyra config.yaml
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/hermes.yaml.j2"
+    dest: "{{ lyra_state_dir }}/config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Render Lyra Docker Compose definition
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/docker-compose.yml.j2"
+    dest: "{{ lyra_compose_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Deploy Lyra stack with Docker Compose
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ lyra_deploy_dir }}"
+    {{ lyra_docker_compose_command }} pull
+    {{ lyra_docker_compose_command }} up -d
+  register: lyra_deploy
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Validate Lyra container is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker inspect -f {{ '{{.State.Running}}' }} {{ lyra_container_name }}
+  register: lyra_running
+  failed_when: lyra_running.stdout | trim != 'true'
+  changed_when: false
+  args:
+    executable: /bin/bash

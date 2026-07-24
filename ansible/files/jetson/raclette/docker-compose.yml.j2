@@ -11,14 +11,28 @@ services:
     # docs/plans/2026-05-07-s6-overlay-dynamic-subagent-gateways.md
     # (upstream hermes-agent repo) for the architecture.
     command: ["sleep", "infinity"]
-    network_mode: host
+    networks:
+      - hermes-core-net
+    # Gateway port (raclette_gateway_port) is deliberately NOT published to
+    # the host. This does NOT by itself fix cross-bridge routing — Docker's
+    # raw PREROUTING anti-spoof rule ("DROP anything to <container-IP> not
+    # arriving via <that container's own bridge>") is per-container-IP, not
+    # per-port, so it still applies here because the dashboard port stays
+    # published. The actual fix for cross-bridge dispatch (Lyra's return
+    # traffic on the one-directional carve-out) is the explicit raw-table
+    # ACCEPT carve-out in ansible/roles/jetson-stack-firewall (confirmed
+    # 2026-07-24 — see that role's tasks/main.yml for the full explanation).
+    # Leaving the gateway port unpublished is kept anyway as
+    # defense-in-depth: the full-toolset, bearer-key API server has no
+    # reason to be reachable from the LAN at all.
+    ports:
+      - "{{ raclette_dashboard_port }}:{{ raclette_dashboard_port }}"
     stdin_open: true
     tty: true
     volumes:
       - {{ raclette_state_dir }}:/home/node/.hermes
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ raclette_deploy_dir }}/ssh-agent-init.sh:/etc/cont-init.d/03-ssh-agent-setup.sh:ro
-      - {{ raclette_deploy_dir }}/lyra-dashboard-init.sh:/etc/cont-init.d/04-lyra-dashboard.sh:ro
     env_file:
       - {{ raclette_env_file }}
     environment:
@@ -34,3 +48,10 @@ services:
       - API_SERVER_PORT={{ raclette_gateway_port }}
       - API_SERVER_HOST=0.0.0.0
       - API_SERVER_KEY={{ raclette_env.API_SERVER_KEY }}
+
+networks:
+  hermes-core-net:
+    name: hermes-core-net
+    ipam:
+      config:
+        - subnet: 172.28.10.0/24

@@ -1,0 +1,8 @@
+---
+# No defaults for firewall_trusted_subnet/firewall_restricted_subnet on
+# purpose — callers must supply both explicitly so a typo'd/missing var
+# fails the play instead of silently deploying with no isolation rule.
+
+# When unset, the role falls back to a full bidirectional block (no
+# exceptions) between the two subnets.
+firewall_allow_port: ~

@@ -1,0 +1,50 @@
+---
+# Deploy the isolated Lyra Hermes stack to jetson.lab.
+#
+# Lyra (public-facing AI influencer profile) runs as a fully separate
+# Docker Compose project from the core "raclette" stack — own network
+# (hermes-lyra-net, 172.28.11.0/24), own state dir, no docker.sock, no
+# terminal/code-execution backend, own MCP servers (gsuite-mcp-lyra +
+# content/research tools — see lyra_mcp_servers). No chat-platform
+# integration (Slack or otherwise) — driven via dashboard/gateway only.
+#
+# Isolation is ONE-DIRECTIONAL by design (2026-07-24 decision): hermes-core
+# can reach Lyra's gateway (port 8643) to dispatch tasks to her; Lyra can
+# never initiate a connection back into hermes-core, on any port. See
+# ansible/roles/jetson-stack-firewall.
+#
+# Prerequisite: run playbooks/jetson/deploy-raclette.yml first (or at least
+# once previously) so hermes-core-net exists at 172.28.10.0/24 — see
+# ansible/roles/jetson-raclette.
+#
+# Required environment variables (Lyra-specific):
+#   LYRA_DASHBOARD_USER, LYRA_DASHBOARD_PASSWORD, LYRA_API_SERVER_KEY
+#
+# Usage:
+#   source ~/.env_container
+#   ansible-playbook playbooks/jetson/deploy-hermes-lyra.yml --limit jetson.lab
+#
+# Verify:
+#   ssh james@192.168.20.169 "docker ps | grep hermes-lyra"
+#   ssh james@192.168.20.169 "docker network inspect hermes-lyra-net --format '{{json .IPAM.Config}}'"
+#   ssh james@192.168.20.169 "docker exec raclette curl -sf -m2 http://172.28.11.2:8643/ -o /dev/null -w '%{http_code}\n'" # must reach Lyra (allowed)
+#   ssh james@192.168.20.169 "docker exec hermes-lyra ping -c1 -W2 172.28.10.2" # must FAIL (blocked — Lyra can't initiate into core)
+
+- name: Deploy isolated Lyra stack to Jetson
+  hosts: jetson.lab
+  gather_facts: no
+  become: false
+  roles:
+    - jetson-hermes-lyra
+    - role: jetson-stack-firewall
+      vars:
+        firewall_trusted_subnet: 172.28.10.0/24    # hermes-core — may dispatch to Lyra
+        firewall_restricted_subnet: 172.28.11.0/24 # hermes-lyra — may never reach back into core
+        firewall_allow_port: 8643                  # Lyra's gateway (lyra_gateway_port)
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: hermes-lyra
+            cluster: jetson-docker
+            role: Application
+            comments: "Isolated Lyra Hermes stack — http://{{ ansible_host }}:9130"

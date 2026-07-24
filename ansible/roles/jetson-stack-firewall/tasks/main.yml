@@ -1,0 +1,175 @@
+---
+- name: Fail when firewall subnets are not both supplied
+  ansible.builtin.assert:
+    that:
+      - firewall_trusted_subnet is defined
+      - firewall_restricted_subnet is defined
+    fail_msg: "jetson-stack-firewall requires both firewall_trusted_subnet and firewall_restricted_subnet"
+
+# --- One-directional carve-out (only applied when firewall_allow_port is set) ---
+
+- name: Allow return traffic from restricted subnet for trusted-initiated connections
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    action: append
+    comment: "hermes-stack-isolation: allow return traffic {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }}"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Allow trusted subnet to reach the restricted subnet's allowed port
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    destination_port: "{{ firewall_allow_port }}"
+    protocol: tcp
+    jump: ACCEPT
+    action: append
+    comment: "hermes-stack-isolation: allow {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}:{{ firewall_allow_port }}"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+# --- raw-table carve-out (required in addition to the DOCKER-USER/filter
+# rules above) ---
+#
+# Docker inserts its own anti-spoof rules into the raw table's PREROUTING
+# chain for every container that publishes at least one port to the host:
+# "DROP anything destined for <container-IP> that did not arrive via
+# <that container's own bridge interface>". This runs before routing and
+# before the filter table's FORWARD/DOCKER-USER chain is ever consulted,
+# so it silently drops legitimate routed cross-bridge traffic regardless
+# of what DOCKER-USER allows — confirmed 2026-07-24 while verifying this
+# exact carve-out: raclette's dashboard/gateway and Lyra's dashboard are
+# all published to the host, so Docker's anti-spoof rule exists for both
+# container IPs and blocked the one-directional path in both directions.
+# The fix is to insert our own ACCEPT rules at the very top of raw
+# PREROUTING (position 1, so they precede Docker's own rules regardless of
+# where Docker appends them) for exactly the same one-directional carve-out
+# already expressed in DOCKER-USER above. An ACCEPT verdict in a raw-table
+# chain terminates raw-table processing for that packet, so it proceeds to
+# routing/FORWARD/DOCKER-USER as normal instead of hitting Docker's DROP.
+#
+# Note: the two `insert rule_num: 1` tasks below may land in either
+# relative order to each other (each insert pushes the chain's current
+# top rule down by one) — this is expected, not a bug, since the two
+# rules have non-overlapping match criteria (opposite source/destination
+# direction; one keyed on ctstate, the other on destination_port). What
+# matters is that both stay above Docker's own anti-spoof DROP rules,
+# which they do regardless of their order relative to each other.
+
+- name: Allow return traffic from restricted subnet for trusted-initiated connections (raw table)
+  ansible.builtin.iptables:
+    table: raw
+    chain: PREROUTING
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    action: insert
+    rule_num: 1
+    comment: "hermes-stack-isolation: allow return traffic {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }} (raw)"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Allow trusted subnet to reach the restricted subnet's allowed port (raw table)
+  ansible.builtin.iptables:
+    table: raw
+    chain: PREROUTING
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    destination_port: "{{ firewall_allow_port }}"
+    protocol: tcp
+    jump: ACCEPT
+    action: insert
+    rule_num: 1
+    comment: "hermes-stack-isolation: allow {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}:{{ firewall_allow_port }} (raw)"
+    state: present
+  become: true
+  when: firewall_allow_port is not none
+
+- name: Check for previously-applied raw-table carve-out rules
+  ansible.builtin.shell: |
+    set -euo pipefail
+    iptables -t raw -L PREROUTING --line-numbers -n | grep -c 'hermes-stack-isolation: allow.*(raw)' || true
+  register: raw_carveout_rule_count
+  become: true
+  changed_when: false
+  when: firewall_allow_port is none
+
+- name: Remove previously-applied raw-table carve-out rules (revert to full isolation)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    while iptables -t raw -L PREROUTING --line-numbers -n | grep -q 'hermes-stack-isolation: allow.*(raw)'; do
+      line=$(iptables -t raw -L PREROUTING --line-numbers -n | grep 'hermes-stack-isolation: allow.*(raw)' | head -1 | awk '{print $1}')
+      iptables -t raw -D PREROUTING "$line"
+    done
+  become: true
+  when:
+    - firewall_allow_port is none
+    - raw_carveout_rule_count.stdout | default('0') | trim != '0'
+  changed_when: true
+
+# --- Cleanup of previously-applied carve-outs (only if reverting to full isolation) ---
+
+- name: Check for previously-applied one-directional carve-out rules
+  ansible.builtin.shell: |
+    set -euo pipefail
+    iptables -L DOCKER-USER --line-numbers -n | grep -c 'hermes-stack-isolation: allow' || true
+  register: carveout_rule_count
+  become: true
+  changed_when: false
+  when: firewall_allow_port is none
+
+- name: Remove previously-applied one-directional carve-out rules (revert to full isolation)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    while iptables -L DOCKER-USER --line-numbers -n | grep -q 'hermes-stack-isolation: allow'; do
+      line=$(iptables -L DOCKER-USER --line-numbers -n | grep 'hermes-stack-isolation: allow' | head -1 | awk '{print $1}')
+      iptables -D DOCKER-USER "$line"
+    done
+  become: true
+  when:
+    - firewall_allow_port is none
+    - carveout_rule_count.stdout | default('0') | trim != '0'
+  changed_when: true
+
+# --- Catch-all blocks (always applied; the ACCEPT rules above, being earlier
+# in the chain, take precedence for the one carved-out path) ---
+
+- name: Block all other traffic from restricted subnet to trusted subnet
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_restricted_subnet }}"
+    destination: "{{ firewall_trusted_subnet }}"
+    jump: DROP
+    action: append
+    comment: "hermes-stack-isolation: block {{ firewall_restricted_subnet }} -> {{ firewall_trusted_subnet }}"
+    state: present
+  become: true
+
+- name: Block all other traffic from trusted subnet to restricted subnet
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    source: "{{ firewall_trusted_subnet }}"
+    destination: "{{ firewall_restricted_subnet }}"
+    jump: DROP
+    action: append
+    comment: "hermes-stack-isolation: block {{ firewall_trusted_subnet }} -> {{ firewall_restricted_subnet }}"
+    state: present
+  become: true
+
+- name: Ensure DOCKER-USER rules end with a RETURN (don't block unrelated traffic)
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    jump: RETURN
+    action: append
+    comment: "hermes-stack-isolation: fallthrough"
+    state: present
+  become: true

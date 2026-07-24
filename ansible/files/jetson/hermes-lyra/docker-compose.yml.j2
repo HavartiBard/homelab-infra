@@ -1,0 +1,63 @@
+services:
+  hermes-lyra:
+    image: {{ lyra_image }}
+    container_name: {{ lyra_container_name }}
+    restart: unless-stopped
+    # Runs as root at the container level, matching raclette — this
+    # s6-overlay-based image's entrypoint requires root to fix /run
+    # ownership before it can even boot (confirmed 2026-07-24: running as
+    # a non-root Docker user here crash-loops with "we're lacking the
+    # privileges to fix it" from s6-overlay-suexec). The actual hermes
+    # process still drops to HERMES_UID/HERMES_GID internally via the
+    # image's own s6-setuidgid mechanism — this isn't a root process
+    # running unrestricted, it's the same startup contract raclette
+    # already uses. cap_drop/security_opt removed for the same reason:
+    # dropping capabilities from the root startup process breaks the same
+    # /run chown step. Real isolation for this stack comes from the
+    # separate network, no docker.sock mount, no ssh-agent mount, and
+    # resource limits below — not from the container's own user/cap_drop.
+    user: "0"
+    mem_limit: 2g
+    mem_reservation: 512m
+    cpus: 2.0
+    command: ["sleep", "infinity"]
+    networks:
+      - hermes-lyra-net
+    # Gateway port (lyra_gateway_port) is deliberately NOT published to the
+    # host. This does NOT by itself fix cross-bridge routing — Docker's raw
+    # PREROUTING anti-spoof rule ("DROP anything to <container-IP> not
+    # arriving via <that container's own bridge>") is per-container-IP, not
+    # per-port, so it still applies here because the dashboard port stays
+    # published. The actual fix for cross-bridge dispatch is the explicit
+    # raw-table ACCEPT carve-out in ansible/roles/jetson-stack-firewall
+    # (confirmed 2026-07-24 — see that role's tasks/main.yml for the full
+    # explanation). Leaving the gateway port unpublished is kept anyway as
+    # defense-in-depth: the full-toolset, bearer-key API server has no
+    # reason to be reachable from the LAN at all, only from hermes-core via
+    # the internal bridge.
+    ports:
+      - "{{ lyra_dashboard_port }}:{{ lyra_dashboard_port }}"
+    stdin_open: true
+    tty: true
+    volumes:
+      - {{ lyra_state_dir }}:/home/node/.hermes
+    env_file:
+      - {{ lyra_env_file }}
+    environment:
+      - HERMES_HOME=/home/node/.hermes
+      - HERMES_UID={{ lyra_uid }}
+      - HERMES_GID={{ lyra_gid }}
+      - HERMES_DASHBOARD_PORT={{ lyra_dashboard_port }}
+      - HERMES_DASHBOARD=true
+      - HERMES_DASHBOARD_TUI=1
+      - API_SERVER_ENABLED=true
+      - API_SERVER_PORT={{ lyra_gateway_port }}
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY={{ lyra_env.API_SERVER_KEY }}
+
+networks:
+  hermes-lyra-net:
+    name: hermes-lyra-net
+    ipam:
+      config:
+        - subnet: 172.28.11.0/24
