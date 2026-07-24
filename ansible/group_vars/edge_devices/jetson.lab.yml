@@ -24,3 +24,15 @@ raclette_env:
   CAMOFOX_URL: "http://192.168.20.169:9377"
   CAMOFOX_API_KEY: >-
     {{ lookup('env', 'RACLETTE_CAMOFOX_API_KEY') | default('CHANGEME_RACLETTE_CAMOFOX_API_KEY', true) }}
+
+# Lyra (public-facing AI influencer profile) — fully separate Hermes stack,
+# separate dashboard/gateway auth from raclette_env above. No Slack (or any
+# chat platform) integration for Lyra per 2026-07-24 decision — she's driven
+# via her dashboard/gateway only. Never share these tokens with hermes-core.
+lyra_env:
+  HERMES_DASHBOARD_BASIC_AUTH_USERNAME: >-
+    {{ lookup('env', 'LYRA_DASHBOARD_USER') | default('CHANGEME_LYRA_DASHBOARD_USER', true) }}
+  HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: >-
+    {{ lookup('env', 'LYRA_DASHBOARD_PASSWORD') | default('CHANGEME_LYRA_DASHBOARD_PASSWORD', true) }}
+  API_SERVER_KEY: >-
+    {{ lookup('env', 'LYRA_API_SERVER_KEY') | default('CHANGEME_LYRA_API_SERVER_KEY', true) }}
