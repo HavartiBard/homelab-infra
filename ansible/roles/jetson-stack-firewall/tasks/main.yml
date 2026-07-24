@@ -35,6 +35,29 @@
   become: true
   when: firewall_allow_port is not none
 
+# --- Cleanup of previously-applied carve-outs (only if reverting to full isolation) ---
+
+- name: Check for previously-applied one-directional carve-out rules
+  ansible.builtin.shell: |
+    set -euo pipefail
+    iptables -L DOCKER-USER --line-numbers -n | grep -c 'hermes-stack-isolation: allow' || true
+  register: carveout_rule_count
+  changed_when: false
+  when: firewall_allow_port is none
+
+- name: Remove previously-applied one-directional carve-out rules (revert to full isolation)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    while iptables -L DOCKER-USER --line-numbers -n | grep -q 'hermes-stack-isolation: allow'; do
+      line=$(iptables -L DOCKER-USER --line-numbers -n | grep 'hermes-stack-isolation: allow' | head -1 | awk '{print $1}')
+      iptables -D DOCKER-USER "$line"
+    done
+  become: true
+  when:
+    - firewall_allow_port is none
+    - carveout_rule_count.stdout | default('0') | trim != '0'
+  changed_when: true
+
 # --- Catch-all blocks (always applied; the ACCEPT rules above, being earlier
 # in the chain, take precedence for the one carved-out path) ---
 
