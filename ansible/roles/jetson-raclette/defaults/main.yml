@@ -64,6 +64,27 @@ raclette_mcp_servers:
   # separate isolated instance managed by its own role).
   gsuite-jma8chz:
     url: "http://192.168.20.14:8092/mcp"
+  # Read-only search over the personal search index (search/get_preview/
+  # get_history). Requires Origin: hister:// — hister's CSRF middleware
+  # rejects /mcp requests without it (see docs/hister-setup.md); no
+  # Authorization header needed since the deployed access_token is empty
+  # (server-side auth is a no-op until one is configured).
+  hister:
+    url: "http://192.168.20.14:4433/mcp"
+    headers:
+      Origin: "hister://"
+  # Write-bridge into hister (archive_page/is_archived) — see
+  # docker/hister-archive-mcp. Pairs with the read-only hister entry above:
+  # search/preview what's archived, then archive new pages found via
+  # SearXNG/Crawl4AI. LAN-only, no bearer token (same rationale as ComfyUI).
+  hister-archive-mcp:
+    url: "http://192.168.20.14:6982/mcp"
+  # Headless browser scraping (SearXNG discover -> Crawl4AI retrieve ->
+  # hister-archive-mcp archive). SSE transport at /mcp/sse — plain /mcp is a
+  # 404 on this server, unlike the streamable-HTTP servers above.
+  Crawl4AI:
+    url: "http://192.168.20.14:6981/mcp/sse"
+    transport: sse
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
