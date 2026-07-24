@@ -1,0 +1,43 @@
+services:
+  hermes-lyra:
+    image: {{ lyra_image }}
+    container_name: {{ lyra_container_name }}
+    restart: unless-stopped
+    user: "{{ lyra_uid }}:{{ lyra_gid }}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    mem_reservation: 512m
+    cpus: 2.0
+    command: ["sleep", "infinity"]
+    networks:
+      - hermes-lyra-net
+    ports:
+      - "{{ lyra_dashboard_port }}:{{ lyra_dashboard_port }}"
+      - "{{ lyra_gateway_port }}:{{ lyra_gateway_port }}"
+    stdin_open: true
+    tty: true
+    volumes:
+      - {{ lyra_state_dir }}:/home/node/.hermes
+    env_file:
+      - {{ lyra_env_file }}
+    environment:
+      - HERMES_HOME=/home/node/.hermes
+      - HERMES_UID={{ lyra_uid }}
+      - HERMES_GID={{ lyra_gid }}
+      - HERMES_DASHBOARD_PORT={{ lyra_dashboard_port }}
+      - HERMES_DASHBOARD=true
+      - HERMES_DASHBOARD_TUI=1
+      - API_SERVER_ENABLED=true
+      - API_SERVER_PORT={{ lyra_gateway_port }}
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY={{ lyra_env.API_SERVER_KEY }}
+
+networks:
+  hermes-lyra-net:
+    name: hermes-lyra-net
+    ipam:
+      config:
+        - subnet: 172.28.11.0/24
