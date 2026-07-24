@@ -63,7 +63,7 @@ raclette_mcp_servers:
   # service table), distinct from gsuite-mcp-lyra (the lyra profile's
   # separate isolated instance managed by its own role).
   gsuite-jma8chz:
-    url: "192.168.20.14:8092/mcp"
+    url: "http://192.168.20.14:8092/mcp"
 
 # LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
 # Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
