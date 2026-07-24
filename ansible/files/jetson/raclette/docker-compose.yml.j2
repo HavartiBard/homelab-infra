@@ -13,9 +13,18 @@ services:
     command: ["sleep", "infinity"]
     networks:
       - hermes-core-net
+    # Gateway port (raclette_gateway_port) is deliberately NOT published to
+    # the host. Docker adds an automatic anti-spoof rule to the raw table's
+    # PREROUTING chain for every published container port ("DROP anything
+    # to <container-IP> not arriving via <that container's own bridge>") —
+    # this runs before DOCKER-USER/FORWARD are ever evaluated, and silently
+    # drops routed cross-bridge traffic. This is what was blocking Lyra's
+    # (isolated stack, hermes-lyra-net) return traffic on the one-directional
+    # carve-out (confirmed 2026-07-24). Publishing only the dashboard port
+    # keeps LAN access working while removing the one anti-spoof rule that
+    # conflicted with cross-bridge routing.
     ports:
       - "{{ raclette_dashboard_port }}:{{ raclette_dashboard_port }}"
-      - "{{ raclette_gateway_port }}:{{ raclette_gateway_port }}"
     stdin_open: true
     tty: true
     volumes:
