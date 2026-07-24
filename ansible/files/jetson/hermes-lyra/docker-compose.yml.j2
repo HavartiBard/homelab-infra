@@ -3,11 +3,20 @@ services:
     image: {{ lyra_image }}
     container_name: {{ lyra_container_name }}
     restart: unless-stopped
-    user: "{{ lyra_uid }}:{{ lyra_gid }}"
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
+    # Runs as root at the container level, matching raclette — this
+    # s6-overlay-based image's entrypoint requires root to fix /run
+    # ownership before it can even boot (confirmed 2026-07-24: running as
+    # a non-root Docker user here crash-loops with "we're lacking the
+    # privileges to fix it" from s6-overlay-suexec). The actual hermes
+    # process still drops to HERMES_UID/HERMES_GID internally via the
+    # image's own s6-setuidgid mechanism — this isn't a root process
+    # running unrestricted, it's the same startup contract raclette
+    # already uses. cap_drop/security_opt removed for the same reason:
+    # dropping capabilities from the root startup process breaks the same
+    # /run chown step. Real isolation for this stack comes from the
+    # separate network, no docker.sock mount, no ssh-agent mount, and
+    # resource limits below — not from the container's own user/cap_drop.
+    user: "0"
     mem_limit: 2g
     mem_reservation: 512m
     cpus: 2.0
