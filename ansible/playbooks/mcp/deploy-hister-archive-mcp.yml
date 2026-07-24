@@ -1,0 +1,37 @@
+---
+# Deploy hister-archive-mcp on Unraid — MCP bridge exposing archive_page and
+# is_archived, which index/check curated web content in hister via its REST
+# API. Renamed from research-mcp (2026-07-24) — the old name didn't say what
+# the service does; hister's own native MCP is read-only (search/get_preview),
+# this is specifically the write-bridge.
+#
+# Part of the web research stack: SearXNG (discover) -> Crawl4AI (retrieve)
+# -> hister (archive). LAN-only — do NOT register an NPM proxy host.
+#
+# Usage:
+#   ansible-playbook playbooks/mcp/deploy-hister-archive-mcp.yml \
+#     --limit unraid
+
+- name: Deploy hister-archive-mcp on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: hister-archive-mcp
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: hister-archive-mcp
+            cluster: unraid-docker
+            role: MCP Server
+            comments: "hister archive MCP bridge (was research-mcp) — http://{{ ansible_host }}:{{ hister_archive_mcp_port }}/mcp"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          hister-archive-mcp deployed.
+          MCP endpoint: http://{{ ansible_host }}:{{ hister_archive_mcp_port }}/mcp
+          Tools:
+            archive_page(url, text, title?, label?) -> hister /api/add
+            is_archived(url) -> hister /api/document (true/false + doc summary if present)

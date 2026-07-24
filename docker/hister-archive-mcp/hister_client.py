@@ -1,4 +1,4 @@
-"""Minimal hister REST client for the archive_page MCP tool."""
+"""Minimal hister REST client for the archive_page/is_archived MCP tools."""
 
 import os
 
@@ -33,3 +33,19 @@ def archive_to_hister(url, title, text, label=None):
         resp = client.post("/api/add", json=payload, headers={"X-Csrf-Token": csrf_token})
         resp.raise_for_status()
         return resp.text.strip()
+
+
+def get_document(url):
+    """Return the stored document dict for url, or None if not archived.
+
+    GET /api/document is public/no-CSRF (unlike /api/add), so this needs no
+    cookie/CSRF handshake.
+    """
+    import httpx  # imported here so tests need no pip deps
+
+    with httpx.Client(base_url=HISTER_URL, timeout=30) as client:
+        resp = client.get("/api/document", params={"url": url})
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()

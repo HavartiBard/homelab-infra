@@ -13,7 +13,7 @@ icloud_mcp_build_dir: /tmp/icloud-mcp-build
 icloud_mcp_env_file: "{{ icloud_mcp_appdata_dir }}/icloud-mcp.env"
 
 # Pinned subnet: Docker's auto-allocation pools are exhausted on Unraid
-# (issue #79). .10=hister .11=crawl4ai .12=research-mcp .13=icloud-mcp
+# (issue #79). .10=hister .11=crawl4ai .12=hister-archive-mcp (was research-mcp) .13=icloud-mcp
 icloud_mcp_net_subnet: "172.16.13.0/24"
 
 icloud_email: "{{ lookup('ansible.builtin.env', 'ICLOUD_EMAIL') }}"

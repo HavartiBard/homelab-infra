@@ -1,0 +1,15 @@
+---
+# Renamed from research-mcp — the name didn't say what the service does
+# (its only job is the write-bridge into hister; hister's own native MCP
+# only exposes read tools, search/get_preview). Old container/appdata dir
+# ("research-mcp") are decommissioned as part of this rename, not reused.
+hister_archive_mcp_image: "local/hister-archive-mcp:latest"
+hister_archive_mcp_container_name: hister-archive-mcp
+hister_archive_mcp_port: 6982
+hister_archive_mcp_appdata_dir: /mnt/user/appdata/hister-archive-mcp
+hister_archive_mcp_build_dir: /tmp/hister-archive-mcp-build
+hister_archive_mcp_source_dir: "{{ role_path }}/../../../docker/hister-archive-mcp"
+hister_archive_mcp_hister_url: "http://192.168.20.14:4433"
+# Pinned subnet (Docker pools exhausted on Unraid, issue #79);
+# .10 = hister, .11 = crawl4ai, .12 = hister-archive-mcp (was research-mcp)
+hister_archive_mcp_net_subnet: "172.16.12.0/24"

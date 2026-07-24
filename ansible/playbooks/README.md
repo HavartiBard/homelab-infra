@@ -30,4 +30,4 @@ Recent platform/service additions:
 - `bootstrap/deploy-tailscale.yml`
 - `bootstrap/provision-tailscale-router.yml`
 - `mcp/deploy-crawl4ai.yml`
-- `mcp/deploy-research-mcp.yml`
+- `mcp/deploy-hister-archive-mcp.yml`
