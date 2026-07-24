@@ -118,6 +118,14 @@ Dependency map: `services/homelab-dependency-map.md`.
 | 1Password MCP | internal | Secret retrieval (read-only) |
 | iCloud MCP | 6983 | LAN-only — Mail/Calendar/Contacts, app-specific password |
 
+### MCP Servers (goudai)
+
+Co-located sidecars — not Unraid-hosted, since they need local filesystem/process access next to the service they control.
+
+| Service | Port | Notes |
+|---------|------|-------|
+| comfyui-mcp | 9101 | LAN-only, no NPM proxy — artokun/comfyui-mcp sidecar next to goudai's ComfyUI (`ansible/files/goudai/comfyui-ltx/docker-compose.yml.j2`). Full 174-tool surface (generation, workflow authoring, model management, process control) registered for Hermes on jetson.lab. |
+
 ### Observability (Unraid)
 
 | Service | Port | Notes |
