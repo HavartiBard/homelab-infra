@@ -1,0 +1,111 @@
+model:
+  provider: {{ lyra_model_provider }}
+  default: {{ lyra_model_default }}
+  context_length: {{ lyra_model_context_length }}
+  base_url: {{ lyra_model_base_url }}
+fallback_providers: []
+toolsets:
+  - hermes-cli
+agent:
+  max_turns: 200
+  gateway_timeout: 1800
+  restart_drain_timeout: 60
+  service_tier: ''
+  tool_use_enforcement: auto
+  verify_on_stop: false
+  gateway_timeout_warning: 600
+  gateway_notify_interval: 600
+  verbose: false
+  reasoning_effort: medium
+terminal:
+  backend: none
+browser:
+  inactivity_timeout: 120
+  command_timeout: 30
+  record_sessions: false
+  allow_private_urls: false
+  cdp_url: ''
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+file_read_max_chars: 100000
+compression:
+  enabled: true
+  threshold: 0.5
+  target_ratio: 0.2
+  protect_last_n: 20
+display:
+  compact: false
+  personality: kawaii
+  resume_display: full
+  busy_input_mode: interrupt
+  bell_on_complete: false
+  show_reasoning: false
+  streaming: true
+  final_response_markdown: strip
+  inline_diffs: true
+  show_cost: false
+  skin: default
+dashboard:
+  theme: midnight
+  port: {{ lyra_dashboard_port }}
+  bind: 0.0.0.0
+privacy:
+  redact_pii: false
+context:
+  engine: compressor
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  memory_char_limit: 2200
+  user_char_limit: 1375
+  provider: ''
+  nudge_interval: 10
+  flush_min_turns: 6
+approvals:
+  mode: manual
+  timeout: 60
+  cron_mode: deny
+command_allowlist: []
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_path: tirith
+  tirith_timeout: 5
+  tirith_fail_open: true
+  website_blocklist:
+    enabled: false
+    domains: []
+    shared_files: []
+logging:
+  level: INFO
+  max_size_mb: 5
+  backup_count: 3
+network:
+  force_ipv4: false
+gateway:
+  port: {{ lyra_gateway_port }}
+  bind: 0.0.0.0
+streaming:
+  enabled: false
+_config_version: 33
+session_reset:
+  mode: both
+  idle_minutes: 1440
+  at_hour: 4
+group_sessions_per_user: true
+platform_toolsets:
+  cli:
+    - hermes-cli
+mcp_servers:
+{% if lyra_mcp_servers -%}
+{{ lyra_mcp_servers | to_nice_yaml(indent=2) | indent(2, first=True) }}
+{%- else -%}
+  {}
+{%- endif %}
+providers:
+{% if lyra_providers -%}
+{{ lyra_providers | to_nice_yaml(indent=2) | indent(2, first=True) }}
+{%- else -%}
+  {}
+{%- endif %}
