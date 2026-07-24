@@ -13,7 +13,7 @@ The Obsidian stack provides a self-hosted knowledge base with bidirectional sync
    - Admin and sync user credentials managed via 1Password
 
 2. **Obsidian Vault** - Markdown note storage
-   - Location: `/mnt/user/appdata/obsidian/vaults/homelab`
+   - Location: `/mnt/user/obsidian/homelab`
    - Stores notes, templates, and attachments
    - Synced via LiveSync plugin to CouchDB
    - Mounted read-only into MCP server container
@@ -46,7 +46,7 @@ Desktop Client <--> CouchDB <--> Obsidian MCP Server <--> AI Agents
 |-----------|------|------|----------------|
 | CouchDB | Unraid (192.168.20.14) | 5984 | couchdb-obsidian |
 | Obsidian MCP | Unraid (192.168.20.14) | 6977 | obsidian-mcp |
-| Vault Files | Unraid | - | /mnt/user/appdata/obsidian/vaults/homelab |
+| Vault Files | Unraid | - | /mnt/user/obsidian/homelab |
 
 ### Network Configuration
 
@@ -63,12 +63,11 @@ Desktop Client <--> CouchDB <--> Obsidian MCP Server <--> AI Agents
 ├── config/            # CouchDB configuration
 └── docker-compose.yml
 
-/mnt/user/appdata/obsidian/
-└── vaults/
-    └── homelab/       # Vault root
-        ├── services/  # Service documentation
-        ├── templates/ # Note templates
-        └── .obsidian/ # Obsidian config
+/mnt/user/obsidian/           # migrated from /mnt/user/appdata/obsidian/vaults/ on 2026-07-23
+└── homelab/       # Vault root
+    ├── services/  # Service documentation
+    ├── templates/ # Note templates
+    └── .obsidian/ # Obsidian config
 
 /mnt/user/appdata/obsidian-mcp/
 └── docker-compose.yml
@@ -118,7 +117,7 @@ couchdb_sync_password: "{{ vault_couchdb_sync_password }}"
 obsidian_mcp_port: 6977
 obsidian_mcp_container_name: "obsidian-mcp"
 obsidian_mcp_transport_mode: "http"
-obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
+obsidian_vault_path: "/mnt/user/obsidian/homelab"
 ```
 
 ## Verify
@@ -162,7 +161,7 @@ Expected:
 
 ```bash
 ssh -i ~/.ssh/id_ed25519_homelab root@192.168.20.14 \
-  "ls -la /mnt/user/appdata/obsidian/vaults/homelab"
+  "ls -la /mnt/user/obsidian/homelab"
 ```
 
 Expected: Directories exist with `nobody:users` ownership and `775` permissions.
@@ -338,7 +337,7 @@ cd ~/projects/homelab-infra
 
 # Restore vault files
 ssh -i ~/.ssh/id_ed25519_homelab root@192.168.20.14 \
-  "tar -xzf /mnt/user/backups/obsidian_vault_<timestamp>.tar.gz -C /mnt/user/appdata/obsidian/vaults/"
+  "tar -xzf /mnt/user/backups/obsidian_vault_<timestamp>.tar.gz -C /mnt/user/obsidian/"
 ```
 
 ### Remove Stack Completely
@@ -349,7 +348,7 @@ ansible unraid -m raw -a "docker rm -f couchdb-obsidian obsidian-mcp"
 
 # Remove data (WARNING: Data loss!)
 ansible unraid -m raw -a "rm -rf /mnt/user/appdata/couchdb"
-ansible unraid -m raw -a "rm -rf /mnt/user/appdata/obsidian"
+ansible unraid -m raw -a "rm -rf /mnt/user/obsidian"
 ansible unraid -m raw -a "rm -rf /mnt/user/appdata/obsidian-mcp"
 ```
 
@@ -367,7 +366,7 @@ cd ~/projects/homelab-infra
 ```bash
 ssh -i ~/.ssh/id_ed25519_homelab root@192.168.20.14 \
   "tar -czf /mnt/user/backups/obsidian_vault_$(date +%Y%m%d_%H%M%S).tar.gz \
-   -C /mnt/user/appdata/obsidian/vaults homelab"
+   -C /mnt/user/obsidian homelab"
 ```
 
 ### Automated Backup
@@ -450,7 +449,7 @@ Add to Unraid User Scripts or cron (when implemented):
 **Problem:** Search returns no results
 
 **Checks:**
-1. Verify vault has notes: `ls /mnt/user/appdata/obsidian/vaults/homelab`
+1. Verify vault has notes: `ls /mnt/user/obsidian/homelab`
 2. Check search query syntax
 3. Review file permissions
 
@@ -476,7 +475,7 @@ ansible unraid -m raw -a "cd /mnt/user/appdata/couchdb && docker compose up -d"
 **Problem:** Obsidian MCP container crashes on startup
 
 **Checks:**
-1. Check vault path exists: `ls /mnt/user/appdata/obsidian/vaults/homelab`
+1. Check vault path exists: `ls /mnt/user/obsidian/homelab`
 2. Review container logs: `docker logs obsidian-mcp`
 3. Verify Docker image is available
 

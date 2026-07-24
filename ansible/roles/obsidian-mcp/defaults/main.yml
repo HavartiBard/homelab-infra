@@ -6,7 +6,10 @@ obsidian_mcp_icon: >-
   https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/obsidian.png
 obsidian_mcp_webui_url: >-
   http://{{ ansible_host }}:{{ obsidian_mcp_port }}/mcp
-obsidian_vault_path: "/mnt/user/appdata/obsidian/vaults/homelab"
+# Migrated from /mnt/user/appdata/obsidian/vaults/homelab to the dedicated
+# /mnt/user/obsidian share on 2026-07-23 (see jetson-raclette role defaults
+# for the backup tarball location); this matches the container's live mount.
+obsidian_vault_path: "/mnt/user/obsidian/homelab"
 obsidian_mcp_appdata_dir: "/mnt/user/appdata/obsidian-mcp"
 obsidian_mcp_transport_mode: "http"
 obsidian_mcp_build_dir: "/tmp/obsidian-mcp-build"

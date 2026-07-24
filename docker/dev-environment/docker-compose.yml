@@ -32,8 +32,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # 1Password SSH agent socket (from host)
       - ${OP_SSH_AGENT_SOCK:-/home/james/.1password/agent.sock}:/home/${DEV_USER:-james}/.1password/agent.sock:ro
-      # Obsidian vault — direct bind mount (container runs on Unraid, no NFS needed)
-      - /mnt/user/appdata/obsidian/vaults/homelab:/mnt/obsidian
+      # Obsidian vault — direct bind mount (container runs on Unraid, no NFS needed).
+      # Migrated from /mnt/user/appdata/obsidian/vaults/homelab to the dedicated
+      # /mnt/user/obsidian share on 2026-07-23.
+      - /mnt/user/obsidian/homelab:/mnt/obsidian
     environment:
       - TZ=${TZ:-America/Phoenix}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
