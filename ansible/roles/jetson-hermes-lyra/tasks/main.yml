@@ -65,10 +65,41 @@
     group: "{{ ansible_user }}"
     mode: '0600'
 
-- name: Render Lyra config.yaml
+- name: Render Lyra config.yaml (root/default profile)
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/hermes.yaml.j2"
     dest: "{{ lyra_state_dir }}/config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Ensure Lyra named-profile directory exists
+  ansible.builtin.file:
+    path: "{{ lyra_state_dir }}/profiles/lyra"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+
+# The container registers TWO gateway slots: the implicit root/"default"
+# profile (HERMES_HOME itself) and the named "lyra" profile under
+# profiles/lyra/ (where her migrated persona/session data actually lives —
+# see the migration task above). The image's container_boot.py reconciler
+# only ever auto-starts a profile whose *own* gateway_state.json last
+# recorded "running" — for this deployment that's the "lyra" named profile
+# (brought up once via `hermes -p lyra gateway start`, not the root one),
+# so the named profile's OWN config.yaml is what the live, running gateway
+# actually reads. Rendering the hardened config only to the root path (as
+# this role originally did) left the real, running gateway on Lyra's old,
+# unhardened, raclette-migrated config — confirmed live 2026-07-25: Gitea,
+# the homelab Obsidian vault, and iCloud were all still reachable through
+# her running instance despite the root config being correctly scoped.
+# Render to both locations so whichever profile ends up running always
+# gets the hardened config.
+- name: Render Lyra config.yaml (named "lyra" profile — the one actually running)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/hermes.yaml.j2"
+    dest: "{{ lyra_state_dir }}/profiles/lyra/config.yaml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
@@ -99,5 +130,23 @@
   register: lyra_running
   failed_when: lyra_running.stdout | trim != 'true'
   changed_when: false
+  args:
+    executable: /bin/bash
+
+# Reload the "lyra" named-profile gateway so a re-rendered config.yaml
+# (above) actually takes effect — `docker compose up -d` alone does not
+# restart the s6-supervised gateway process inside an already-running
+# container. Ignores failure: on a genuinely fresh deploy the named
+# profile's gateway hasn't been started yet at all (that's still a manual
+# one-time `hermes -p lyra gateway start`, not automated here), so
+# `restart` on a not-yet-running gateway is expected to no-op/fail
+# harmlessly rather than block the rest of the play.
+- name: Restart Lyra's named-profile gateway to pick up config changes
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker exec {{ lyra_container_name }} hermes -p lyra gateway restart
+  register: lyra_gateway_restart
+  changed_when: true
+  failed_when: false
   args:
     executable: /bin/bash
