@@ -103,6 +103,7 @@ Dependency map: `services/homelab-dependency-map.md`.
 | Director | 8080 | LAN-only | MCP aggregator/proxy |
 | Chiffon Executor | — | — | Background AI task executor |
 | SoulLayer | via mcp-proxy | `…:6980/servers/soullayer/sse` | Personality/memory MCP |
+| mem0-server | 8888 (API), 8889 (dashboard) | LAN-only | Self-hosted Mem0 (FastAPI + pgvector), shared memory backend for Lyra/Raclette, no NPM proxy |
 
 ### MCP Servers (Unraid)
 

@@ -24,6 +24,8 @@ services:
     command: sh -c "mkdir -p /app/history && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     env_file:
       - {{ mem0_env_file }}
+    environment:
+      TZ: "{{ timezone }}"
     ports:
       - "{{ mem0_api_port }}:8000"
     depends_on:
@@ -45,6 +47,7 @@ services:
       NEXT_PUBLIC_API_URL: "http://{{ ansible_host }}:{{ mem0_api_port }}"
       API_INTERNAL_URL: "http://{{ mem0_api_container_name }}:8000"
       NEXT_PUBLIC_INSTANCE_NAME: "Mem0 (homelab)"
+      TZ: "{{ timezone }}"
     ports:
       - "{{ mem0_dashboard_port }}:3000"
     depends_on:

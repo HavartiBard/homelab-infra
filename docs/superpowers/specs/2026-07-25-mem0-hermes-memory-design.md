@@ -142,6 +142,18 @@ Distinct `agent_id`/`user_id` per agent on the shared server keeps Lyra's
 and Raclette's memories from cross-contaminating while both use the same
 backing Postgres/pgvector store.
 
+**Known limitation**: this isolation is by convention, not server-enforced
+tenancy — mem0's self-hosted API scopes memory data by the `user_id`/
+`agent_id` fields in the request body, not by which API key authenticated
+the request, so an API key for one agent could technically read the
+other's memories by passing its `user_id`/`agent_id` directly. Not
+exploitable through either agent's normal tool use today (Hermes' mem0
+plugin never exposes `user_id`/`agent_id` as LLM-controllable tool
+parameters — they're injected server-side from each agent's `mem0.json`),
+but don't treat per-agent API keys as a security boundary if this
+deployment grows a third, less-trusted agent or is ever exposed beyond
+the LAN.
+
 ## Rollout / verification
 
 1. Deploy `mem0-server` on Unraid, verify `curl http://192.168.20.14:8888/docs`

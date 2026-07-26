@@ -112,6 +112,15 @@
     group: "{{ ansible_user }}"
     mode: '0644'
 
+# user_id/agent_id here are the only thing keeping Lyra's memories separate
+# from Raclette's on the shared mem0-server — isolation is by convention,
+# not server-enforced tenancy (mem0's self-hosted API scopes by these
+# request-body fields, not by which API key authenticated the request).
+# This holds today only because Hermes' mem0 tool schemas never expose
+# user_id/agent_id as LLM-controllable parameters (confirmed against
+# nousresearch/hermes-agent's plugins/memory/mem0). Don't treat per-agent
+# API keys as a security boundary if a third, less-trusted agent joins
+# this server or it's ever exposed beyond the LAN.
 - name: Render Lyra mem0.json (root/default profile)
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/mem0.json.j2"

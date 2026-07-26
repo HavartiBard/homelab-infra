@@ -70,6 +70,8 @@ This document lists all ports used by homelab stacks with access requirements.
 | **Obsidian MCP** | 6977 | HTTP | 🔒 LAN-Only | MCP server (vault read/write/search) |
 | **SearXNG MCP** | 6978 | HTTP | 🔒 LAN-Only | MCP server — privacy-respecting metasearch |
 | **Raclette API Server** | 8642 | HTTP | 🔒⚠️ LAN-Only | Hermes Agent OpenAI-compatible API (bearer auth, full toolset incl. terminal) |
+| **mem0-server** | 8888 | HTTP | 🔒 LAN-Only | Self-hosted Mem0 API (FastAPI + pgvector), shared by Lyra/Raclette |
+| mem0-server | 8889 | HTTP | 🔒⚠️ LAN-Only | Dashboard — admin/API-key management |
 | **AdGuard Home** | 53 | UDP/TCP | 🔒 LAN-Only | DNS queries |
 | AdGuard Home | 3080 | TCP | 🔒⚠️ LAN-Only | Initial setup UI |
 | AdGuard Home | 8053 | TCP | 🔒⚠️ LAN-Only | Web UI (HTTP) |

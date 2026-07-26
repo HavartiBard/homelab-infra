@@ -62,6 +62,15 @@
     sed -i 's/^psycopg>=3.2.8$/psycopg[binary]>=3.2.8/' {{ mem0_build_dir }}/server/requirements.txt
   changed_when: false
 
+- name: Verify the psycopg[binary] patch landed
+  # sed exits 0 whether or not it matched — if mem0_source_commit is bumped
+  # and upstream reformatted this line, the sed above would silently no-op
+  # and the image would build without a libpq driver. Fail loud instead.
+  ansible.builtin.raw: |
+    grep -q 'psycopg\[binary\]>=3.2.8' {{ mem0_build_dir }}/server/requirements.txt || \
+      { echo "psycopg[binary] patch did not apply — check requirements.txt against mem0_source_commit" >&2; exit 1; }
+  changed_when: false
+
 - name: Patch mem0 API to size pgvector for the actual embedder in use
   # server/main.py's DEFAULT_CONFIG never passes vector_store.config's
   # embedding_model_dims, so pgvector's own default (1536, sized for
@@ -74,6 +83,16 @@
   # pattern as the psycopg fix above.
   ansible.builtin.raw: |
     sed -i 's/"collection_name": POSTGRES_COLLECTION_NAME,/"collection_name": POSTGRES_COLLECTION_NAME, "embedding_model_dims": int(os.environ.get("MEM0_EMBEDDING_DIMS", "1536")),/' {{ mem0_build_dir }}/server/main.py
+  changed_when: false
+
+- name: Verify the embedding_model_dims patch landed
+  # Same fail-open risk as the psycopg sed above — this is the exact patch
+  # that fixes the 1536-vs-768 silent-data-loss bug. If it silently no-ops
+  # on a bumped mem0_source_commit, that bug comes back with the API still
+  # returning 200 OK.
+  ansible.builtin.raw: |
+    grep -q '"embedding_model_dims": int(os.environ.get("MEM0_EMBEDDING_DIMS"' {{ mem0_build_dir }}/server/main.py || \
+      { echo "embedding_model_dims patch did not apply — check main.py against mem0_source_commit" >&2; exit 1; }
   changed_when: false
 
 - name: Build mem0 API image
@@ -90,30 +109,6 @@
 
 - name: Copy Postgres init script into appdata directory
   ansible.builtin.raw: cp {{ mem0_build_dir }}/server/init-db.sh {{ mem0_appdata_dir }}/init-db.sh
-  changed_when: false
-
-# mem0ai's PGVector store creates the "memories" table with a fixed vector
-# width on first use and never migrates it afterwards. If a prior deploy
-# ran with a different embedder (different output width), every insert
-# against the mismatched column fails at runtime (silently, from the
-# caller's point of view — see the embedding_model_dims patch above for
-# the full story). Idempotent: no-op on a fresh install (table doesn't
-# exist yet) or when the width already matches — every failure mode in
-# the query below (table absent, unexpected schema) collapses to an empty
-# $current_type, which the guard below treats as "don't drop."
-# Column name confirmed live via `docker exec mem0-postgres psql -U
-# postgres -c '\d memories'` (2026-07-26): id/vector/payload — "vector" is
-# correct, not a guess.
-- name: Drop the memories table if its vector width doesn't match the current embedder
-  ansible.builtin.raw: |
-    if docker ps -a --format '{{ '{{.Names}}' }}' | grep -qx {{ mem0_postgres_container_name }}; then
-      current_type=$(docker exec {{ mem0_postgres_container_name }} psql -U postgres -tAc \
-        "SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = 'public.memories'::regclass AND attname = 'vector'" 2>/dev/null || echo "")
-      if [ -n "$current_type" ] && [ "$current_type" != "vector({{ mem0_embedding_dims }})" ]; then
-        echo "Dropping memories table: current $current_type, expected vector({{ mem0_embedding_dims }})"
-        docker exec {{ mem0_postgres_container_name }} psql -U postgres -c "DROP TABLE IF EXISTS memories;"
-      fi
-    fi
   changed_when: false
 
 - name: Copy docker-compose.yml
@@ -134,6 +129,61 @@
       sleep 5
     done
     echo "timeout waiting for mem0 API" >&2; exit 1
+  changed_when: false
+
+# mem0ai's PGVector store creates the "memories" table with a fixed vector
+# width on first use and never migrates it afterwards. If a prior deploy
+# ran with a different embedder (different output width), every insert
+# against the mismatched column fails at runtime (silently, from the
+# caller's point of view — see the embedding_model_dims patch above for
+# the full story). Idempotent: no-op on a fresh install (table doesn't
+# exist yet) or when the width already matches — every failure mode in
+# the query below (table absent, unexpected schema) collapses to an empty
+# $current_type, which the guard below treats as "don't drop."
+# Column name confirmed live via `docker exec mem0-postgres psql -U
+# postgres -c '\d memories'` (2026-07-26): id/vector/payload — "vector" is
+# correct, not a guess.
+#
+# Runs AFTER compose is up and mem0 API has proven healthy (rather than
+# before, as an earlier version of this task did) — mem0-api's
+# depends_on/service_healthy on postgres, plus the "Wait for mem0 API"
+# check above, guarantee postgres is actually running here. The old
+# before-deploy placement meant a stopped-but-existing postgres container
+# (host reboot, prior failed deploy) made `docker exec` fail, got
+# swallowed by `|| echo ""`, and silently skipped the drop it exists to
+# perform — collapsing "couldn't check" into "already matches."
+- name: Back up and drop the memories table if its vector width doesn't match the current embedder
+  ansible.builtin.raw: |
+    current_type=$(docker exec {{ mem0_postgres_container_name }} psql -U postgres -tAc \
+      "SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = 'public.memories'::regclass AND attname = 'vector'" 2>/dev/null || echo "")
+    if [ -n "$current_type" ] && [ "$current_type" != "vector({{ mem0_embedding_dims }})" ]; then
+      backup_file="{{ mem0_appdata_dir }}/memories-pre-drop-$(date +%Y%m%dT%H%M%S).sql"
+      echo "Backing up memories table to $backup_file before drop (current $current_type, expected vector({{ mem0_embedding_dims }}))"
+      docker exec {{ mem0_postgres_container_name }} pg_dump -U postgres -d postgres -t memories > "$backup_file"
+      echo "Dropping memories table: current $current_type, expected vector({{ mem0_embedding_dims }})"
+      docker exec {{ mem0_postgres_container_name }} psql -U postgres -c "DROP TABLE IF EXISTS memories;"
+    fi
+  register: mem0_memories_drop
+  changed_when: "'Dropping memories table' in mem0_memories_drop.stdout"
+
+- name: Restart mem0 API after dropping the memories table
+  # mem0-api holds an open connection/session state from before the drop;
+  # without a restart it may keep operating against the table it thinks
+  # still exists (or a stale schema cache) rather than picking up the
+  # fresh table pgvector recreates on first use after restart.
+  ansible.builtin.raw: docker restart {{ mem0_api_container_name }}
+  when: "'Dropping memories table' in mem0_memories_drop.stdout"
+  changed_when: true
+
+- name: Wait for mem0 API after post-drop restart
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_api_port }}/docs)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 API after post-drop restart" >&2; exit 1
+  when: "'Dropping memories table' in mem0_memories_drop.stdout"
   changed_when: false
 
 - name: Wait for mem0 dashboard

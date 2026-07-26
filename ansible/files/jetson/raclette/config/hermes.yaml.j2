@@ -272,6 +272,11 @@ approvals:
   mode: manual
   timeout: 60
   cron_mode: deny
+# Adopted verbatim from Raclette's live, already-running config as part of
+# codifying real production drift into the repo — not a new grant. De-gates
+# auto-approval of -e/-c flag script execution (bypasses the manual approval
+# prompt above). Accepted as-is: reverting it would have been a regression
+# against what's actually running.
 command_allowlist:
   - script execution via -e/-c flag
 security:
