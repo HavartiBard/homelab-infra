@@ -98,7 +98,12 @@
 # against the mismatched column fails at runtime (silently, from the
 # caller's point of view — see the embedding_model_dims patch above for
 # the full story). Idempotent: no-op on a fresh install (table doesn't
-# exist yet) or when the width already matches.
+# exist yet) or when the width already matches — every failure mode in
+# the query below (table absent, unexpected schema) collapses to an empty
+# $current_type, which the guard below treats as "don't drop."
+# Column name confirmed live via `docker exec mem0-postgres psql -U
+# postgres -c '\d memories'` (2026-07-26): id/vector/payload — "vector" is
+# correct, not a guess.
 - name: Drop the memories table if its vector width doesn't match the current embedder
   ansible.builtin.raw: |
     if docker ps -a --format '{{ '{{.Names}}' }}' | grep -qx {{ mem0_postgres_container_name }}; then
