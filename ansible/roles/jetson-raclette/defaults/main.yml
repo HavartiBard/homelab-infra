@@ -86,3 +86,7 @@ raclette_providers:
     base_url: "{{ raclette_model_base_url }}"
     transport: openai_chat
     api_key: "local-no-auth-required"
+
+# Shared mem0-server on Unraid (ansible/roles/mem0-server).
+mem0_api_host: "192.168.20.14"
+mem0_api_port: 8888

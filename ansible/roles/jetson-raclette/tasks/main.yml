@@ -28,6 +28,14 @@
       Export RACLETTE_API_SERVER_KEY before running.
   when: raclette_env.API_SERVER_KEY == 'CHANGEME_RACLETTE_API_SERVER_KEY'
 
+- name: Fail when Raclette Mem0 API key is not configured
+  ansible.builtin.fail:
+    msg: |
+      Mem0 API key not set for Raclette. Bootstrap it first (see
+      docs/superpowers/plans/2026-07-25-mem0-hermes-memory.md Task 4), then
+      export RACLETTE_MEM0_API_KEY before running.
+  when: raclette_env.MEM0_API_KEY == 'CHANGEME_RACLETTE_MEM0_API_KEY'
+
 - name: Ensure Raclette deploy directory exists
   ansible.builtin.file:
     path: "{{ raclette_deploy_dir }}"
@@ -68,6 +76,14 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0666'
+
+- name: Render raclette mem0.json
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/raclette/config/mem0.json.j2"
+    dest: "{{ raclette_state_dir }}/mem0.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
 
 - name: Ensure Raclette SSH key directory exists
   ansible.builtin.file:
