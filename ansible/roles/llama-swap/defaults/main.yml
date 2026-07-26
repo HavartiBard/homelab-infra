@@ -302,6 +302,21 @@ llama_swap_models:
       - "--cache-type-v q8_0"
     ttl: 600
 
+  # ── Embedding model — backs the mem0 memory server's fact extraction
+  # and semantic search (both LLM chat calls and embeddings route through
+  # llama-swap; this is the embeddings half). Small (~280MB Q8_0), kept in
+  # its own group below so it doesn't perturb the agent-stack's VRAM budget.
+  "nomic-embed-text":
+    hf: "nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0"
+    alias: "nomic-embed-text"
+    flags:
+      - "--embedding"
+      - "--pooling mean"
+      - "--ctx-size 8192"
+      - "-ngl 99"
+      - "--threads 32"
+    ttl: 3600
+
 
 # ── Group configuration ────────────────────────────────────────────────────
 #
@@ -322,6 +337,13 @@ llama_swap_groups:
       - "qwen/qwen3.6-35b-uncensored"
       - "qwen/qwen3.6-35b-a3b-mtp"
       - "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
+
+  "mem0-embedder":
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - "nomic-embed-text"
 
 # How long llama-swap waits for a child llama-server to become healthy
 # before declaring the spawn a failure. Bumped from the 120s default to
