@@ -315,6 +315,12 @@ llama_swap_models:
       - "--ctx-size 8192"
       - "-ngl 99"
       - "--threads 32"
+      # Default ubatch-size (512) is smaller than some mem0 extraction/search
+      # inputs (observed: "input (609 tokens) is too large to process,
+      # increase the physical batch size" from llama-swap under real mem0
+      # traffic). Raise both batch sizes to comfortably cover ctx-size.
+      - "--batch-size 8192"
+      - "--ubatch-size 8192"
     ttl: 3600
 
 

@@ -23,6 +23,7 @@
     OPENAI_BASE_URL={{ mem0_llm_base_url }}
     MEM0_DEFAULT_LLM_MODEL={{ mem0_default_llm_model }}
     MEM0_DEFAULT_EMBEDDER_MODEL={{ mem0_default_embedder_model }}
+    MEM0_EMBEDDING_DIMS={{ mem0_embedding_dims }}
     POSTGRES_HOST={{ mem0_postgres_container_name }}
     POSTGRES_PORT=5432
     POSTGRES_DB=postgres
@@ -61,6 +62,20 @@
     sed -i 's/^psycopg>=3.2.8$/psycopg[binary]>=3.2.8/' {{ mem0_build_dir }}/server/requirements.txt
   changed_when: false
 
+- name: Patch mem0 API to size pgvector for the actual embedder in use
+  # server/main.py's DEFAULT_CONFIG never passes vector_store.config's
+  # embedding_model_dims, so pgvector's own default (1536, sized for
+  # OpenAI's text-embedding-3-small) is used regardless of which embedder
+  # MEM0_DEFAULT_EMBEDDER_MODEL actually points at. nomic-embed-text
+  # outputs 768-dim vectors — every insert against a 1536-dim column
+  # failed silently with psycopg.errors.DataException ("expected 1536
+  # dimensions, not 768"), 200 OK returned to the caller regardless since
+  # the LLM extraction step (which runs first) succeeded. Same sed-patch
+  # pattern as the psycopg fix above.
+  ansible.builtin.raw: |
+    sed -i 's/"collection_name": POSTGRES_COLLECTION_NAME,/"collection_name": POSTGRES_COLLECTION_NAME, "embedding_model_dims": int(os.environ.get("MEM0_EMBEDDING_DIMS", "1536")),/' {{ mem0_build_dir }}/server/main.py
+  changed_when: false
+
 - name: Build mem0 API image
   ansible.builtin.raw: |
     cd {{ mem0_build_dir }}/server && docker build -t {{ mem0_api_image }} .
@@ -75,6 +90,25 @@
 
 - name: Copy Postgres init script into appdata directory
   ansible.builtin.raw: cp {{ mem0_build_dir }}/server/init-db.sh {{ mem0_appdata_dir }}/init-db.sh
+  changed_when: false
+
+# mem0ai's PGVector store creates the "memories" table with a fixed vector
+# width on first use and never migrates it afterwards. If a prior deploy
+# ran with a different embedder (different output width), every insert
+# against the mismatched column fails at runtime (silently, from the
+# caller's point of view — see the embedding_model_dims patch above for
+# the full story). Idempotent: no-op on a fresh install (table doesn't
+# exist yet) or when the width already matches.
+- name: Drop the memories table if its vector width doesn't match the current embedder
+  ansible.builtin.raw: |
+    if docker ps -a --format '{{ '{{.Names}}' }}' | grep -qx {{ mem0_postgres_container_name }}; then
+      current_type=$(docker exec {{ mem0_postgres_container_name }} psql -U postgres -tAc \
+        "SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = 'public.memories'::regclass AND attname = 'vector'" 2>/dev/null || echo "")
+      if [ -n "$current_type" ] && [ "$current_type" != "vector({{ mem0_embedding_dims }})" ]; then
+        echo "Dropping memories table: current $current_type, expected vector({{ mem0_embedding_dims }})"
+        docker exec {{ mem0_postgres_container_name }} psql -U postgres -c "DROP TABLE IF EXISTS memories;"
+      fi
+    fi
   changed_when: false
 
 - name: Copy docker-compose.yml

@@ -33,6 +33,10 @@ mem0_llm_base_url: "http://192.168.20.150:8010/v1"
 mem0_llm_api_key: "local-no-auth-required"
 mem0_default_llm_model: "qwen/qwen3.6-35b-uncensored"
 mem0_default_embedder_model: "nomic-embed-text"
+# nomic-embed-text-v1.5 outputs 768-dim vectors — must match the pgvector
+# column width (see the "Patch mem0 API to size pgvector" task) or every
+# memory insert fails at runtime.
+mem0_embedding_dims: 768
 
 mem0_jwt_secret: "{{ lookup('ansible.builtin.env', 'MEM0_JWT_SECRET') }}"
 mem0_postgres_password: "{{ lookup('ansible.builtin.env', 'MEM0_POSTGRES_PASSWORD') }}"
