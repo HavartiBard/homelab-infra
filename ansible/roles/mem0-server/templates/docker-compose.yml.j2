@@ -1,0 +1,68 @@
+services:
+  {{ mem0_postgres_container_name }}:
+    image: pgvector/pgvector:pg17
+    container_name: {{ mem0_postgres_container_name }}
+    restart: unless-stopped
+    shm_size: "128mb"
+    env_file:
+      - {{ mem0_env_file }}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -d postgres -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mem0_postgres_data:/var/lib/postgresql/data
+      - {{ mem0_appdata_dir }}/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    networks:
+      - mem0-net
+
+  {{ mem0_api_container_name }}:
+    image: "{{ mem0_api_image }}"
+    container_name: {{ mem0_api_container_name }}
+    restart: unless-stopped
+    command: sh -c "mkdir -p /app/history && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    env_file:
+      - {{ mem0_env_file }}
+    ports:
+      - "{{ mem0_api_port }}:8000"
+    depends_on:
+      {{ mem0_postgres_container_name }}:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+    networks:
+      - mem0-net
+
+  {{ mem0_dashboard_container_name }}:
+    image: "{{ mem0_dashboard_image }}"
+    container_name: {{ mem0_dashboard_container_name }}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: "http://{{ ansible_host }}:{{ mem0_api_port }}"
+      API_INTERNAL_URL: "http://{{ mem0_api_container_name }}:8000"
+      NEXT_PUBLIC_INSTANCE_NAME: "Mem0 (homelab)"
+    ports:
+      - "{{ mem0_dashboard_port }}:3000"
+    depends_on:
+      - {{ mem0_api_container_name }}
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - mem0-net
+
+volumes:
+  mem0_postgres_data:
+
+networks:
+  mem0-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ mem0_net_subnet }}

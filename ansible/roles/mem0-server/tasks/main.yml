@@ -1,0 +1,119 @@
+---
+# mem0-server: FastAPI + pgvector + dashboard, built from a pinned
+# mem0ai/mem0 commit (server/ subtree). Uses raw commands throughout —
+# Unraid has no Python.
+
+- name: Assert mem0-server secrets are provided
+  ansible.builtin.assert:
+    that:
+      - mem0_jwt_secret | length > 0
+      - mem0_postgres_password | length > 0
+    fail_msg: >-
+      Set MEM0_JWT_SECRET/MEM0_POSTGRES_PASSWORD (from 1Password "mem0-server"
+      item) via ansible/envs/mem0-server.env.
+
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ mem0_appdata_dir }}
+  changed_when: false
+
+- name: Write mem0-server .env file
+  ansible.builtin.raw: |
+    cat > {{ mem0_env_file }} << 'EOFENV'
+    OPENAI_API_KEY={{ mem0_llm_api_key }}
+    OPENAI_BASE_URL={{ mem0_llm_base_url }}
+    MEM0_DEFAULT_LLM_MODEL={{ mem0_default_llm_model }}
+    MEM0_DEFAULT_EMBEDDER_MODEL={{ mem0_default_embedder_model }}
+    POSTGRES_HOST={{ mem0_postgres_container_name }}
+    POSTGRES_PORT=5432
+    POSTGRES_DB=postgres
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD={{ mem0_postgres_password }}
+    POSTGRES_COLLECTION_NAME=memories
+    JWT_SECRET={{ mem0_jwt_secret }}
+    AUTH_DISABLED=false
+    DASHBOARD_URL=http://{{ ansible_host }}:{{ mem0_dashboard_port }}
+    APP_DB_NAME=mem0_app
+    MEM0_TELEMETRY=false
+    EOFENV
+    chmod 600 {{ mem0_env_file }}
+  changed_when: true
+  no_log: true
+
+- name: Create build directory
+  ansible.builtin.raw: |
+    rm -rf {{ mem0_build_dir }} && mkdir -p {{ mem0_build_dir }}
+  changed_when: false
+
+- name: Fetch pinned mem0 source
+  ansible.builtin.raw: |
+    curl -fsSL https://codeload.github.com/mem0ai/mem0/tar.gz/{{ mem0_source_commit }} \
+      | tar xz -C {{ mem0_build_dir }} --strip-components=1
+  changed_when: false
+
+- name: Patch mem0 API requirements to use psycopg's binary extra
+  # Upstream server/requirements.txt pins plain `psycopg>=3.2.8` and
+  # server/Dockerfile (python:3.12-slim) has no libpq system package, so the
+  # psycopg v3 driver has no way to talk to Postgres at runtime (ImportError:
+  # no pq wrapper available). psycopg[binary] bundles a compiled libpq, no
+  # system package needed. Same pattern as icloud-mcp/ironclaw sed-patching
+  # upstream Dockerfiles/requirements before building.
+  ansible.builtin.raw: |
+    sed -i 's/^psycopg>=3.2.8$/psycopg[binary]>=3.2.8/' {{ mem0_build_dir }}/server/requirements.txt
+  changed_when: false
+
+- name: Build mem0 API image
+  ansible.builtin.raw: |
+    cd {{ mem0_build_dir }}/server && docker build -t {{ mem0_api_image }} .
+  register: mem0_api_build
+  changed_when: mem0_api_build.rc == 0
+
+- name: Build mem0 dashboard image
+  ansible.builtin.raw: |
+    cd {{ mem0_build_dir }}/server/dashboard && docker build -t {{ mem0_dashboard_image }} .
+  register: mem0_dashboard_build
+  changed_when: mem0_dashboard_build.rc == 0
+
+- name: Copy Postgres init script into appdata directory
+  ansible.builtin.raw: cp {{ mem0_build_dir }}/server/init-db.sh {{ mem0_appdata_dir }}/init-db.sh
+  changed_when: false
+
+- name: Copy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ mem0_appdata_dir }}/docker-compose.yml"
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ mem0_appdata_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Wait for mem0 API
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_api_port }}/docs)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 API" >&2; exit 1
+  changed_when: false
+
+- name: Wait for mem0 dashboard
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_dashboard_port }}/api/health)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 dashboard" >&2; exit 1
+  changed_when: false
+
+- name: Show mem0 API logs
+  ansible.builtin.raw: docker logs --tail 30 {{ mem0_api_container_name }} 2>&1
+  register: mem0_api_logs
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Display mem0 API logs
+  ansible.builtin.debug:
+    msg: "{{ mem0_api_logs.stdout_lines }}"
+  when: not ansible_check_mode

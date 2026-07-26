@@ -1,0 +1,31 @@
+---
+# Deploy the self-hosted Mem0 memory server on Unraid — shared memory
+# backend for the jetson Hermes agents (Lyra, Raclette). LAN-only, no NPM
+# proxy — matches icloud-mcp/comfyui-mcp.
+#
+# Usage:
+#   ansible/scripts/run-playbook.sh mem0-server playbooks/ai/deploy-mem0-server.yml \
+#     --limit unraid
+
+- name: Deploy mem0-server on Unraid
+  hosts: unraid
+  gather_facts: false
+
+  roles:
+    - role: mem0-server
+    - role: netbox-service
+      vars:
+        netbox_services:
+          - name: mem0-server
+            cluster: unraid-docker
+            role: Memory Server
+            comments: "Self-hosted Mem0 (FastAPI+pgvector) for Hermes agents (LAN-only) — API http://{{ ansible_host }}:{{ mem0_api_port }}, dashboard http://{{ ansible_host }}:{{ mem0_dashboard_port }}"
+
+  post_tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          mem0-server deployed.
+          API:       http://{{ ansible_host }}:{{ mem0_api_port }} (LAN-only, no NPM proxy)
+          Dashboard: http://{{ ansible_host }}:{{ mem0_dashboard_port }} (LAN-only, no NPM proxy)
+          Next: bootstrap the admin account and issue per-agent API keys (see plan Task 4).

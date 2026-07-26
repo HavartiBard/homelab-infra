@@ -89,6 +89,7 @@
         - { name: MCP Server,      slug: mcp-server,      color: "795548", vm_role: true }
         - { name: LLM Service,     slug: llm-service,     color: "e91e63", vm_role: true }
         - { name: VPN Router,      slug: vpn-router,      color: "00bcd4", vm_role: true }
+        - { name: Memory Server,   slug: memory-server,   color: "8bc34a", vm_role: true }
 
     # ── Platforms ─────────────────────────────────────────────────────────────
 
