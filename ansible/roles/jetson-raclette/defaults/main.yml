@@ -58,19 +58,27 @@ raclette_mcp_servers:
   gsuite-jma8chz:
     url: "http://192.168.20.14:8092/mcp"
 
-# LLM configuration — goudai's llama-swap (OpenAI-compatible, no auth, LAN-only).
-# Was: openai-codex (OAuth, auth stored in ~/.raclette/auth.json), base_url
-# https://chatgpt.com/backend-api/codex, default gpt-5.4-mini, context 65536.
-raclette_model_provider: goudai-llama-swap
-# Kept resident indefinitely on goudai (ttl: 0 in ansible/roles/llama-swap
-# defaults) — the default model for both the default and lyra profiles.
-raclette_model_default: "qwen/qwen3.6-35b-uncensored"
-raclette_model_context_length: 131072
-raclette_model_base_url: "http://192.168.20.150:8010/v1"
+# LLM configuration — primary model is OpenAI Codex (OAuth, auth stored in
+# ~/.raclette/auth.json on jetson.lab), hand-tuned directly on the live host
+# on 2026-07-2x and codified here on 2026-07-25. No context_length or
+# base_url override needed for this provider.
+raclette_model_provider: openai-codex
+raclette_model_default: "gpt-5.6-luna"
+raclette_model_base_url: ""
+
+# Auxiliary task model (vision, web_extract, compression, skills_hub,
+# approval, mcp, title_generation, triage_specifier, kanban_decomposer,
+# profile_describer, curator) — goudai's llama-swap (OpenAI-compatible, no
+# auth, LAN-only), kept resident indefinitely on goudai (ttl: 0 in
+# ansible/roles/llama-swap defaults). Independent of raclette_model_provider
+# above, which drives the primary chat model only.
+raclette_auxiliary_provider: goudai-llama-swap
+raclette_auxiliary_model: "qwen/qwen3.6-35b-uncensored"
+raclette_auxiliary_base_url: "http://192.168.20.150:8010/v1"
 
 # Extra entries for the config.yaml `providers:` section — custom
 # OpenAI-compatible endpoints keyed by provider name (referenced by
-# raclette_model_provider above).
+# raclette_auxiliary_provider above).
 #
 # api_key is a harmless dummy value, not a real secret — llama-swap has no
 # auth and ignores it. Hermes hardcodes every named custom/local provider's
@@ -83,6 +91,10 @@ raclette_model_base_url: "http://192.168.20.150:8010/v1"
 # has_usable_secret / _PLACEHOLDER_SECRET_VALUES) clears that check.
 raclette_providers:
   goudai-llama-swap:
-    base_url: "{{ raclette_model_base_url }}"
+    base_url: "{{ raclette_auxiliary_base_url }}"
     transport: openai_chat
     api_key: "local-no-auth-required"
+
+# Shared mem0-server on Unraid (ansible/roles/mem0-server).
+mem0_api_host: "192.168.20.14"
+mem0_api_port: 8888

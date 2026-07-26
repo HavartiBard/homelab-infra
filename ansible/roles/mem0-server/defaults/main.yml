@@ -1,0 +1,44 @@
+---
+# mem0-server: self-hosted Mem0 (mem0ai/mem0, server/ subtree), built from
+# a pinned commit — no published Docker image exists upstream, matching
+# icloud-mcp's build-from-pinned-source pattern. Bump mem0_source_commit
+# deliberately — re-check server/requirements.txt and server/main.py's
+# BUNDLED_*_PROVIDERS before doing so.
+
+mem0_source_commit: "b357a5a1b03c299ec8229c268e63cfac0f7c6566"
+mem0_api_image: "local/mem0-api:{{ mem0_source_commit[:12] }}"
+mem0_dashboard_image: "local/mem0-dashboard:{{ mem0_source_commit[:12] }}"
+
+mem0_api_container_name: mem0-api
+mem0_dashboard_container_name: mem0-dashboard
+mem0_postgres_container_name: mem0-postgres
+
+mem0_api_port: 8888
+mem0_dashboard_port: 8889
+
+mem0_appdata_dir: /mnt/user/appdata/mem0-server
+mem0_build_dir: /tmp/mem0-server-build
+mem0_env_file: "{{ mem0_appdata_dir }}/mem0-server.env"
+
+# Pinned subnet: Docker's auto-allocation pools are exhausted on Unraid
+# (issue #79). .10=hister .11=crawl4ai .12=research-mcp .13=icloud-mcp
+# .14=mem0-server
+mem0_net_subnet: "172.16.14.0/24"
+
+# LLM + embedder both route through goudai's llama-swap (OpenAI-compatible).
+# mem0's OpenAI provider reads OPENAI_BASE_URL as a fallback base URL for
+# both chat and embeddings (mem0/llms/openai.py, mem0/embeddings/openai.py)
+# — no per-provider config needed beyond these env vars.
+mem0_llm_base_url: "http://192.168.20.150:8010/v1"
+mem0_llm_api_key: "local-no-auth-required"
+mem0_default_llm_model: "qwen/qwen3.6-35b-uncensored"
+mem0_default_embedder_model: "nomic-embed-text"
+# nomic-embed-text-v1.5 outputs 768-dim vectors — must match the pgvector
+# column width (see the "Patch mem0 API to size pgvector" task) or every
+# memory insert fails at runtime.
+mem0_embedding_dims: 768
+
+mem0_jwt_secret: "{{ lookup('ansible.builtin.env', 'MEM0_JWT_SECRET') }}"
+mem0_postgres_password: "{{ lookup('ansible.builtin.env', 'MEM0_POSTGRES_PASSWORD') }}"
+
+timezone: "America/Phoenix"

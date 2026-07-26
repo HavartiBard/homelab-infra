@@ -1,8 +1,13 @@
 model:
   provider: {{ raclette_model_provider }}
   default: {{ raclette_model_default }}
-  context_length: {{ raclette_model_context_length }}
-  base_url: {{ raclette_model_base_url }}
+  base_url: '{{ raclette_model_base_url }}'
+providers:
+{% if raclette_providers -%}
+{{ raclette_providers | to_nice_yaml(indent=2) | indent(2, first=True) }}
+{%- else -%}
+  {}
+{%- endif %}
 fallback_providers: []
 toolsets:
   - hermes-cli
@@ -106,48 +111,46 @@ bedrock:
     trace: disabled
 auxiliary:
   vision:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 120
     download_timeout: 30
   web_extract:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 360
   compression:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 120
   skills_hub:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 30
   approval:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 30
   mcp:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 30
   title_generation:
-    provider: auto
-    model: ''
-    base_url: ''
-    api_key: ''
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
     timeout: 30
+  triage_specifier:
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
+  kanban_decomposer:
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
+  profile_describer:
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
+  curator:
+    provider: {{ raclette_auxiliary_provider }}
+    model: {{ raclette_auxiliary_model }}
   session_search:
     provider: auto
     model: ''
@@ -184,7 +187,7 @@ display:
   tool_progress: all
   background_process_notifications: all
 dashboard:
-  theme: midnight
+  theme: mono
   port: {{ raclette_dashboard_port }}
   bind: 0.0.0.0
 privacy:
@@ -239,7 +242,7 @@ memory:
   user_profile_enabled: true
   memory_char_limit: 2200
   user_char_limit: 1375
-  provider: ''
+  provider: mem0
   nudge_interval: 10
   flush_min_turns: 6
 delegation:
@@ -269,7 +272,13 @@ approvals:
   mode: manual
   timeout: 60
   cron_mode: deny
-command_allowlist: []
+# Adopted verbatim from Raclette's live, already-running config as part of
+# codifying real production drift into the repo — not a new grant. De-gates
+# auto-approval of -e/-c flag script execution (bypasses the manual approval
+# prompt above). Accepted as-is: reverting it would have been a regression
+# against what's actually running.
+command_allowlist:
+  - script execution via -e/-c flag
 security:
   redact_secrets: true
   tirith_enabled: true
@@ -333,9 +342,25 @@ mcp_servers:
 {%- else -%}
   {}
 {%- endif %}
-providers:
-{% if raclette_providers -%}
-{{ raclette_providers | to_nice_yaml(indent=2) | indent(2, first=True) }}
-{%- else -%}
-  {}
-{%- endif %}
+
+# ── Fallback Model ────────────────────────────────────────────────────
+# Automatic provider failover when primary is unavailable.
+# Uncomment and configure to enable. Triggers on rate limits (429),
+# overload (529), service errors (503), or connection failures.
+#
+# Supported providers:
+#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
+#   openai-codex (OAuth — hermes auth) — OpenAI Codex
+#   nous         (OAuth — hermes auth) — Nous Portal
+#   zai          (ZAI_API_KEY)         — Z.AI / GLM
+#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
+#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
+#   minimax      (MINIMAX_API_KEY)     — MiniMax
+#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
+#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
+#
+# For custom OpenAI-compatible endpoints, add base_url and key_env.
+#
+# fallback_model:
+#   provider: openrouter
+#   model: anthropic/claude-sonnet-4

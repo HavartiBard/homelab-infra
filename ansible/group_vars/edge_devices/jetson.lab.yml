@@ -14,6 +14,8 @@ raclette_env:
     {{ lookup('env', 'RACLETTE_DASHBOARD_PASSWORD') | default('CHANGEME_RACLETTE_DASHBOARD_PASSWORD', true) }}
   API_SERVER_KEY: >-
     {{ lookup('env', 'RACLETTE_API_SERVER_KEY') | default('CHANGEME_RACLETTE_API_SERVER_KEY', true) }}
+  MEM0_API_KEY: >-
+    {{ lookup('env', 'RACLETTE_MEM0_API_KEY') | default('CHANGEME_RACLETTE_MEM0_API_KEY', true) }}
   # Camofox browser backend (jo-inc/camofox-browser, deployed alongside
   # Raclette on this same host via ansible/roles/camofox-browser). Hermes'
   # browser tool reads these as env vars, not config.yaml fields — see
@@ -36,3 +38,5 @@ lyra_env:
     {{ lookup('env', 'LYRA_DASHBOARD_PASSWORD') | default('CHANGEME_LYRA_DASHBOARD_PASSWORD', true) }}
   API_SERVER_KEY: >-
     {{ lookup('env', 'LYRA_API_SERVER_KEY') | default('CHANGEME_LYRA_API_SERVER_KEY', true) }}
+  MEM0_API_KEY: >-
+    {{ lookup('env', 'LYRA_MEM0_API_KEY') | default('CHANGEME_LYRA_MEM0_API_KEY', true) }}

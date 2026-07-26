@@ -18,6 +18,14 @@
       Export LYRA_API_SERVER_KEY before running.
   when: lyra_env.API_SERVER_KEY == 'CHANGEME_LYRA_API_SERVER_KEY'
 
+- name: Fail when Lyra Mem0 API key is not configured
+  ansible.builtin.fail:
+    msg: |
+      Mem0 API key not set for Lyra. Bootstrap it first (see
+      docs/superpowers/plans/2026-07-25-mem0-hermes-memory.md Task 4), then
+      export LYRA_MEM0_API_KEY before running.
+  when: lyra_env.MEM0_API_KEY == 'CHANGEME_LYRA_MEM0_API_KEY'
+
 - name: Ensure Lyra deploy directory exists
   ansible.builtin.file:
     path: "{{ lyra_deploy_dir }}"
@@ -100,6 +108,31 @@
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/hermes.yaml.j2"
     dest: "{{ lyra_state_dir }}/profiles/lyra/config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+# user_id/agent_id here are the only thing keeping Lyra's memories separate
+# from Raclette's on the shared mem0-server — isolation is by convention,
+# not server-enforced tenancy (mem0's self-hosted API scopes by these
+# request-body fields, not by which API key authenticated the request).
+# This holds today only because Hermes' mem0 tool schemas never expose
+# user_id/agent_id as LLM-controllable parameters (confirmed against
+# nousresearch/hermes-agent's plugins/memory/mem0). Don't treat per-agent
+# API keys as a security boundary if a third, less-trusted agent joins
+# this server or it's ever exposed beyond the LAN.
+- name: Render Lyra mem0.json (root/default profile)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/mem0.json.j2"
+    dest: "{{ lyra_state_dir }}/mem0.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Render Lyra mem0.json (named "lyra" profile — the one actually running)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/mem0.json.j2"
+    dest: "{{ lyra_state_dir }}/profiles/lyra/mem0.json"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'

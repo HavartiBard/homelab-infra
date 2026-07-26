@@ -1,0 +1,208 @@
+---
+# mem0-server: FastAPI + pgvector + dashboard, built from a pinned
+# mem0ai/mem0 commit (server/ subtree). Uses raw commands throughout —
+# Unraid has no Python.
+
+- name: Assert mem0-server secrets are provided
+  ansible.builtin.assert:
+    that:
+      - mem0_jwt_secret | length > 0
+      - mem0_postgres_password | length > 0
+    fail_msg: >-
+      Set MEM0_JWT_SECRET/MEM0_POSTGRES_PASSWORD (from 1Password "mem0-server"
+      item) via ansible/envs/mem0-server.env.
+
+- name: Create appdata directory
+  ansible.builtin.raw: mkdir -p {{ mem0_appdata_dir }}
+  changed_when: false
+
+- name: Write mem0-server .env file
+  ansible.builtin.raw: |
+    cat > {{ mem0_env_file }} << 'EOFENV'
+    OPENAI_API_KEY={{ mem0_llm_api_key }}
+    OPENAI_BASE_URL={{ mem0_llm_base_url }}
+    MEM0_DEFAULT_LLM_MODEL={{ mem0_default_llm_model }}
+    MEM0_DEFAULT_EMBEDDER_MODEL={{ mem0_default_embedder_model }}
+    MEM0_EMBEDDING_DIMS={{ mem0_embedding_dims }}
+    POSTGRES_HOST={{ mem0_postgres_container_name }}
+    POSTGRES_PORT=5432
+    POSTGRES_DB=postgres
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD={{ mem0_postgres_password }}
+    POSTGRES_COLLECTION_NAME=memories
+    JWT_SECRET={{ mem0_jwt_secret }}
+    AUTH_DISABLED=false
+    DASHBOARD_URL=http://{{ ansible_host }}:{{ mem0_dashboard_port }}
+    APP_DB_NAME=mem0_app
+    MEM0_TELEMETRY=false
+    EOFENV
+    chmod 600 {{ mem0_env_file }}
+  changed_when: true
+  no_log: true
+
+- name: Create build directory
+  ansible.builtin.raw: |
+    rm -rf {{ mem0_build_dir }} && mkdir -p {{ mem0_build_dir }}
+  changed_when: false
+
+- name: Fetch pinned mem0 source
+  ansible.builtin.raw: |
+    curl -fsSL https://codeload.github.com/mem0ai/mem0/tar.gz/{{ mem0_source_commit }} \
+      | tar xz -C {{ mem0_build_dir }} --strip-components=1
+  changed_when: false
+
+- name: Patch mem0 API requirements to use psycopg's binary extra
+  # Upstream server/requirements.txt pins plain `psycopg>=3.2.8` and
+  # server/Dockerfile (python:3.12-slim) has no libpq system package, so the
+  # psycopg v3 driver has no way to talk to Postgres at runtime (ImportError:
+  # no pq wrapper available). psycopg[binary] bundles a compiled libpq, no
+  # system package needed. Same pattern as icloud-mcp/ironclaw sed-patching
+  # upstream Dockerfiles/requirements before building.
+  ansible.builtin.raw: |
+    sed -i 's/^psycopg>=3.2.8$/psycopg[binary]>=3.2.8/' {{ mem0_build_dir }}/server/requirements.txt
+  changed_when: false
+
+- name: Verify the psycopg[binary] patch landed
+  # sed exits 0 whether or not it matched — if mem0_source_commit is bumped
+  # and upstream reformatted this line, the sed above would silently no-op
+  # and the image would build without a libpq driver. Fail loud instead.
+  ansible.builtin.raw: |
+    grep -q 'psycopg\[binary\]>=3.2.8' {{ mem0_build_dir }}/server/requirements.txt || \
+      { echo "psycopg[binary] patch did not apply — check requirements.txt against mem0_source_commit" >&2; exit 1; }
+  changed_when: false
+
+- name: Patch mem0 API to size pgvector for the actual embedder in use
+  # server/main.py's DEFAULT_CONFIG never passes vector_store.config's
+  # embedding_model_dims, so pgvector's own default (1536, sized for
+  # OpenAI's text-embedding-3-small) is used regardless of which embedder
+  # MEM0_DEFAULT_EMBEDDER_MODEL actually points at. nomic-embed-text
+  # outputs 768-dim vectors — every insert against a 1536-dim column
+  # failed silently with psycopg.errors.DataException ("expected 1536
+  # dimensions, not 768"), 200 OK returned to the caller regardless since
+  # the LLM extraction step (which runs first) succeeded. Same sed-patch
+  # pattern as the psycopg fix above.
+  ansible.builtin.raw: |
+    sed -i 's/"collection_name": POSTGRES_COLLECTION_NAME,/"collection_name": POSTGRES_COLLECTION_NAME, "embedding_model_dims": int(os.environ.get("MEM0_EMBEDDING_DIMS", "1536")),/' {{ mem0_build_dir }}/server/main.py
+  changed_when: false
+
+- name: Verify the embedding_model_dims patch landed
+  # Same fail-open risk as the psycopg sed above — this is the exact patch
+  # that fixes the 1536-vs-768 silent-data-loss bug. If it silently no-ops
+  # on a bumped mem0_source_commit, that bug comes back with the API still
+  # returning 200 OK.
+  ansible.builtin.raw: |
+    grep -q '"embedding_model_dims": int(os.environ.get("MEM0_EMBEDDING_DIMS"' {{ mem0_build_dir }}/server/main.py || \
+      { echo "embedding_model_dims patch did not apply — check main.py against mem0_source_commit" >&2; exit 1; }
+  changed_when: false
+
+- name: Build mem0 API image
+  ansible.builtin.raw: |
+    cd {{ mem0_build_dir }}/server && docker build -t {{ mem0_api_image }} .
+  register: mem0_api_build
+  changed_when: mem0_api_build.rc == 0
+
+- name: Build mem0 dashboard image
+  ansible.builtin.raw: |
+    cd {{ mem0_build_dir }}/server/dashboard && docker build -t {{ mem0_dashboard_image }} .
+  register: mem0_dashboard_build
+  changed_when: mem0_dashboard_build.rc == 0
+
+- name: Copy Postgres init script into appdata directory
+  ansible.builtin.raw: cp {{ mem0_build_dir }}/server/init-db.sh {{ mem0_appdata_dir }}/init-db.sh
+  changed_when: false
+
+- name: Copy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ mem0_appdata_dir }}/docker-compose.yml"
+
+- name: Deploy compose stack
+  ansible.builtin.raw: |
+    cd {{ mem0_appdata_dir }} && docker compose up -d --remove-orphans
+  changed_when: true
+
+- name: Wait for mem0 API
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_api_port }}/docs)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 API" >&2; exit 1
+  changed_when: false
+
+# mem0ai's PGVector store creates the "memories" table with a fixed vector
+# width on first use and never migrates it afterwards. If a prior deploy
+# ran with a different embedder (different output width), every insert
+# against the mismatched column fails at runtime (silently, from the
+# caller's point of view — see the embedding_model_dims patch above for
+# the full story). Idempotent: no-op on a fresh install (table doesn't
+# exist yet) or when the width already matches — every failure mode in
+# the query below (table absent, unexpected schema) collapses to an empty
+# $current_type, which the guard below treats as "don't drop."
+# Column name confirmed live via `docker exec mem0-postgres psql -U
+# postgres -c '\d memories'` (2026-07-26): id/vector/payload — "vector" is
+# correct, not a guess.
+#
+# Runs AFTER compose is up and mem0 API has proven healthy (rather than
+# before, as an earlier version of this task did) — mem0-api's
+# depends_on/service_healthy on postgres, plus the "Wait for mem0 API"
+# check above, guarantee postgres is actually running here. The old
+# before-deploy placement meant a stopped-but-existing postgres container
+# (host reboot, prior failed deploy) made `docker exec` fail, got
+# swallowed by `|| echo ""`, and silently skipped the drop it exists to
+# perform — collapsing "couldn't check" into "already matches."
+- name: Back up and drop the memories table if its vector width doesn't match the current embedder
+  ansible.builtin.raw: |
+    current_type=$(docker exec {{ mem0_postgres_container_name }} psql -U postgres -tAc \
+      "SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = 'public.memories'::regclass AND attname = 'vector'" 2>/dev/null || echo "")
+    if [ -n "$current_type" ] && [ "$current_type" != "vector({{ mem0_embedding_dims }})" ]; then
+      backup_file="{{ mem0_appdata_dir }}/memories-pre-drop-$(date +%Y%m%dT%H%M%S).sql"
+      echo "Backing up memories table to $backup_file before drop (current $current_type, expected vector({{ mem0_embedding_dims }}))"
+      docker exec {{ mem0_postgres_container_name }} pg_dump -U postgres -d postgres -t memories > "$backup_file"
+      echo "Dropping memories table: current $current_type, expected vector({{ mem0_embedding_dims }})"
+      docker exec {{ mem0_postgres_container_name }} psql -U postgres -c "DROP TABLE IF EXISTS memories;"
+    fi
+  register: mem0_memories_drop
+  changed_when: "'Dropping memories table' in mem0_memories_drop.stdout"
+
+- name: Restart mem0 API after dropping the memories table
+  # mem0-api holds an open connection/session state from before the drop;
+  # without a restart it may keep operating against the table it thinks
+  # still exists (or a stale schema cache) rather than picking up the
+  # fresh table pgvector recreates on first use after restart.
+  ansible.builtin.raw: docker restart {{ mem0_api_container_name }}
+  when: "'Dropping memories table' in mem0_memories_drop.stdout"
+  changed_when: true
+
+- name: Wait for mem0 API after post-drop restart
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_api_port }}/docs)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 API after post-drop restart" >&2; exit 1
+  when: "'Dropping memories table' in mem0_memories_drop.stdout"
+  changed_when: false
+
+- name: Wait for mem0 dashboard
+  ansible.builtin.raw: |
+    for i in $(seq 1 24); do
+      code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:{{ mem0_dashboard_port }}/api/health)
+      if [ "$code" = "200" ]; then echo healthy; exit 0; fi
+      sleep 5
+    done
+    echo "timeout waiting for mem0 dashboard" >&2; exit 1
+  changed_when: false
+
+- name: Show mem0 API logs
+  ansible.builtin.raw: docker logs --tail 30 {{ mem0_api_container_name }} 2>&1
+  register: mem0_api_logs
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Display mem0 API logs
+  ansible.builtin.debug:
+    msg: "{{ mem0_api_logs.stdout_lines }}"
+  when: not ansible_check_mode
