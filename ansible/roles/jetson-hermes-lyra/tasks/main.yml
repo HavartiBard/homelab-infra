@@ -18,6 +18,14 @@
       Export LYRA_API_SERVER_KEY before running.
   when: lyra_env.API_SERVER_KEY == 'CHANGEME_LYRA_API_SERVER_KEY'
 
+- name: Fail when Lyra Mem0 API key is not configured
+  ansible.builtin.fail:
+    msg: |
+      Mem0 API key not set for Lyra. Bootstrap it first (see
+      docs/superpowers/plans/2026-07-25-mem0-hermes-memory.md Task 4), then
+      export LYRA_MEM0_API_KEY before running.
+  when: lyra_env.MEM0_API_KEY == 'CHANGEME_LYRA_MEM0_API_KEY'
+
 - name: Ensure Lyra deploy directory exists
   ansible.builtin.file:
     path: "{{ lyra_deploy_dir }}"
@@ -100,6 +108,22 @@
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/hermes.yaml.j2"
     dest: "{{ lyra_state_dir }}/profiles/lyra/config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Render Lyra mem0.json (root/default profile)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/mem0.json.j2"
+    dest: "{{ lyra_state_dir }}/mem0.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Render Lyra mem0.json (named "lyra" profile — the one actually running)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../files/jetson/hermes-lyra/config/mem0.json.j2"
+    dest: "{{ lyra_state_dir }}/profiles/lyra/mem0.json"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
