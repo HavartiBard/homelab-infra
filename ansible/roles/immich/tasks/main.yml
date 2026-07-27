@@ -11,16 +11,19 @@
   raw: mkdir -p {{ immich_base_dir }}/postgres {{ immich_photos_dir }}
 
 - name: Write immich.env
+  no_log: true
   raw: |
     cat > {{ immich_base_dir }}/immich.env << 'EOFMARKER'
     {{ lookup('template', 'immich.env.j2') }}
     EOFMARKER
+    chmod 600 {{ immich_base_dir }}/immich.env
 
 - name: Write compose.yml
   raw: |
     cat > {{ immich_base_dir }}/compose.yml << 'EOFMARKER'
     {{ lookup('template', 'compose.yml.j2') }}
     EOFMARKER
+    chmod 644 {{ immich_base_dir }}/compose.yml
 
 - name: Pull immich images
   raw: >
@@ -43,6 +46,7 @@
     exit 1
 
 - name: Bootstrap admin account
+  no_log: true
   raw: |
     HTTP_CODE=$(wget -qO- --server-response \
       --header="Content-Type: application/json" \
