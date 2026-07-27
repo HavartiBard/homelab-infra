@@ -5,7 +5,7 @@ services:
     container_name: immich-server
     env_file: /mnt/user/appdata/immich/immich.env
     volumes:
-      - {{ immich_photos_dir }}:/usr/src/app/upload
+      - {{ immich_photos_dir }}:/data
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "{{ immich_port }}:2283"
@@ -34,6 +34,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    shm_size: 128mb
     restart: unless-stopped
     networks:
       - immich
