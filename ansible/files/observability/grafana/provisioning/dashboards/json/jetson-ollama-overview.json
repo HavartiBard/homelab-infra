@@ -1,0 +1,94 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {"id": 100, "type": "row", "title": "Jetson Host Metrics", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 1,
+      "title": "CPU Busy",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 1, "w": 6, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value"},
+      "targets": [{"expr": "100 - avg by (instance) (rate(node_cpu_seconds_total{host=\"jetson\",mode=\"idle\"}[5m])) * 100", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Unified Memory Used",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 6, "y": 1, "w": 6, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value"},
+      "targets": [{"expr": "(1 - node_memory_MemAvailable_bytes{host=\"jetson\"} / node_memory_MemTotal_bytes{host=\"jetson\"}) * 100", "refId": "A"}]
+    },
+    {
+      "id": 3,
+      "title": "Swap Used",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 12, "y": 1, "w": 6, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value"},
+      "targets": [{"expr": "(1 - node_memory_SwapFree_bytes{host=\"jetson\"} / node_memory_SwapTotal_bytes{host=\"jetson\"}) * 100", "refId": "A"}]
+    },
+    {
+      "id": 4,
+      "title": "Ollama API",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 18, "y": 1, "w": 6, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "none"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "background"},
+      "targets": [{"expr": "homelab_ollama_endpoint_up{device=\"jetson\"}", "refId": "A"}]
+    },
+    {
+      "id": 5,
+      "title": "Host Memory and Swap",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 7, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "targets": [
+        {"expr": "(1 - node_memory_MemAvailable_bytes{host=\"jetson\"} / node_memory_MemTotal_bytes{host=\"jetson\"}) * 100", "legendFormat": "Memory used", "refId": "A"},
+        {"expr": "(1 - node_memory_SwapFree_bytes{host=\"jetson\"} / node_memory_SwapTotal_bytes{host=\"jetson\"}) * 100", "legendFormat": "Swap used", "refId": "B"}
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Loaded Ollama Models",
+      "type": "table",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 12, "y": 7, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"expr": "homelab_ollama_model_loaded{device=\"jetson\"}", "format": "table", "instant": true, "refId": "A"}],
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true, "Value": true}, "renameByName": {"model": "model", "backend": "backend", "device": "device"}}}]
+    },
+    {
+      "id": 7,
+      "title": "Loaded Model Memory",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 15, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [{"expr": "homelab_ollama_model_memory_bytes{device=\"jetson\"}", "legendFormat": "{{model}}", "refId": "A"}]
+    },
+    {
+      "id": 8,
+      "title": "Inference Throughput",
+      "type": "text",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 12, "y": 15, "w": 12, "h": 8},
+      "options": {"mode": "markdown", "content": "### Throughput\n\nThe current native Ollama deployment does not expose request timing or Prometheus throughput metrics. Add an Ollama proxy or request-timing collector before displaying tokens/sec here."}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": ["homelab", "jetson", "ollama", "inference"],
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "Jetson Ollama Overview",
+  "uid": "jetson-ollama-overview"
+}

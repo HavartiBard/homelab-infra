@@ -1,0 +1,7 @@
+---
+- name: Deploy Jetson Ollama metrics collector
+  hosts: jetson.lab
+  become: true
+  gather_facts: true
+  roles:
+    - jetson-ollama-metrics

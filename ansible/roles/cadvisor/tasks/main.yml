@@ -12,12 +12,15 @@
     cat > {{ cadvisor_compose_dir }}/compose.yml << 'EOFCOMPOSE'
     services:
       cadvisor:
-        image: gcr.io/cadvisor/cadvisor:{{ cadvisor_version }}
+        image: {{ cadvisor_image }}:{{ cadvisor_version }}
         container_name: cadvisor
         restart: unless-stopped
         privileged: true
         ports:
           - "{{ cadvisor_port }}:8080"
+        command:
+          - "--disable_metrics=disk"
+          - "--docker_only=true"
         volumes:
           - /:/rootfs:ro
           - /var/run:/var/run:ro

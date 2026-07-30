@@ -1,0 +1,36 @@
+groups:
+  - name: inference-normalization
+    interval: 15s
+    rules:
+      - record: inference_endpoint_up
+        expr: goudai_llm_endpoint_up{service="llama-swap"}
+        labels:
+          backend: llama-swap
+          device: goudai
+
+      - record: inference_endpoint_up
+        expr: homelab_ollama_endpoint_up{backend="ollama",device="jetson"}
+
+      - record: inference_model_loaded
+        expr: goudai_llm_model_loaded{service="llama-swap"}
+        labels:
+          backend: llama-swap
+          device: goudai
+
+      - record: inference_model_loaded
+        expr: homelab_ollama_model_loaded{backend="ollama",device="jetson"}
+
+      - record: inference_model_memory_bytes
+        expr: homelab_ollama_model_memory_bytes{backend="ollama",device="jetson"}
+
+      - record: inference_generation_tokens_per_second
+        expr: goudai_llm_generation_tokens_per_second{service="llama-swap"}
+        labels:
+          backend: llama-swap
+          device: goudai
+
+      - record: inference_prompt_tokens_per_second
+        expr: goudai_llm_prompt_tokens_per_second{service="llama-swap"}
+        labels:
+          backend: llama-swap
+          device: goudai

@@ -24,6 +24,25 @@
     success_msg: "llama-swap cache dir is pinned to external model storage: {{ llama_swap_hf_cache_dir }}"
   when: llama_swap_require_external_cache | default(false) | bool
 
+- name: Validate llama-swap profile
+  ansible.builtin.assert:
+    that:
+      - llama_swap_profile in llama_swap_profile_models
+      - llama_swap_profile_models[llama_swap_profile] | length > 0
+      - llama_swap_profile_models[llama_swap_profile] | difference(llama_swap_models.keys() | list) | length == 0
+    fail_msg: >-
+      Invalid llama_swap_profile={{ llama_swap_profile }} or profile contains
+      an undefined model. Supported profiles: {{ llama_swap_profile_models.keys() | list }}
+    success_msg: "llama-swap profile is valid"
+
+- name: Deploy shared goudai LLM metrics collector
+  ansible.builtin.include_role:
+    name: personal-agent-llm
+    tasks_from: metrics.yml
+    apply:
+      become: true
+  tags: [metrics]
+
 - name: Create llama-swap runtime + config directories
   ansible.builtin.file:
     path: "{{ item }}"

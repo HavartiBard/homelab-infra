@@ -1,0 +1,18 @@
+---
+# Activate an explicit llama-swap operating profile on goudai.
+#
+# Normal mode is the default and includes the everyday reasoning and coding
+# endpoints. Coding mode remains available when a smaller coding-focused
+# model set is temporarily preferred.
+#
+# Examples:
+#   ansible-playbook playbooks/ai/activate-llama-swap-profile.yml \
+#     --limit goudai -e llama_swap_profile=normal
+#   ansible-playbook playbooks/ai/activate-llama-swap-profile.yml \
+#     --limit goudai -e llama_swap_profile=coding
+
+- name: Activate llama-swap profile on goudai
+  hosts: goudai
+  gather_facts: true
+  roles:
+    - role: llama-swap

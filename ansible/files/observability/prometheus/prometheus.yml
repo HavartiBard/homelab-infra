@@ -23,8 +23,15 @@ scrape_configs:
           - '192.168.20.3:9100'    # tt2
           - '192.168.20.4:9100'    # agh1
           - '192.168.20.5:9100'    # agh2
+
+      - targets:
           - '192.168.20.169:9100'  # jetson.lab
+        labels:
+          host: jetson
+      - targets:
           - '192.168.20.150:9100'  # goudai
+        labels:
+          host: goudai
       # spraycheese's DHCP lease has drifted VLANs before (see inventory
       # comment) - scrape via its stable LAN hostname instead of an IP.
       - targets:
@@ -36,8 +43,16 @@ scrape_configs:
     static_configs:
       - targets:
           - '192.168.20.14:8081'   # unraid-server
+        labels:
+          host: unraid
+      - targets:
           - '192.168.20.169:8081'  # jetson.lab
+        labels:
+          host: jetson
+      - targets:
           - '192.168.20.150:8081'  # goudai
+        labels:
+          host: goudai
       - targets:
           - 'spraycheese.lab.klsll.com:8081'
         labels:
@@ -47,10 +62,11 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-          - '192.168.20.150:8010'  # goudai personal-agent-llm
+          - '192.168.20.150:8010'  # goudai llama-swap
         labels:
-          service: personal-agent-llm
-          model: qwen/qwen3.6-27b-mtp
+          host: goudai
+          service: llama-swap
+          model: dynamic
 
   # Log pipeline self-monitoring (ingestion died silently for 24h once —
   # Loki healthcheck and container status both looked fine, see PR #189)

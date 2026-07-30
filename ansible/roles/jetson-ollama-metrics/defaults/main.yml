@@ -1,0 +1,3 @@
+jetson_ollama_metrics_ollama_url: http://127.0.0.1:11434
+jetson_ollama_metrics_textfile_dir: /var/lib/node_exporter/textfile_collector
+jetson_ollama_metrics_device: jetson

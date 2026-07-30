@@ -69,11 +69,11 @@ raclette_model_base_url: ""
 # Auxiliary task model (vision, web_extract, compression, skills_hub,
 # approval, mcp, title_generation, triage_specifier, kanban_decomposer,
 # profile_describer, curator) — goudai's llama-swap (OpenAI-compatible, no
-# auth, LAN-only), kept resident indefinitely on goudai (ttl: 0 in
-# ansible/roles/llama-swap defaults). Independent of raclette_model_provider
-# above, which drives the primary chat model only.
+# auth, LAN-only). Qwen3-4B is the small reasoning fallback so Hermes
+# auxiliary work does not compete with the primary chat model. Independent
+# of raclette_model_provider above, which drives the primary chat model only.
 raclette_auxiliary_provider: goudai-llama-swap
-raclette_auxiliary_model: "qwen/qwen3.6-35b-uncensored"
+raclette_auxiliary_model: "qwen/qwen3-4b-reasoning"
 raclette_auxiliary_base_url: "http://192.168.20.150:8010/v1"
 
 # Extra entries for the config.yaml `providers:` section — custom

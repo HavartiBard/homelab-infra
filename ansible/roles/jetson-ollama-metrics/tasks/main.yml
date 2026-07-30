@@ -1,0 +1,26 @@
+---
+- name: Deploy Jetson Ollama metrics collector
+  ansible.builtin.template:
+    src: jetson-ollama-metrics.py.j2
+    dest: /usr/local/bin/jetson-ollama-metrics
+    mode: '0755'
+
+- name: Deploy Jetson Ollama metrics service
+  ansible.builtin.template:
+    src: jetson-ollama-metrics.service.j2
+    dest: /etc/systemd/system/jetson-ollama-metrics.service
+    mode: '0644'
+
+- name: Deploy Jetson Ollama metrics timer
+  ansible.builtin.template:
+    src: jetson-ollama-metrics.timer.j2
+    dest: /etc/systemd/system/jetson-ollama-metrics.timer
+    mode: '0644'
+
+- name: Enable and start Jetson Ollama metrics timer
+  ansible.builtin.systemd:
+    name: jetson-ollama-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
