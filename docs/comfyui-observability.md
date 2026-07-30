@@ -131,6 +131,33 @@ change to the shared template), re-run
 `playbooks/observability/deploy-observability-agents.yml` - it's idempotent
 and only touches the promtail/node_exporter/cadvisor containers.
 
+## Inspecting and releasing goudai ComfyUI memory
+
+ComfyUI's API exposes device and PyTorch allocator memory, but it does not
+provide a guaranteed authoritative list of every resident model. The helper
+reports both memory layers, queue state, and model names found in the last 20
+workflow records:
+
+```bash
+scripts/goudai-comfyui-gpu.sh status
+```
+
+After image or video generation, release ComfyUI's cached models without
+restarting the service:
+
+```bash
+scripts/goudai-comfyui-gpu.sh free
+```
+
+If the allocator still retains GPU memory, restart ComfyUI. This interrupts
+active work and is intentionally a separate command:
+
+```bash
+scripts/goudai-comfyui-gpu.sh restart
+```
+
+These cleanup actions do not affect llama-swap or other goudai services.
+
 ## Validating both hosts are reporting
 
 ```bash

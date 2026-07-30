@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+import json
+import os
+import re
+import signal
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from glob import glob
+
+OLLAMA_URL = "{{ jetson_ollama_metrics_ollama_url }}"
+DEVICE = "{{ jetson_ollama_metrics_device }}"
+OUT = os.path.join("{{ jetson_ollama_metrics_textfile_dir }}", "jetson_ollama.prom")
+
+
+def escape_label(value):
+    return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
+def metric(name, value, labels=None):
+    labels = labels or {}
+    rendered = ""
+    if labels:
+        rendered = "{" + ",".join(
+            f'{key}="{escape_label(value)}"' for key, value in sorted(labels.items())
+        ) + "}"
+    return f"{name}{rendered} {value}"
+
+
+def get_json(path):
+    try:
+        with urllib.request.urlopen(OLLAMA_URL + path, timeout=3) as response:
+            return response.status, json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        return 0, None
+
+
+def get_tegrastats():
+    process = None
+
+    def as_text(value):
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return value or ""
+
+    try:
+        process = subprocess.Popen(
+            ["tegrastats", "--interval", "1000"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        output, _ = process.communicate(timeout=3)
+    except subprocess.TimeoutExpired as error:
+        output = as_text(error.stdout)
+        os.killpg(process.pid, signal.SIGTERM)
+        output += as_text(process.communicate(timeout=2)[0])
+    except OSError:
+        return {}
+    values = {}
+    ram = re.search(r"RAM\s+(\d+)/(\d+)MB", output)
+    if ram:
+        values["memory_used_bytes"] = int(ram.group(1)) * 1024 * 1024
+        values["memory_total_bytes"] = int(ram.group(2)) * 1024 * 1024
+    gpu_values = [int(value) for value in re.findall(r"GR3D(?:\d*)_FREQ\s+(\d+)%", output)]
+    if gpu_values:
+        values["gpu_busy_percent"] = max(gpu_values)
+    return values
+
+
+def get_thermal_zones():
+    """Read readable Jetson thermal zones from the kernel thermal framework."""
+    zones = {}
+    for path in sorted(glob("/sys/class/thermal/thermal_zone*/temp")):
+        zone_dir = os.path.dirname(path)
+        try:
+                with open(os.path.join(zone_dir, "type")) as type_file:
+                    zone_name = type_file.read().strip()
+                with open(path, "rb") as temp_file:
+                    raw_temperature = temp_file.read()
+                raw_temperature = raw_temperature.strip() if raw_temperature else b""
+                if raw_temperature:
+                    zones[zone_name] = int(raw_temperature) / 1000.0
+        except (OSError, ValueError):
+            continue
+    return zones
+
+
+def main():
+    ps_status, ps = get_json("/api/ps")
+    tags_status, tags = get_json("/api/tags")
+    tegra = get_tegrastats()
+    thermal_zones = get_thermal_zones()
+    labels = {"backend": "ollama", "device": DEVICE}
+    lines = [
+        "# HELP homelab_ollama_endpoint_up Whether the local Ollama API responded.",
+        "# TYPE homelab_ollama_endpoint_up gauge",
+        metric("homelab_ollama_endpoint_up", 1 if ps_status == 200 else 0, labels),
+        "# HELP homelab_ollama_model_loaded Whether an Ollama model is resident.",
+        "# TYPE homelab_ollama_model_loaded gauge",
+        "# HELP homelab_ollama_model_memory_bytes Memory attributed to a loaded Ollama model.",
+        "# TYPE homelab_ollama_model_memory_bytes gauge",
+        "# HELP homelab_ollama_model_available_total Number of models available to Ollama.",
+        "# TYPE homelab_ollama_model_available_total gauge",
+        metric(
+            "homelab_ollama_model_available_total",
+            len(tags.get("models", [])) if isinstance(tags, dict) else 0,
+            labels,
+        ),
+        "# HELP homelab_ollama_scrape_timestamp_seconds Unix timestamp of this scrape.",
+        "# TYPE homelab_ollama_scrape_timestamp_seconds gauge",
+        metric("homelab_ollama_scrape_timestamp_seconds", int(time.time()), labels),
+    ]
+    if "gpu_busy_percent" in tegra:
+        lines.extend([
+            "# HELP homelab_jetson_gpu_busy_percent Jetson GR3D engine utilization.",
+            "# TYPE homelab_jetson_gpu_busy_percent gauge",
+            metric("homelab_jetson_gpu_busy_percent", tegra["gpu_busy_percent"], {"device": DEVICE}),
+        ])
+    if "memory_used_bytes" in tegra:
+        lines.extend([
+            "# HELP homelab_jetson_memory_used_bytes Jetson unified memory in use.",
+            "# TYPE homelab_jetson_memory_used_bytes gauge",
+            metric("homelab_jetson_memory_used_bytes", tegra["memory_used_bytes"], {"device": DEVICE}),
+            "# HELP homelab_jetson_memory_total_bytes Jetson unified memory capacity.",
+            "# TYPE homelab_jetson_memory_total_bytes gauge",
+            metric("homelab_jetson_memory_total_bytes", tegra["memory_total_bytes"], {"device": DEVICE}),
+        ])
+    if thermal_zones:
+        lines.extend([
+            "# HELP homelab_jetson_temperature_celsius Jetson thermal-zone temperature.",
+            "# TYPE homelab_jetson_temperature_celsius gauge",
+        ])
+        for zone, temperature in sorted(thermal_zones.items()):
+            lines.append(metric(
+                "homelab_jetson_temperature_celsius",
+                temperature,
+                {"device": DEVICE, "zone": zone},
+            ))
+    for model in (ps or {}).get("models", []) if isinstance(ps, dict) else []:
+        model_name = model.get("name") or model.get("model") or "unknown"
+        model_labels = {**labels, "model": model_name}
+        lines.append(metric("homelab_ollama_model_loaded", 1, model_labels))
+        lines.append(
+            metric(
+                "homelab_ollama_model_memory_bytes",
+                int(model.get("size_vram") or model.get("size") or 0),
+                model_labels,
+            )
+        )
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix="jetson_ollama.", dir=os.path.dirname(OUT))
+    try:
+        with os.fdopen(fd, "w") as output:
+            output.write("\n".join(lines) + "\n")
+        os.replace(tmp, OUT)
+        os.chmod(OUT, 0o644)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+if __name__ == "__main__":
+    main()

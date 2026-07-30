@@ -78,6 +78,17 @@
     EOFALERTS
   changed_when: true
 
+- name: Read prometheus/rules/inference.yml content
+  ansible.builtin.set_fact:
+    _obs_prometheus_inference: "{{ lookup('file', role_path + '/../../files/observability/prometheus/rules/inference.yml') }}"
+
+- name: Write prometheus/rules/inference.yml
+  ansible.builtin.raw: |
+    cat > {{ observability_appdata_dir }}/prometheus/rules/inference.yml << 'EOFINFERENCE'
+    {{ _obs_prometheus_inference }}
+    EOFINFERENCE
+  changed_when: true
+
 - name: Read syslog-ng/syslog-ng.conf content
   ansible.builtin.set_fact:
     _obs_syslog_config: "{{ lookup('file', role_path + '/../../files/observability/syslog-ng/syslog-ng.conf') }}"

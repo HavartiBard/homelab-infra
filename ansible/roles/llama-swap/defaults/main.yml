@@ -22,6 +22,11 @@ llama_swap_config_path: "{{ llama_swap_config_dir }}/config.yaml"
 llama_swap_runtime_dir: /var/lib/llama-swap
 llama_swap_log_level: info
 
+# Deployment profile. The normal profile is the stable default and exposes
+# the everyday reasoning, coding, and embedding endpoints. The optional
+# coding profile remains available for a smaller coding-focused model set.
+llama_swap_profile: normal
+
 # Default llama-server binary that all models invoke
 llama_swap_llama_server_binary: /usr/local/bin/llama-server
 
@@ -107,6 +112,34 @@ llama_swap_models:
       - "--cache-type-k q8_0"
       - "--cache-type-v q8_0"
     ttl: 600
+
+  # ── Small reasoning fallback — official Qwen3 dense model ───────────────
+  # Q4_K_M is sufficient for fallback/tool orchestration. Cap context at 32K
+  # so its KV cache does not consume the memory margin beside Coder Next.
+  "qwen/qwen3-4b-reasoning":
+    hf: "Qwen/Qwen3-4B-GGUF:Q4_K_M"
+    alias: "qwen/qwen3-4b-reasoning"
+    flags:
+      - "--jinja"
+      - "-ngl 99"
+      - "-fa on"
+      - "--ctx-size 32768"
+      - "--predict 4096"
+      - "--parallel 1"
+      - "--threads 32"
+      - "--metrics"
+      - "--slots"
+      - "--temp 0.6"
+      - "--top-k 20"
+      - "--top-p 0.95"
+      - "--min-p 0"
+      - "--presence-penalty 1.5"
+      - "--repeat-penalty 1.05"
+      - "--cache-prompt"
+      - "--cache-reuse 256"
+      - "--cache-type-k q8_0"
+      - "--cache-type-v q8_0"
+    ttl: 0
 
   # ── Medical reasoning — Qwen3.5 fine-tune ──────────────────────────────
   # Keep this warm with the agent-stack so it stays resident for repeated
@@ -323,6 +356,19 @@ llama_swap_models:
       - "--ubatch-size 8192"
     ttl: 3600
 
+# Models exposed by each operational profile. Keep this list separate from
+# llama_swap_models so model launch settings remain defined once while the
+# normal/coding boundary stays obvious and reviewable.
+llama_swap_profile_models:
+  normal:
+    - "qwen/qwen3.6-35b-uncensored"
+    - "qwen/qwen3-coder-next"
+    - "qwen/qwen3-4b-reasoning"
+    - "nomic-embed-text"
+  coding:
+    - "qwen/qwen3-coder-next"
+    - "qwen/qwen3-4b-reasoning"
+
 
 # ── Group configuration ────────────────────────────────────────────────────
 #
@@ -339,10 +385,7 @@ llama_swap_groups:
     swap: false
     exclusive: false
     members:
-      - "qwen/qwen3.5-medical-gspo"
       - "qwen/qwen3.6-35b-uncensored"
-      - "qwen/qwen3.6-35b-a3b-mtp"
-      - "google/gemma-4-e4b-uncensored-hauhaucs-aggressive"
 
   "mem0-embedder":
     persistent: true
@@ -350,6 +393,17 @@ llama_swap_groups:
     exclusive: false
     members:
       - "nomic-embed-text"
+
+# Coding mode permits the small Hermes fallback to remain resident while
+# Coder Next is active. These groups render only for the coding profile.
+llama_swap_coding_groups:
+  "coding-stack":
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - "qwen/qwen3-coder-next"
+      - "qwen/qwen3-4b-reasoning"
 
 # How long llama-swap waits for a child llama-server to become healthy
 # before declaring the spawn a failure. Bumped from the 120s default to

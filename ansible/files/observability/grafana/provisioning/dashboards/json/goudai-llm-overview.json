@@ -24,7 +24,7 @@
     {
       "id": 100,
       "type": "row",
-      "title": "Host Metrics",
+      "title": "Host Metrics — Goudai / Jetson",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -66,12 +66,29 @@
           },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU temp (°C)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "id": 1,
@@ -98,13 +115,13 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=\"192.168.20.150:9100\",mode=\"idle\"}[5m] offset 6m)) * 100)",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=\"192.168.20.150:9100\",host=\"goudai\",mode=\"idle\"}[5m] offset 6m)) * 100)",
           "legendFormat": "CPU busy",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "CPU Busy",
+      "title": "Goudai CPU Busy",
       "type": "stat"
     },
     {
@@ -142,9 +159,9 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 6,
+        "x": 4,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "id": 2,
@@ -171,27 +188,27 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "(1 - ((node_memory_MemAvailable_bytes{instance=\"192.168.20.150:9100\"} offset 6m) / (node_memory_MemTotal_bytes{instance=\"192.168.20.150:9100\"} offset 6m))) * 100",
+          "expr": "(1 - ((node_memory_MemAvailable_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m) / (node_memory_MemTotal_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m))) * 100",
           "legendFormat": "Memory used",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Memory Used",
+      "title": "Goudai Memory Used",
       "type": "stat"
     },
     {
       "id": 11,
-      "title": "GPU Busy",
+      "title": "Goudai GPU Busy",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "Prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "fieldConfig": {
@@ -243,147 +260,13 @@
             "type": "prometheus",
             "uid": "Prometheus"
           },
-          "expr": "goudai_gpu_busy_percent"
+          "expr": "goudai_gpu_busy_percent{host=\"goudai\"}"
         }
       ]
     },
     {
-      "id": 12,
-      "title": "VRAM Used",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "gridPos": {
-        "x": 18,
-        "y": 1,
-        "w": 6,
-        "h": 5
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 92
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.0",
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "100 * goudai_gpu_vram_used_bytes / goudai_gpu_vram_total_bytes"
-        }
-      ]
-    },
-    {
-      "id": 13,
-      "title": "GPU Temp",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 6,
-        "w": 12,
-        "h": 5
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 95
-              }
-            ]
-          },
-          "unit": "celsius"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.0",
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "goudai_gpu_temperature_celsius"
-        }
-      ]
-    },
-    {
-      "id": 14,
-      "title": "GPU Power",
+      "id": 21,
+      "title": "Jetson CPU Busy",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -391,16 +274,15 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 6,
-        "w": 12,
+        "y": 1,
+        "w": 4,
         "h": 5
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -409,34 +291,29 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 90
+                "color": "orange",
+                "value": 75
               },
               {
                 "color": "red",
-                "value": 110
+                "value": 90
               }
             ]
-          },
-          "unit": "watt"
+          }
         },
         "overrides": []
       },
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        },
-        "textMode": "auto"
+        }
       },
-      "pluginVersion": "10.4.0",
       "targets": [
         {
           "refId": "A",
@@ -444,9 +321,137 @@
             "type": "prometheus",
             "uid": "Prometheus"
           },
-          "expr": "goudai_gpu_power_watts"
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{host=\"jetson\",mode=\"idle\"}[5m] offset 6m)) * 100)",
+          "legendFormat": "Jetson CPU busy"
         }
-      ]
+      ],
+      "pluginVersion": "11.3.0"
+    },
+    {
+      "id": 22,
+      "title": "Jetson Unified Memory Used",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 92
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "(1 - (node_memory_MemAvailable_bytes{host=\"jetson\"} offset 6m / node_memory_MemTotal_bytes{host=\"jetson\"} offset 6m)) * 100",
+          "legendFormat": "Jetson memory used"
+        }
+      ],
+      "pluginVersion": "11.3.0"
+    },
+    {
+      "id": 23,
+      "title": "Jetson GPU Busy",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "homelab_jetson_gpu_busy_percent{device=\"jetson\"}",
+          "legendFormat": "Jetson GPU busy"
+        }
+      ],
+      "pluginVersion": "11.3.0"
     },
     {
       "datasource": {
@@ -502,7 +507,24 @@
           },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU temp (°C)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "x": 0,
@@ -533,7 +555,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=\"192.168.20.150:9100\",mode=\"idle\"}[5m] offset 6m)) * 100)",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=\"192.168.20.150:9100\",host=\"goudai\",mode=\"idle\"}[5m] offset 6m)) * 100)",
           "legendFormat": "CPU busy",
           "range": true,
           "refId": "A"
@@ -544,18 +566,40 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "(1 - ((node_memory_MemAvailable_bytes{instance=\"192.168.20.150:9100\"} offset 6m) / (node_memory_MemTotal_bytes{instance=\"192.168.20.150:9100\"} offset 6m))) * 100",
+          "expr": "(1 - ((node_memory_MemAvailable_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m) / (node_memory_MemTotal_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m))) * 100",
           "legendFormat": "Memory used",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (1 - (node_memory_SwapFree_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m) / (node_memory_SwapTotal_bytes{instance=\"192.168.20.150:9100\",host=\"goudai\"} offset 6m))",
+          "legendFormat": "Swap used",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "goudai_cpu_temperature_celsius{host=\"goudai\"}",
+          "legendFormat": "CPU temp (°C)",
+          "range": true,
+          "refId": "D"
         }
       ],
-      "title": "Host Utilization",
+      "title": "Goudai Host Utilization",
       "type": "timeseries"
     },
     {
-      "id": 15,
-      "title": "GPU Activity",
+      "id": 27,
+      "title": "Jetson Activity",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -564,6 +608,116 @@
       "gridPos": {
         "x": 12,
         "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cpu-thermal"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gpu-thermal"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tj-thermal"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{host=\"jetson\",mode=\"idle\"}[5m] offset 6m)) * 100)",
+          "legendFormat": "CPU busy"
+        },
+      {
+        "refId": "E",
+          "expr": "homelab_jetson_temperature_celsius{device=\"jetson\",zone=~\"cpu-thermal|gpu-thermal|tj-thermal\"}",
+          "legendFormat": "{{zone}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Goudai GPU Activity",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
         "w": 12,
         "h": 8
       },
@@ -593,7 +747,40 @@
           },
           "unit": "percent"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU temp (°C)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU power (W)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -619,7 +806,7 @@
             "type": "prometheus",
             "uid": "Prometheus"
           },
-          "expr": "goudai_gpu_busy_percent",
+          "expr": "goudai_gpu_busy_percent{host=\"goudai\"}",
           "legendFormat": "GPU busy %"
         },
         {
@@ -628,23 +815,41 @@
             "type": "prometheus",
             "uid": "Prometheus"
           },
-          "expr": "100 * goudai_gpu_vram_used_bytes / goudai_gpu_vram_total_bytes",
+          "expr": "100 * goudai_gpu_vram_used_bytes{host=\"goudai\"} / goudai_gpu_vram_total_bytes{host=\"goudai\"}",
           "legendFormat": "VRAM used %"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "goudai_gpu_temperature_celsius{host=\"goudai\"}",
+          "legendFormat": "GPU temp (°C)"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "expr": "goudai_gpu_power_watts{host=\"goudai\"}",
+          "legendFormat": "GPU power (W)"
         }
       ]
     },
     {
-      "id": 16,
-      "title": "Temperatures & Power",
+      "id": 28,
+      "title": "Jetson Ollama Model Memory",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "Prometheus"
       },
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 19,
-        "w": 24,
+        "w": 12,
         "h": 8
       },
       "fieldConfig": {
@@ -661,25 +866,63 @@
             "showPoints": "never",
             "spanNulls": false
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
+          "unit": "bytes"
         },
-        "overrides": []
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "GPU busy"
+        },
+        "properties": [
+          {
+            "id": "unit",
+            "value": "percent"
+          },
+          {
+            "id": "custom.axisPlacement",
+            "value": "right"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Unified memory used"
+        },
+        "properties": [
+          {
+            "id": "unit",
+            "value": "percent"
+          },
+          {
+            "id": "custom.axisPlacement",
+            "value": "right"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Swap used"
+        },
+        "properties": [
+          {
+            "id": "unit",
+            "value": "percent"
+          },
+          {
+            "id": "custom.axisPlacement",
+            "value": "right"
+          }
+        ]
+      }
+    ]
       },
       "options": {
         "legend": {
           "calcs": [
             "lastNotNull",
-            "mean",
             "max"
           ],
           "displayMode": "table",
@@ -691,34 +934,147 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "10.4.0",
       "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "goudai_gpu_temperature_celsius",
-          "legendFormat": "GPU temp (\u00b0C)"
+      {
+        "refId": "A",
+        "expr": "homelab_ollama_model_memory_bytes{device=\"jetson\"}",
+        "legendFormat": "{{model}}"
+      },
+      {
+        "refId": "B",
+        "expr": "100 * (1 - (node_memory_MemAvailable_bytes{host=\"jetson\"} offset 6m / node_memory_MemTotal_bytes{host=\"jetson\"} offset 6m))",
+        "legendFormat": "Unified memory used"
+      },
+      {
+        "refId": "C",
+        "expr": "100 * (1 - (node_memory_SwapFree_bytes{host=\"jetson\"} offset 6m / node_memory_SwapTotal_bytes{host=\"jetson\"} offset 6m))",
+        "legendFormat": "Swap used"
+      },
+      {
+        "refId": "D",
+        "expr": "homelab_jetson_gpu_busy_percent{device=\"jetson\"}",
+        "legendFormat": "GPU busy"
+      }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Running Containers",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 10
+      },
+  "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "mem"
         },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "expr": "goudai_cpu_temperature_celsius",
-          "legendFormat": "CPU temp (\u00b0C)"
+        "properties": [
+          {
+            "id": "unit",
+            "value": "bytes"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "cpu"
         },
-        {
-          "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
+        "properties": [
+          {
+            "id": "unit",
+            "value": "percent"
           },
-          "expr": "goudai_gpu_power_watts",
-          "legendFormat": "GPU power (W)"
+          {
+            "id": "custom.cellOptions",
+            "value": {
+              "type": "sparkline",
+              "mode": "basic",
+              "graphMode": "area"
+            }
+          }
+        ]
+      }
+    ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+      {
+        "expr": "max by (host, name) (container_tasks_state{host=~\"goudai|jetson|unraid\",name!=\"\",state=\"running\"})",
+        "format": "table",
+        "instant": true,
+        "refId": "A"
+      },
+      {
+        "expr": "container_memory_working_set_bytes{host=~\"goudai|jetson|unraid\",name!=\"\"} and on (host, name) max by (host, name) (container_tasks_state{host=~\"goudai|jetson|unraid\",name!=\"\",state=\"running\"})",
+        "format": "table",
+        "instant": true,
+        "refId": "B"
+      },
+      {
+        "expr": "100 * sum by (host, name) (rate(container_cpu_usage_seconds_total{host=~\"goudai|jetson|unraid\",name!=\"\"}[5m])) and on (host, name) max by (host, name) (container_tasks_state{host=~\"goudai|jetson|unraid\",name!=\"\",state=\"running\"})",
+        "format": "table",
+        "instant": true,
+        "refId": "C"
+      }
+    ],
+    "transformations": [
+      {
+        "id": "joinByField",
+        "options": {
+          "byField": "name",
+          "mode": "outer"
+        }
+      },
+      {
+        "id": "filterFieldsByName",
+        "options": {
+          "include": {
+            "names": [
+              "host",
+              "name",
+              "Value #B",
+              "Value #C"
+            ]
+          }
+        }
+      },
+      {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "id": true,
+              "instance": true,
+              "job": true,
+          "image": true,
+          "Value": true
+        },
+        "renameByName": {
+          "Value #B": "memory",
+          "Value #C": "cpu",
+          "host": "host",
+          "name": "container"
+        }
+          }
         }
       ]
     },
@@ -729,7 +1085,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 37,
         "w": 24,
         "h": 1
       },
@@ -781,7 +1137,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 38,
         "w": 6,
         "h": 5
       },
@@ -809,76 +1165,13 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "max(goudai_llm_endpoint_up{service=\"personal-agent-llm\"} offset 6m)",
-          "legendFormat": "Personal agent",
+          "expr": "inference_endpoint_up offset 6m",
+          "legendFormat": "{{device}} / {{backend}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Personal Agent API",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 28,
-        "w": 6,
-        "h": 5
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "editorMode": "code",
-          "expr": "goudai_llm_hf_download_in_progress_bytes{service=\"personal-agent-llm\"} offset 6m",
-          "legendFormat": "Incomplete download bytes",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Model Download Progress",
+      "title": "Inference APIs",
       "type": "stat"
     },
     {
@@ -906,9 +1199,9 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 12,
-        "y": 28,
-        "w": 12,
+        "x": 6,
+        "y": 38,
+        "w": 6,
         "h": 5
       },
       "id": 9,
@@ -935,13 +1228,13 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "avg by (model) (llamacpp:predicted_tokens_seconds{job=\"llama_cpp\"} offset 6m)",
-          "legendFormat": "{{model}}",
+          "expr": "avg by (device, model) (inference_generation_tokens_per_second offset 6m)",
+          "legendFormat": "{{device}} / {{model}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Avg Generation Tokens/sec",
+      "title": "Avg Generation Tokens/sec by Host",
       "type": "stat"
     },
     {
@@ -974,7 +1267,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 33,
+        "y": 43,
         "w": 12,
         "h": 8
       },
@@ -1000,167 +1293,33 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "goudai_llm_endpoint_up offset 6m",
-          "legendFormat": "{{service}} API",
+          "expr": "inference_endpoint_up offset 6m",
+          "legendFormat": "{{device}} / {{backend}} API",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "editorMode": "code",
-          "expr": "goudai_llm_hf_download_in_progress{service=\"personal-agent-llm\"} offset 6m",
-          "legendFormat": "incomplete downloads",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "LLM Health",
+      "title": "LLM Health by Host",
       "type": "timeseries"
     },
     {
+      "id": 17,
+      "title": "Loaded Models by Host",
+      "type": "table",
       "datasource": {
         "type": "prometheus",
         "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 33,
-        "w": 12,
-        "h": 8
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "editorMode": "code",
-          "expr": "goudai_llm_hf_cache_bytes{service=\"personal-agent-llm\"} offset 6m",
-          "legendFormat": "HF cache",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "editorMode": "code",
-          "expr": "goudai_llm_hf_download_in_progress_bytes{service=\"personal-agent-llm\"} offset 6m",
-          "legendFormat": "Download in progress",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Model Cache",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
       },
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 51,
         "w": 12,
         "h": 8
       },
-      "id": 7,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -1173,7 +1332,6 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -1181,15 +1339,12 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "goudai_llm_model_loaded offset 6m",
+          "expr": "inference_model_loaded offset 6m",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Loaded Models",
       "transformations": [
         {
           "id": "organize",
@@ -1198,18 +1353,17 @@
               "Time": true,
               "__name__": true,
               "instance": true,
-              "job": true
+              "job": true,
+              "service": true
             },
-            "indexByName": {},
             "renameByName": {
-              "Value": "loaded",
+              "Value": "running",
               "model": "model",
-              "service": "service"
+              "state": "state"
             }
           }
         }
-      ],
-      "type": "table"
+      ]
     },
     {
       "datasource": {
@@ -1269,7 +1423,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 41,
+        "y": 51,
         "w": 12,
         "h": 8
       },
@@ -1296,8 +1450,8 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "avg by (model) (llamacpp:predicted_tokens_seconds{job=\"llama_cpp\"} offset 6m)",
-          "legendFormat": "{{model}} generation",
+          "expr": "avg by (device, model) (inference_generation_tokens_per_second offset 6m)",
+          "legendFormat": "{{device}} / {{model}} generation",
           "range": true,
           "refId": "A"
         },
@@ -1307,14 +1461,117 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "avg by (model) (llamacpp:prompt_tokens_seconds{job=\"llama_cpp\"} offset 6m)",
-          "legendFormat": "{{model}} prompt",
+          "expr": "avg by (device, model) (inference_prompt_tokens_per_second offset 6m)",
+          "legendFormat": "{{device}} / {{model}} prompt",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "llama.cpp Throughput",
+      "title": "Model Throughput by Host",
       "type": "timeseries"
+    },
+    {
+      "id": 18,
+      "title": "ComfyUI PyTorch VRAM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 60,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "gibytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "comfyui_torch_vram_total_bytes{host=\"goudai\"} / 1073741824",
+          "legendFormat": "PyTorch total",
+          "refId": "A"
+        },
+        {
+          "expr": "(comfyui_torch_vram_total_bytes{host=\"goudai\"} - comfyui_torch_vram_free_bytes{host=\"goudai\"}) / 1073741824",
+          "legendFormat": "PyTorch allocated",
+          "refId": "B"
+        },
+        {
+          "expr": "comfyui_torch_vram_free_bytes{host=\"goudai\"} / 1073741824",
+          "legendFormat": "PyTorch free",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "ComfyUI Recent Workflow Models",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "topk(20, comfyui_model_prompt_total{host=\"goudai\"})",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "host": true
+            },
+            "renameByName": {
+              "Value": "prompts",
+              "model": "model"
+            }
+          }
+        }
+      ]
     }
   ],
   "preload": false,
@@ -1334,8 +1591,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Goudai LLM Overview",
+  "title": "LLM Overview",
   "uid": "goudai-llm-overview",
-  "version": 1,
+  "version": 13,
   "weekStart": ""
 }

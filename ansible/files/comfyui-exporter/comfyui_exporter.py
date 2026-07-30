@@ -186,6 +186,8 @@ def poll_once():
                     "device": device.get("name", "unknown"),
                     "vram_total": device.get("vram_total", 0),
                     "vram_free": device.get("vram_free", 0),
+                    "torch_vram_total": device.get("torch_vram_total", 0),
+                    "torch_vram_free": device.get("torch_vram_free", 0),
                 }
             )
 
@@ -312,6 +314,8 @@ def render_metrics():
         labels = {"device": device["device"]}
         lines.append(render_metric("comfyui_vram_total_bytes", device["vram_total"], labels))
         lines.append(render_metric("comfyui_vram_free_bytes", device["vram_free"], labels))
+        lines.append(render_metric("comfyui_torch_vram_total_bytes", device["torch_vram_total"], labels))
+        lines.append(render_metric("comfyui_torch_vram_free_bytes", device["torch_vram_free"], labels))
 
     amd_gpu = state["amd_gpu"]
     if amd_gpu:

@@ -1,0 +1,62 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {"list": [{"name": "device", "label": "Device", "type": "query", "datasource": {"type": "prometheus", "uid": "Prometheus"}, "query": "label_values(inference_model_loaded, device)", "includeAll": true, "allValue": ".*", "multi": true, "refresh": 1}]},
+  "panels": [
+    {"id": 100, "type": "row", "title": "Inference Rollup", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 1,
+      "title": "Loaded Model Count",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 1, "w": 8, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "none"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "count(inference_model_loaded{device=~\"$device\"})", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Generation Tokens/sec",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 8, "y": 1, "w": 16, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "none"}, "overrides": []},
+      "targets": [{"expr": "inference_generation_tokens_per_second{device=~\"$device\"}", "legendFormat": "{{device}} / {{model}}", "refId": "A"}]
+    },
+    {
+      "id": 3,
+      "title": "Loaded Models",
+      "type": "table",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 6, "w": 8, "h": 9},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"expr": "inference_model_loaded{device=~\"$device\"}", "format": "table", "instant": true, "refId": "A"}],
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true, "Value": true}}}]
+    },
+    {
+      "id": 4,
+      "title": "Loaded Model Memory",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 8, "y": 9, "w": 16, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "targets": [{"expr": "inference_model_memory_bytes{device=~\"$device\"}", "legendFormat": "{{device}} / {{model}}", "refId": "A"}]
+    },
+    {
+      "id": 5,
+      "title": "Coverage Note",
+      "type": "text",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"x": 0, "y": 15, "w": 8, "h": 2},
+      "options": {"mode": "markdown", "content": "Goudai reports llama.cpp throughput. Jetson currently reports Ollama model state and memory; throughput will appear after request timing is instrumented."}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": ["homelab", "inference", "rollup"],
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "Inference Rollup",
+  "uid": "inference-rollup"
+}

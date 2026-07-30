@@ -7,6 +7,7 @@ healthCheckTimeout: {{ llama_swap_health_check_timeout | default(120) }}
 
 models:
 {% for model_id, m in llama_swap_models.items() %}
+{% if model_id in llama_swap_profile_models[llama_swap_profile] %}
   "{{ model_id }}":
 {% if m.alias is defined %}
     aliases:
@@ -27,8 +28,10 @@ models:
       - "HF_HOME={{ llama_swap_hf_cache_dir }}"
       - "HF_HUB_CACHE={{ llama_swap_hf_cache_dir }}/hub"
       - "LLAMA_LOG_LEVEL={{ llama_swap_log_level }}"
+{% endif %}
 {% endfor %}
-{% if llama_swap_groups %}
+{% set active_groups = llama_swap_groups if llama_swap_profile == 'normal' else llama_swap_coding_groups | default({}) %}
+{% if active_groups %}
 
 # Groups control which models can coexist in VRAM vs. swap each other out.
 # - swap: false + exclusive: false → members coexist permanently
@@ -36,7 +39,7 @@ models:
 #   any model outside the group when activated (default behaviour)
 # - persistent: true               → other groups can't unload these members
 groups:
-{% for group_id, g in llama_swap_groups.items() %}
+{% for group_id, g in active_groups.items() %}
   "{{ group_id }}":
 {% if g.persistent is defined %}
     persistent: {{ g.persistent | lower }}
