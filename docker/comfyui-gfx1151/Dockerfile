@@ -12,11 +12,9 @@
 #      startup copy step.
 #   2. Checks out COMFYUI_VERSION over the base image's baked v0.15.0 clone.
 #      Krea2 ConvRot int8mixed checkpoints need the comfy/ops.py quant support
-#      added in v0.26+ (v0.15.0 can't detect the architecture at all); pinned
-#      to v0.27.0 to match spraycheese for apples-to-apples comparisons.
-#      comfy-kitchen's ROCm/Triton fast path isn't auto-enabled until v0.28.0
-#      (matrix-core GPUs only, which gfx1151 isn't), so this runs the plain
-#      PyTorch fallback path on goudai — correct, just not kernel-accelerated.
+#      added in v0.26+ (v0.15.0 can't detect the architecture at all). MiniMax
+#      H3 workflows require ComfyUI v0.30.0 or newer, so this tracks the latest
+#      verified v0.30.x release.
 #   3. Reinstalls ComfyUI's own requirements.txt for the new version, but
 #      strips the unpinned torch/torchvision/torchaudio lines first so pip
 #      doesn't clobber the ROCm 7.2 wheels the base image ships.
@@ -45,7 +43,7 @@
 #   docker build -t comfyui-gfx1151-ltx:local docker/comfyui-gfx1151
 FROM ignatberesnev/comfyui-gfx1151:v0.2
 
-ARG COMFYUI_VERSION=v0.27.0
+ARG COMFYUI_VERSION=v0.30.1
 
 RUN cp -a /opt/ComfyUI-pre-cloned /opt/ComfyUI \
  && cd /opt/ComfyUI \

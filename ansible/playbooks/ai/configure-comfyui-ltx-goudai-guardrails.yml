@@ -1,0 +1,86 @@
+---
+# Apply only the Goudai ComfyUI runtime guardrails. This deliberately avoids
+# rebuilding the ComfyUI image or copying Dockerfiles.
+
+- name: Configure ComfyUI guardrails on goudai
+  hosts: goudai
+  become: true
+  gather_facts: false
+
+  vars:
+    comfyui_service_dir: /opt/comfyui
+    comfyui_port: 8188
+    comfyui_mcp_port: 9101
+    comfyui_mcp_civitai_token: "{{ lookup('ansible.builtin.env', 'CIVITAI_API_TOKEN') | default('') }}"
+    comfyui_mcp_huggingface_token: "{{ lookup('ansible.builtin.env', 'HUGGINGFACE_TOKEN') | default('') }}"
+    comfyui_memory_limit: 52g
+    comfyui_memory_reservation: 46g
+    comfyui_memory_swap_limit: 60g
+    comfyui_enable_highvram: false
+
+  tasks:
+    - name: Look up host video group GID
+      ansible.builtin.getent:
+        database: group
+        key: video
+      failed_when: false
+
+    - name: Look up host render group GID
+      ansible.builtin.getent:
+        database: group
+        key: render
+      failed_when: false
+
+    - name: Set ComfyUI GPU group GID facts
+      ansible.builtin.set_fact:
+        comfyui_video_gid: "{{ ansible_facts.getent_group.video[1] | default('44') }}"
+        comfyui_render_gid: "{{ ansible_facts.getent_group.render[1] | default('991') }}"
+
+    - name: Deploy docker-compose.yml with memory guardrails
+      ansible.builtin.template:
+        src: ../../files/goudai/comfyui-ltx/docker-compose.yml.j2
+        dest: "{{ comfyui_service_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: Recreate ComfyUI stack with updated runtime limits
+      ansible.builtin.command: "docker compose up -d"
+      args:
+        chdir: "{{ comfyui_service_dir }}"
+      changed_when: true
+
+    - name: Wait for ComfyUI to respond
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ comfyui_port }}/system_stats"
+        method: GET
+        status_code: 200
+      register: health
+      retries: 30
+      delay: 5
+      until: health.status is defined and health.status == 200
+
+    - name: Wait for ComfyUI exporter to respond
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9840/metrics"
+        method: GET
+        status_code: 200
+      register: exporter_health
+      retries: 12
+      delay: 5
+      until: exporter_health.status is defined and exporter_health.status == 200
+
+    - name: Wait for comfyui-mcp to respond
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ comfyui_mcp_port }}/mcp"
+        method: GET
+        status_code: [200, 400, 404, 406]
+      register: comfyui_mcp_health
+      retries: 20
+      delay: 3
+      until: comfyui_mcp_health.status is defined
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          ComfyUI guardrails are deployed at http://{{ ansible_host }}:{{ comfyui_port }}.
+          GPU: {{ health.json.devices[0].name | default('unknown') }},
+          torch {{ health.json.system.pytorch_version | default('?') }}.

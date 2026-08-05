@@ -36,6 +36,14 @@
     comfyui_mcp_port: 9101
     comfyui_mcp_civitai_token: "{{ lookup('ansible.builtin.env', 'CIVITAI_API_TOKEN') | default('') }}"
     comfyui_mcp_huggingface_token: "{{ lookup('ansible.builtin.env', 'HUGGINGFACE_TOKEN') | default('') }}"
+    # Guardrails from Gitea #257: keep a runaway ROCm/ComfyUI workload from
+    # exhausting host RAM and forcing a global OOM/GPU fence-timeout spiral.
+    comfyui_memory_limit: 52g
+    comfyui_memory_reservation: 46g
+    comfyui_memory_swap_limit: 60g
+    # Keep smart memory enabled. Enable only for benchmark runs on goudai's
+    # 64 GiB VRAM profile: -e comfyui_enable_highvram=true.
+    comfyui_enable_highvram: false
 
   roles:
     - role: netbox-service
