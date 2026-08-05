@@ -136,6 +136,42 @@ groups:
           summary: "GPU VRAM on {{ $labels.host }} is above 95%"
           description: "GPU VRAM usage on {{ $labels.host }} has been above 95% for 5+ minutes - generations may start failing with OOM."
 
+      - alert: GoudaiHostMemoryLow
+        expr: node_memory_MemAvailable_bytes{host="goudai"} < 10 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Goudai host RAM headroom is below 10 GiB"
+          description: "Available host memory on goudai has been below 10 GiB for 5+ minutes. Pause heavy ComfyUI jobs and inspect RAM/swap before ROCm workloads trigger a global OOM."
+
+      - alert: GoudaiComfyUIRSSHigh
+        expr: container_memory_rss{name=~"/?comfyui", host="goudai"} > 45 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Goudai ComfyUI RSS is above 45 GiB"
+          description: "The goudai ComfyUI container RSS has exceeded 45 GiB for 5+ minutes. The hard container limit is 52 GiB; release models or let the queued job finish before starting another heavy workflow."
+
+      - alert: GoudaiKernelOOM
+        expr: increase(homelab_kernel_oom_events_total{host="goudai"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kernel OOM event detected on goudai"
+          description: "Promtail saw a kernel OOM message in goudai's journal. Inspect `journalctl -k`, restart ComfyUI if it was killed, and reboot if ROCm did not recover cleanly."
+
+      - alert: GoudaiAmdgpuFenceTimeout
+        expr: increase(homelab_amdgpu_fence_timeout_events_total{host="goudai"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AMDGPU fence timeout or queue eviction on goudai"
+          description: "Promtail saw an AMDGPU fence timeout, queue eviction, or KFD/SVM recovery warning in goudai's journal. Restart ComfyUI after transient events; reboot goudai if the GPU does not recover."
+
       - alert: ComfyUIRepeatedFailures
         expr: increase(comfyui_prompts_errored_total[15m]) > 3
         for: 0m

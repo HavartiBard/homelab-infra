@@ -57,6 +57,11 @@
     lmstudio_port: 1234
     lmstudio_bin: /usr/local/bin/lms
 
+    # Host RAM guardrail for ROCm/ComfyUI workloads (Gitea #257).
+    goudai_swap_file: /swapfile
+    goudai_swap_size_gib: 32
+    goudai_swappiness: 10
+
   pre_tasks:
     - name: Verify host is Ubuntu 24.04 (noble) — required for ROCm apt repo
       ansible.builtin.assert:
@@ -122,6 +127,73 @@
           - htop
           - nvtop                 # GPU + per-process utilization (AMD via libdrm)
         state: present
+
+    # ── Swap and memory pressure guardrails ───────────────────────────────────
+
+    - name: Check goudai swap file size
+      ansible.builtin.stat:
+        path: "{{ goudai_swap_file }}"
+      register: goudai_swap_file_stat
+
+    - name: Disable undersized goudai swap file before resizing
+      ansible.builtin.command: "swapoff {{ goudai_swap_file }}"
+      when:
+        - goudai_swap_file_stat.stat.exists
+        - goudai_swap_file_stat.stat.size | int < (goudai_swap_size_gib | int * 1024 * 1024 * 1024)
+      failed_when: false
+      changed_when: true
+
+    - name: Allocate goudai swap file
+      ansible.builtin.command: "fallocate -l {{ goudai_swap_size_gib }}G {{ goudai_swap_file }}"
+      when: >-
+        not goudai_swap_file_stat.stat.exists
+        or goudai_swap_file_stat.stat.size | int < (goudai_swap_size_gib | int * 1024 * 1024 * 1024)
+      changed_when: true
+
+    - name: Secure goudai swap file permissions
+      ansible.builtin.file:
+        path: "{{ goudai_swap_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+      when: not ansible_check_mode or goudai_swap_file_stat.stat.exists
+
+    - name: Format goudai swap file
+      ansible.builtin.command: "mkswap {{ goudai_swap_file }}"
+      when:
+        - not ansible_check_mode
+        - >-
+          not goudai_swap_file_stat.stat.exists
+          or goudai_swap_file_stat.stat.size | int < (goudai_swap_size_gib | int * 1024 * 1024 * 1024)
+      changed_when: true
+
+    - name: Ensure goudai swap is present in fstab
+      ansible.posix.mount:
+        src: "{{ goudai_swap_file }}"
+        path: none
+        fstype: swap
+        opts: sw
+        state: present
+
+    - name: Check active goudai swap devices
+      ansible.builtin.command: swapon --show=NAME --noheadings
+      register: goudai_active_swap
+      changed_when: false
+      failed_when: false
+
+    - name: Enable goudai swap file
+      ansible.builtin.command: "swapon {{ goudai_swap_file }}"
+      when:
+        - not ansible_check_mode
+        - goudai_swap_file not in goudai_active_swap.stdout_lines
+      changed_when: true
+
+    - name: Set conservative goudai swappiness
+      ansible.posix.sysctl:
+        name: vm.swappiness
+        value: "{{ goudai_swappiness }}"
+        state: present
+        reload: true
 
     # ── GPU access ────────────────────────────────────────────────────────────
     # ROCm system packages are not installed (Ubuntu 26.04 not yet supported).

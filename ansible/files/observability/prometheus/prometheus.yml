@@ -84,7 +84,10 @@ scrape_configs:
           - '192.168.20.4:9080'    # agh1
           - '192.168.20.5:9080'    # agh2
           - '192.168.20.169:9080'  # jetson.lab
+      - targets:
           - '192.168.20.150:9080'  # goudai
+        labels:
+          host: goudai
       - targets:
           - 'spraycheese.lab.klsll.com:9080'
         labels:

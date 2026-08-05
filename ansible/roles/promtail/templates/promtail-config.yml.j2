@@ -62,8 +62,7 @@ scrape_configs:
                 expression: '(?i)(?P<level>debug|info|warning|error|critical)'
             - template:
                 source: level
-                template: >-
-                  {% raw %}{{ if .level }}{{ .level | lower }}{{ else }}info{{ end }}{% endraw %}
+                template: "{% raw %}{{ if .level }}{{ .level | lower }}{{ else }}info{{ end }}{% endraw %}"
             - labels:
                 level:
 
@@ -82,6 +81,24 @@ scrape_configs:
       - drop:
           expression: '\n'
           drop_counter_reason: multiline_journal_entry
+      - match:
+          selector: '{host="{{ inventory_hostname }}"} |~ "(?i)(global oom|oom-kill|out of memory|killed process)"'
+          stages:
+            - metrics:
+                homelab_kernel_oom_events_total:
+                  type: Counter
+                  description: "Kernel OOM events observed in the systemd journal."
+                  config:
+                    action: inc
+      - match:
+          selector: '{host="{{ inventory_hostname }}"} |~ "(?i)(fence fallback timer expired|amdgpu.*fence|queue eviction|kfd.*svm)"'
+          stages:
+            - metrics:
+                homelab_amdgpu_fence_timeout_events_total:
+                  type: Counter
+                  description: "AMD GPU fence timeout, queue eviction, or KFD/SVM recovery events observed in the systemd journal."
+                  config:
+                    action: inc
 {% endif %}
 
 {% if promtail_adguard_log_path %}

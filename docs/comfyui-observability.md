@@ -133,6 +133,16 @@ and only touches the promtail/node_exporter/cadvisor containers.
 
 ## Inspecting and releasing goudai ComfyUI memory
 
+Goudai's ComfyUI container is capped by Compose to avoid host-wide OOM
+events: 52 GiB hard RAM, 46 GiB reservation, and 60 GiB combined RAM+swap.
+The host bootstrap playbook manages a 32 GiB local swap file at `/swapfile`
+and sets `vm.swappiness=10`. ComfyUI is intentionally not launched with
+`--disable-smart-memory`; benchmark `--highvram` by redeploying with:
+
+```bash
+ansible-playbook playbooks/ai/deploy-comfyui-ltx-goudai.yml --limit goudai -e comfyui_enable_highvram=true
+```
+
 ComfyUI's API exposes device and PyTorch allocator memory, but it does not
 provide a guaranteed authoritative list of every resident model. The helper
 reports both memory layers, queue state, and model names found in the last 20
@@ -157,6 +167,15 @@ scripts/goudai-comfyui-gpu.sh restart
 ```
 
 These cleanup actions do not affect llama-swap or other goudai services.
+
+After an OOM or AMD fence timeout, restart ComfyUI first:
+
+```bash
+cd /opt/comfyui
+docker compose restart comfyui
+```
+
+If ROCm does not recover cleanly after the restart, reboot goudai.
 
 ## Validating both hosts are reporting
 

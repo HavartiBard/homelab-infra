@@ -20,6 +20,9 @@ services:
     image: comfyui-gfx1151-ltx:local
     container_name: comfyui
     restart: unless-stopped
+    mem_limit: "{{ comfyui_memory_limit }}"
+    mem_reservation: "{{ comfyui_memory_reservation }}"
+    memswap_limit: "{{ comfyui_memory_swap_limit }}"
     shm_size: 8g
     ports:
       - "8188:8188"
@@ -36,6 +39,9 @@ services:
       - "8188"
       - --use-pytorch-cross-attention
       - --disable-mmap
+{% if comfyui_enable_highvram | bool %}
+      - --highvram
+{% endif %}
     volumes:
       - "/mnt/ai-models/comfyui/models:/opt/ComfyUI/models"
       - "/mnt/ai-models/comfyui/input:/opt/ComfyUI/input"
