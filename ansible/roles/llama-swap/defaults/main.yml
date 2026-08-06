@@ -177,6 +177,16 @@ llama_swap_models:
     alias: "qwen/qwen3.6-35b-uncensored"
     flags:
       - "--jinja"
+      # llama.cpp's auto-detected PEG tool-call parser drops/mis-parses args
+      # (e.g. loses required fields like `action`) whenever this Qwen3.6-A3B
+      # family emits prefix/thinking text before the <tool_call> tag —
+      # ggml-org/llama.cpp#21158, matches HF discussions on Qwen3.6-35B-A3B
+      # tool-call reliability. Forcing JSON tool-call format avoids the
+      # PEG-parser path that mis-handles the prefix text.
+      # Quotes are backslash-escaped so llama-swap's cmd tokenizer (shell-word
+      # style splitting) sees them as literal characters in the JSON value
+      # rather than as its own quote delimiters.
+      - '--chat-template-kwargs {\"tool_call_format\":\"json\"}'
       - "-ngl 99"
       - "-fa on"
       - "--ctx-size 131072"
