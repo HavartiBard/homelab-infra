@@ -14,10 +14,16 @@ models:
       - "{{ m.alias }}"
 {% endif %}
 {% if m.cmd is defined %}
-    cmd: "{{ m.cmd }}"
+{% set rendered_cmd = m.cmd %}
 {% else %}
-    cmd: "{{ llama_swap_llama_server_binary }} --host 127.0.0.1 --port ${PORT} -hf {{ m.hf }}{% for flag in m.flags | default([]) %} {{ flag }}{% endfor %}"
+{% set base_cmd = llama_swap_llama_server_binary ~ " --host 127.0.0.1 --port ${PORT} -hf " ~ m.hf %}
+{% set flags_str = (m.flags | default([])) | join(" ") %}
+{% set rendered_cmd = (base_cmd ~ " " ~ flags_str) if flags_str else base_cmd %}
 {% endif %}
+    # to_json (not a raw "..." string) because some flag values contain
+    # literal double quotes (e.g. --chat-template-kwargs JSON) that would
+    # otherwise break this YAML scalar.
+    cmd: {{ rendered_cmd | to_json }}
 {% if m.ttl is defined %}
     ttl: {{ m.ttl }}
 {% endif %}
