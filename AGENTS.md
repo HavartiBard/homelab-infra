@@ -123,7 +123,7 @@ Full index (incl. Lyra-isolated instances, health-check commands, direct-vs-Dire
 | 1Password MCP | via mcp-proxy `:6980/servers/onepassword/mcp` | Secret retrieval (read-only), stdio bridged |
 | iCloud MCP | 6983 | LAN-only — Mail/Calendar/Contacts, app-specific password |
 
-**Direct client config:** As of 2026-08-07, `gitea`, `gsuite`, `obsidian`, and `onepassword` are configured as **user-level** MCP servers (`~/.claude.json` → `mcpServers`, applies across all repos/sessions) rather than a per-project `.mcp.json` — connects directly rather than going through Director, for lower latency and to keep working if Director is down. Director remains available as an optional single-endpoint aggregator for clients that prefer it.
+**Direct client config:** As of 2026-08-07, `gitea`, `gsuite`, `obsidian`, `onepassword`, `searxng`, and `crawl4ai` are configured as **user-level** MCP servers (`~/.claude.json` → `mcpServers`, applies across all repos/sessions) rather than a per-project `.mcp.json` — connects directly rather than going through Director, for lower latency and to keep working if Director is down. Director remains available as an optional single-endpoint aggregator for clients that prefer it. Full bootstrap steps (incl. Codex/Hermes) live in the `homelab-mcp-bootstrap` skill in the `homelab-skills` repo.
 
 ### MCP Servers (goudai)
 
