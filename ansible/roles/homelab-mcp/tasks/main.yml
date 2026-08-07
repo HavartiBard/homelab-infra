@@ -41,6 +41,20 @@
   changed_when: true
   notify: Restart homelab-mcp container
 
+- name: Check for the shared br0 macvlan network
+  ansible.builtin.raw: docker network inspect {{ homelab_mcp_network_name }}
+  register: homelab_mcp_network_inspect
+  changed_when: false
+  failed_when: false
+
+- name: Fail when br0 network is missing
+  ansible.builtin.fail:
+    msg: |
+      Docker network {{ homelab_mcp_network_name }} is missing. It's expected to
+      already exist (created by the npm role) — homelab-mcp does not manage its
+      creation. Deploy npm first, or create the macvlan network manually.
+  when: homelab_mcp_network_inspect.rc != 0
+
 - name: Pull container image
   ansible.builtin.raw: docker pull {{ homelab_mcp_image }}
   register: pull_result
@@ -61,7 +75,8 @@
       --restart unless-stopped \
       --label net.unraid.docker.icon='{{ homelab_mcp_icon }}' \
       --label net.unraid.docker.webui='{{ homelab_mcp_webui_url }}' \
-      -p {{ homelab_mcp_port }}:{{ homelab_mcp_port }} \
+      --network {{ homelab_mcp_network_name }} \
+      --ip {{ homelab_mcp_ip }} \
       -v {{ homelab_mcp_config_file }}:/app/config.yaml:ro \
       -e TZ={{ timezone }} \
       {{ homelab_mcp_image }}

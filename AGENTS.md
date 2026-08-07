@@ -107,17 +107,23 @@ Dependency map: `services/homelab-dependency-map.md`.
 
 ### MCP Servers (Unraid)
 
+Full index (incl. Lyra-isolated instances, health-check commands, direct-vs-Director access): see [[MCP Hub]] in Obsidian.
+
 | Service | Port | Notes |
 |---------|------|-------|
 | Unraid MCP | 6970 | Unraid system management |
-| Homelab MCP | 6971 | Homelab-specific tools |
+| Homelab MCP | 6971 | **On its own br0 macvlan IP, `192.168.20.63` — not `192.168.20.14`** (same pattern as NPM). Homelab-specific tools (Orbi router mgmt). |
 | Proxmox MCP | 6974 | Proxmox VM/LXC management |
 | Gitea MCP | 6976 | Gitea issues, PRs, repos |
 | Obsidian MCP | 6977 | Vault read/write/search |
 | SearXNG MCP | 6978 | Web search via SearXNG |
+| Crawl4AI | 6981 | MCP endpoint at `/mcp/sse`; also a plain web-crawl HTTP service |
+| hister-archive-mcp (`research-mcp` role) | 6982 | `archive_page` tool, backs the web-research stack (hister on `:4433`) |
 | GSuite MCP | 8092 | Google Workspace tools |
-| 1Password MCP | internal | Secret retrieval (read-only) |
+| 1Password MCP | via mcp-proxy `:6980/servers/onepassword/mcp` | Secret retrieval (read-only), stdio bridged |
 | iCloud MCP | 6983 | LAN-only — Mail/Calendar/Contacts, app-specific password |
+
+**Direct client config:** As of 2026-08-07, this repo's `.mcp.json` connects directly to `gitea`, `gsuite`, `obsidian`, and `onepassword` rather than going through Director — lower latency, and works even if Director is down. Director remains available as an optional single-endpoint aggregator for clients that prefer it.
 
 ### MCP Servers (goudai)
 

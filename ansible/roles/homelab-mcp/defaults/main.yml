@@ -5,10 +5,20 @@
 homelab_mcp_image: "ghcr.io/havartibard/homelab-mcp:latest"
 homelab_mcp_container_name: "homelab-mcp"
 homelab_mcp_port: 6971
+
+# homelab-mcp runs on the shared br0 macvlan network (same pattern as NPM)
+# with its own static LAN IP, not on ansible_host. This was true of the live
+# container before the role documented it — formalized here 2026-08-07 so
+# a redeploy reproduces what's actually running instead of falling back to
+# bridge + host-port-publish. The br0 network itself is expected to already
+# exist (created by the npm role); this role does not manage its creation.
+homelab_mcp_network_name: "br0"
+homelab_mcp_ip: "192.168.20.63"
+
 homelab_mcp_icon: >-
   https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/terminal.png
 homelab_mcp_webui_url: >-
-  http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
+  http://{{ homelab_mcp_ip }}:{{ homelab_mcp_port }}/mcp
 
 # Paths
 homelab_mcp_appdata_dir: "/mnt/user/appdata/homelab-mcp"
