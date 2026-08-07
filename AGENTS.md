@@ -123,7 +123,7 @@ Full index (incl. Lyra-isolated instances, health-check commands, direct-vs-Dire
 | 1Password MCP | via mcp-proxy `:6980/servers/onepassword/mcp` | Secret retrieval (read-only), stdio bridged |
 | iCloud MCP | 6983 | LAN-only — Mail/Calendar/Contacts, app-specific password |
 
-**Direct client config:** As of 2026-08-07, this repo's `.mcp.json` connects directly to `gitea`, `gsuite`, `obsidian`, and `onepassword` rather than going through Director — lower latency, and works even if Director is down. Director remains available as an optional single-endpoint aggregator for clients that prefer it.
+**Direct client config:** As of 2026-08-07, `gitea`, `gsuite`, `obsidian`, and `onepassword` are configured as **user-level** MCP servers (`~/.claude.json` → `mcpServers`, applies across all repos/sessions) rather than a per-project `.mcp.json` — connects directly rather than going through Director, for lower latency and to keep working if Director is down. Director remains available as an optional single-endpoint aggregator for clients that prefer it.
 
 ### MCP Servers (goudai)
 
@@ -373,7 +373,7 @@ Obsidian Desktop (LiveSync) ←→ CouchDB (192.168.20.14:5984) ←→ Obsidian 
 
 ### Agent Usage
 
-**For any documentation task (service catalog entries, project notes, design docs), prefer the Obsidian MCP tools (`mcp__obsidian__*`, configured in `.mcp.json`) over direct filesystem/NFS access to the vault.** This keeps writes going through a single path that's safe alongside Obsidian LiveSync's CouchDB sync, and avoids sync conflicts from editing vault files out-of-band.
+**For any documentation task (service catalog entries, project notes, design docs), prefer the Obsidian MCP tools (`mcp__obsidian__*`, configured as a user-level MCP server in `~/.claude.json`) over direct filesystem/NFS access to the vault.** This keeps writes going through a single path that's safe alongside Obsidian LiveSync's CouchDB sync, and avoids sync conflicts from editing vault files out-of-band.
 
 **Creating/updating service entries:**
 
@@ -469,7 +469,7 @@ sudo netstat -tulpn | grep <port>
 
 A Gitea MCP server is available and should be **preferred over raw `curl`/`gh` commands** for all Gitea interactions: listing/creating issues, creating PRs, managing labels, browsing repo contents, etc. Use the `mcp__gitea__*` tools directly. Fall back to `curl` or the Gitea API only if the MCP tool doesn't cover the operation.
 
-**Setup:** The project `.mcp.json` should auto-configure the Gitea MCP for Claude Code sessions. If the `mcp__gitea__*` tools are not available at session start:
+**Setup:** The Gitea MCP is configured as a **user-level** MCP server (`~/.claude.json` → `mcpServers`), so it's available across all repos/sessions. If the `mcp__gitea__*` tools are not available at session start:
 
 1. Verify the MCP server is reachable:
    ```bash
