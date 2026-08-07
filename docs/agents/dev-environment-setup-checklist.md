@@ -82,14 +82,6 @@ Confirms LAN/VPN connectivity to the `192.168.20.x` range, where the Gitea/GSuit
 every managed host live. A non-2xx/expected response here usually means you're not on the LAN or
 VPN, not a repo config problem.
 
-## 8. Optional: personal SSH key for the `raclette` MCP entry
-
-```bash
-ls -la ~/.ssh/id_ed25519
-```
-`.mcp.json`'s `raclette` entry is hardcoded to this exact path (a *different* key from
-`id_ed25519_homelab`). Only needed if you want that specific MCP server available; skip otherwise.
-
 ## Summary table
 
 | # | Check | Command | If it fails |
@@ -101,4 +93,3 @@ ls -la ~/.ssh/id_ed25519
 | 5 | Homelab SSH key | `ls ~/.ssh/id_ed25519_homelab` | Ask user, don't generate new |
 | 6 | Docker (optional) | `docker compose version` | Install if testing stacks locally |
 | 7 | Network | `curl http://192.168.20.14:6976/mcp` | Confirm LAN/VPN |
-| 8 | Personal SSH key (optional) | `ls ~/.ssh/id_ed25519` | Only for `raclette` MCP |
