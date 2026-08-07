@@ -22,13 +22,13 @@
           - name: homelab-mcp
             cluster: unraid-docker
             role: MCP Server
-            comments: "Orbi/NPM homelab MCP — http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp"
+            comments: "Orbi/NPM homelab MCP — http://{{ homelab_mcp_ip }}:{{ homelab_mcp_port }}/mcp"
 
   post_tasks:
     - name: Display deployment info
       ansible.builtin.debug:
         msg: |
           Homelab MCP deployed successfully!
-          Endpoint:  http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
-          Health:    curl http://{{ ansible_host }}:{{ homelab_mcp_port }}/mcp
+          Endpoint:  http://{{ homelab_mcp_ip }}:{{ homelab_mcp_port }}/mcp
+          Health:    curl http://{{ homelab_mcp_ip }}:{{ homelab_mcp_port }}/mcp
           Logs:      docker logs {{ homelab_mcp_container_name }} -f
